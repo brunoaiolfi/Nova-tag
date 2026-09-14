@@ -2,12 +2,12 @@ import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import InformativoEtapas from '../views/Provisionar/InformativoEtapas';
-import Etapas from '../views/Provisionar/Etapas';
+import EtapasProvisionamento from '../views/Provisionar/Etapas';
 import {useAppTheme} from '../theme';
 
 export type RotasProvisionar = {
   InformativoEtapas: undefined;
-  Etapas: undefined;
+  EtapasProvisionamento: undefined;
 };
 
 const Stack = createNativeStackNavigator<RotasProvisionar>();
@@ -29,9 +29,9 @@ const ProvisionarNavigator = () => {
         options={{headerShown: false}}
       />
       <Stack.Screen
-        name="Etapas"
-        component={Etapas}
-        options={{title: 'Etapas'}}
+        name="EtapasProvisionamento"
+        component={EtapasProvisionamento}
+        options={{title: 'Provisionamento'}}
       />
     </Stack.Navigator>
   );

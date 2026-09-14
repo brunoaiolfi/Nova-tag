@@ -1,10 +1,11 @@
 import React from 'react';
-import {StatusBar} from 'react-native';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {PaperProvider} from 'react-native-paper';
+import { StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PaperProvider } from 'react-native-paper';
 
 import Navigator from './navigation';
-import {tema} from './theme';
+import { tema } from './theme';
+import Toast from 'react-native-toast-message';
 
 const App = () => (
   <SafeAreaProvider>
@@ -15,6 +16,7 @@ const App = () => (
       />
       <Navigator />
     </PaperProvider>
+    <Toast />
   </SafeAreaProvider>
 );
 

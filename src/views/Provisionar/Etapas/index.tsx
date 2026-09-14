@@ -1,27 +1,66 @@
 import React from 'react';
-import {Text} from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
 
-import Tela from '../../../components/Base/Tela';
-import VStack from '../../../components/Base/VStack';
+import { ComponentesEtapa, DadosProvisionamento, Etapa } from './types';
+import LeituraInicial from './LeituraInicial';
+import IdentificarPedido from './IdentificarPedido';
+import Bloquear from './Bloquear';
+import Toast from 'react-native-toast-message';
 
-enum Etapa {
-  LEITURA_INICIAL = 'leitura_inicial',
-  IDENTIFICAR_PEDIDO = 'identificar_pedido',
-  BLOQUEAR = 'bloquear',
-}
+const ETAPAS: ComponentesEtapa = {
+  [Etapa.LEITURA_INICIAL]: LeituraInicial,
+  [Etapa.IDENTIFICAR_PEDIDO]: IdentificarPedido,
+  [Etapa.BLOQUEAR]: Bloquear,
+};
 
-const Etapas = () => {
-    const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
+const ORDEM: Etapa[] = [
+  Etapa.LEITURA_INICIAL,
+  Etapa.IDENTIFICAR_PEDIDO,
+  Etapa.BLOQUEAR,
+];
+
+
+const EtapasProvisionamento = () => {
+  const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
     Etapa.LEITURA_INICIAL,
   );
+  const [dados, setDados] = React.useState<DadosProvisionamento>({});
+
+  const avancarEtapa = React.useCallback(
+    (dadosEtapa?: DadosProvisionamento | void) => {
+      if (dadosEtapa) {
+        setDados(atual => ({ ...atual, ...dadosEtapa }));
+      }
+
+      const proximaEtapa = ORDEM[ORDEM.indexOf(etapaAtual) + 1];
+
+      if (!proximaEtapa) {
+        Toast.show({
+          type: 'success',
+          text1: 'Hello',
+          text2: 'This is some something 👋',
+        });
+        return;
+      }
+
+      setEtapaAtual(proximaEtapa);
+    },
+    [etapaAtual],
+  );
+
+  const RenderEtapa = ETAPAS[etapaAtual];
 
   return (
-    <Tela>
-      <VStack flex={1} align="center" justify="center">
-        <Text variant="headlineMedium">{etapaAtual}</Text>
-      </VStack>
-    </Tela>
+    <View style={styles.container}>
+      <RenderEtapa avancarEtapa={avancarEtapa} dados={dados} />
+    </View>
   );
 };
 
-export default Etapas;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
+
+export default EtapasProvisionamento;

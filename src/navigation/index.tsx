@@ -64,7 +64,7 @@ const Navigator = () => {
             title: 'Provisionar',
             tabBarIcon: IconeProvisionar,
             tabBarStyle:
-              getFocusedRouteNameFromRoute(route) === 'Etapas'
+              getFocusedRouteNameFromRoute(route) === 'EtapasProvisionamento'
                 ? {display: 'none'}
                 : undefined,
           })}

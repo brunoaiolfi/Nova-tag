@@ -68,7 +68,7 @@ const InformativoEtapas = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
 
-  const iniciar = () => navigation.navigate('Etapas');
+  const iniciar = () => navigation.navigate('EtapasProvisionamento');
 
   return (
     <Tela scroll>
