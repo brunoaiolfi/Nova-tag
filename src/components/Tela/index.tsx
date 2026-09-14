@@ -1,14 +1,15 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {Text, useTheme} from 'react-native-paper';
+import {Text} from 'react-native-paper';
+import {useAppTheme} from '../../theme';
 
 type TelaProps = {
   titulo: string;
 };
 
 const Tela = ({titulo}: TelaProps) => {
-  const theme = useTheme();
+  const theme = useAppTheme();
 
   return (
     <SafeAreaView

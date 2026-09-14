@@ -1,13 +1,13 @@
 import React from 'react';
 import {
-  DarkTheme as NavigationDarkTheme,
   DefaultTheme as NavigationDefaultTheme,
   NavigationContainer,
 } from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {Icon, adaptNavigationTheme, useTheme} from 'react-native-paper';
+import {Icon} from 'react-native-paper';
 
 import TabBar from './TabBar';
+import {useAppTheme} from '../theme';
 import Provisionar from '../views/Provisionar';
 import Home from '../views/Home';
 import Eventos from '../views/Eventos';
@@ -35,17 +35,21 @@ const IconeEventos = criarIconeTab('timeline-text-outline');
 
 const Tab = createBottomTabNavigator<RotasTab>();
 
-const {LightTheme, DarkTheme} = adaptNavigationTheme({
-  reactNavigationLight: NavigationDefaultTheme,
-  reactNavigationDark: NavigationDarkTheme,
-});
-
 const Navigator = () => {
-  const theme = useTheme();
+  const theme = useAppTheme();
 
-  const navigationTheme = theme.dark
-    ? {...DarkTheme, fonts: NavigationDarkTheme.fonts}
-    : {...LightTheme, fonts: NavigationDefaultTheme.fonts};
+  const navigationTheme = {
+    ...NavigationDefaultTheme,
+    colors: {
+      ...NavigationDefaultTheme.colors,
+      primary: theme.colors.primary,
+      background: theme.colors.background,
+      card: theme.colors.surface,
+      text: theme.colors.onSurface,
+      border: theme.colors.outline,
+      notification: theme.colors.error,
+    },
+  };
 
   return (
     <NavigationContainer theme={navigationTheme}>
