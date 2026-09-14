@@ -1,10 +1,21 @@
 import React from 'react';
+import {StyleSheet, ViewStyle} from 'react-native';
 import {BottomNavigation} from 'react-native-paper';
 import {CommonActions} from '@react-navigation/native';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 
-const TabBar = ({state, descriptors, navigation, insets}: BottomTabBarProps) => (
-  <BottomNavigation.Bar
+const TabBar = ({state, descriptors, navigation, insets}: BottomTabBarProps) => {
+  const rotaFocada = state.routes[state.index];
+  const estilo = StyleSheet.flatten(
+    descriptors[rotaFocada.key].options.tabBarStyle,
+  ) as ViewStyle | undefined;
+
+  if (estilo?.display === 'none') {
+    return null;
+  }
+
+  return (
+    <BottomNavigation.Bar
     navigationState={state}
     safeAreaInsets={insets}
     onTabPress={({route, preventDefault}) => {
@@ -31,10 +42,11 @@ const TabBar = ({state, descriptors, navigation, insets}: BottomTabBarProps) => 
         size: 24,
       }) ?? null
     }
-    getLabelText={({route}) =>
-      descriptors[route.key].options.title ?? route.name
-    }
-  />
-);
+      getLabelText={({route}) =>
+        descriptors[route.key].options.title ?? route.name
+      }
+    />
+  );
+};
 
 export default TabBar;

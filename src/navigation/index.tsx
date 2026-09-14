@@ -2,13 +2,14 @@ import React from 'react';
 import {
   DefaultTheme as NavigationDefaultTheme,
   NavigationContainer,
+  getFocusedRouteNameFromRoute,
 } from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Icon} from 'react-native-paper';
 
 import TabBar from './TabBar';
 import {useAppTheme} from '../theme';
-import Provisionar from '../views/Provisionar';
+import ProvisionarNavigator from './ProvisionarNavigator';
 import Home from '../views/Home';
 import Eventos from '../views/Eventos';
 
@@ -59,8 +60,15 @@ const Navigator = () => {
         tabBar={TabBar}>
         <Tab.Screen
           name="Provisionar"
-          component={Provisionar}
-          options={{title: 'Provisionar', tabBarIcon: IconeProvisionar}}
+          component={ProvisionarNavigator}
+          options={({route}) => ({
+            title: 'Provisionar',
+            tabBarIcon: IconeProvisionar,
+            tabBarStyle:
+              getFocusedRouteNameFromRoute(route) === 'Etapas'
+                ? {display: 'none'}
+                : undefined,
+          })}
         />
         <Tab.Screen
           name="Home"

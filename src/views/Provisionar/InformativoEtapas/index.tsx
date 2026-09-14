@@ -1,13 +1,16 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {Icon, Text} from 'react-native-paper';
 
-import Tela from '../../components/Tela';
-import Botao from '../../components/Botao';
-import Card from '../../components/Card';
-import VStack from '../../components/VStack';
-import HStack from '../../components/HStack';
-import {useAppTheme} from '../../theme';
+import Tela from '../../../components/Tela';
+import Botao from '../../../components/Botao';
+import Card from '../../../components/Card';
+import VStack from '../../../components/VStack';
+import HStack from '../../../components/HStack';
+import {useAppTheme} from '../../../theme';
+import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 
 type Passo = {
   numero: number;
@@ -23,22 +26,11 @@ const PASSOS: Passo[] = [
   },
   {
     numero: 2,
-    titulo: 'Escolher a estratégia',
-    descricao:
-      'Apenas as estratégias suportadas pelo modelo detectado ficam disponíveis.',
-  },
-  {
-    numero: 3,
     titulo: 'Identificar o pedido',
     descricao: 'Busque pelo código do pedido que será vinculado à etiqueta.',
   },
   {
-    numero: 4,
-    titulo: 'Conferir os dados',
-    descricao: 'Revise UID, modelo, estratégia e pedido antes de confirmar.',
-  },
-  {
-    numero: 5,
+    numero: 3,
     titulo: 'Bloquear a etiqueta',
     descricao:
       'Aproxime a mesma etiqueta novamente para gravar as chaves e bloquear a escrita.',
@@ -71,12 +63,12 @@ const ItemPasso = ({passo}: {passo: Passo}) => {
   );
 };
 
-const Provisionar = () => {
+const InformativoEtapas = () => {
   const theme = useAppTheme();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
 
-  const iniciar = () => {
-    // TODO: iniciar o fluxo de provisionamento
-  };
+  const iniciar = () => navigation.navigate('Etapas');
 
   return (
     <Tela scroll>
@@ -140,4 +132,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Provisionar;
+export default InformativoEtapas;
