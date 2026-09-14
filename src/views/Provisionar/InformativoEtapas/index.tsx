@@ -4,11 +4,11 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {Icon, Text} from 'react-native-paper';
 
-import Tela from '../../../components/Tela';
-import Botao from '../../../components/Botao';
-import Card from '../../../components/Card';
-import VStack from '../../../components/VStack';
-import HStack from '../../../components/HStack';
+import Tela from '../../../components/Base/Tela';
+import Botao from '../../../components/Base/Botao';
+import Card from '../../../components/Base/Card';
+import VStack from '../../../components/Base/VStack';
+import HStack from '../../../components/Base/HStack';
 import {useAppTheme} from '../../../theme';
 import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 
@@ -41,25 +41,25 @@ const ItemPasso = ({passo}: {passo: Passo}) => {
   const theme = useAppTheme();
 
   return (
-      <HStack gap={12} align="center">
-        <VStack
-          align="center"
-          justify="center"
-          style={[styles.numero, {backgroundColor: theme.colors.primary}]}>
-          <Text variant="labelLarge" style={{color: theme.colors.onPrimary}}>
-            {passo.numero}
-          </Text>
-        </VStack>
+    <HStack gap={12} align="center">
+      <VStack
+        align="center"
+        justify="center"
+        style={[styles.numero, {backgroundColor: theme.colors.primary}]}>
+        <Text variant="labelLarge" style={{color: theme.colors.onPrimary}}>
+          {passo.numero}
+        </Text>
+      </VStack>
 
-        <VStack flex={1} gap={2}>
-          <Text variant="titleSmall">{passo.titulo}</Text>
-          <Text
-            variant="bodySmall"
-            style={{color: theme.colors.onSurfaceVariant}}>
-            {passo.descricao}
-          </Text>
-        </VStack>
-      </HStack>
+      <VStack flex={1} gap={2}>
+        <Text variant="titleSmall">{passo.titulo}</Text>
+        <Text
+          variant="bodySmall"
+          style={{color: theme.colors.onSurfaceVariant}}>
+          {passo.descricao}
+        </Text>
+      </VStack>
+    </HStack>
   );
 };
 
@@ -74,12 +74,15 @@ const InformativoEtapas = () => {
     <Tela scroll>
       <VStack gap={24}>
         <VStack align="center" gap={8}>
-        <Icon source="nfc-tap" size={48} color={theme.colors.primary} />
-        <Text variant="headlineSmall">Provisionar etiqueta</Text>
-        <Text
-          variant="bodyMedium"
-          style={[styles.centralizado, {color: theme.colors.onSurfaceVariant}]}>
-          Vincula uma etiqueta NFC a um pedido e bloqueia sua escrita.
+          <Icon source="nfc-tap" size={48} color={theme.colors.primary} />
+          <Text variant="headlineSmall">Provisionar etiqueta</Text>
+          <Text
+            variant="bodyMedium"
+            style={[
+              styles.centralizado,
+              {color: theme.colors.onSurfaceVariant},
+            ]}>
+            Vincula uma etiqueta NFC a um pedido e bloqueia sua escrita.
           </Text>
         </VStack>
 

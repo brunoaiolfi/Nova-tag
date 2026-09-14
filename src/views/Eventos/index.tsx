@@ -1,8 +1,8 @@
 import React from 'react';
 import {Text} from 'react-native-paper';
 
-import Tela from '../../components/Tela';
-import VStack from '../../components/VStack';
+import Tela from '../../components/Base/Tela';
+import VStack from '../../components/Base/VStack';
 
 const Eventos = () => (
   <Tela>

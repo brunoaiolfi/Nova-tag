@@ -26,9 +26,8 @@ type IconeTabProps = {
 
 const criarIconeTab =
   (source: string) =>
-  ({color, size}: IconeTabProps) => (
-    <Icon source={source} color={color} size={size} />
-  );
+  ({color, size}: IconeTabProps) =>
+    <Icon source={source} color={color} size={size} />;
 
 const IconeProvisionar = criarIconeTab('nfc-tap');
 const IconeHome = criarIconeTab('home-variant');
