@@ -1,6 +1,15 @@
 import React from 'react';
-import Tela from '../../components/Tela';
+import {Text} from 'react-native-paper';
 
-const Home = () => <Tela><></></Tela>;
+import Tela from '../../components/Tela';
+import VStack from '../../components/VStack';
+
+const Home = () => (
+  <Tela>
+    <VStack flex={1} align="center" justify="center">
+      <Text variant="headlineMedium">Home</Text>
+    </VStack>
+  </Tela>
+);
 
 export default Home;

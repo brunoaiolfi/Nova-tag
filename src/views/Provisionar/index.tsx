@@ -1,8 +1,12 @@
 import React from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {Button, Divider, Icon, Text} from 'react-native-paper';
+import {StyleSheet} from 'react-native';
+import {Icon, Text} from 'react-native-paper';
 
+import Tela from '../../components/Tela';
+import Botao from '../../components/Botao';
+import Card from '../../components/Card';
+import VStack from '../../components/VStack';
+import HStack from '../../components/HStack';
 import {useAppTheme} from '../../theme';
 
 type Passo = {
@@ -15,8 +19,7 @@ const PASSOS: Passo[] = [
   {
     numero: 1,
     titulo: 'Ler a etiqueta',
-    descricao:
-      'Aproxime a etiqueta para identificar o UID e o modelo do chip.',
+    descricao: 'Aproxime a etiqueta para identificar o UID e o modelo do chip.',
   },
   {
     numero: 2,
@@ -46,24 +49,25 @@ const ItemPasso = ({passo}: {passo: Passo}) => {
   const theme = useAppTheme();
 
   return (
-    <View style={styles.passo}>
-      <View
-        style={[styles.numero, {backgroundColor: theme.colors.primary}]}
-        accessible={false}>
-        <Text variant="labelLarge" style={{color: theme.colors.onPrimary}}>
-          {passo.numero}
-        </Text>
-      </View>
+      <HStack gap={12} align="center">
+        <VStack
+          align="center"
+          justify="center"
+          style={[styles.numero, {backgroundColor: theme.colors.primary}]}>
+          <Text variant="labelLarge" style={{color: theme.colors.onPrimary}}>
+            {passo.numero}
+          </Text>
+        </VStack>
 
-      <View style={styles.passoTexto}>
-        <Text variant="titleMedium">{passo.titulo}</Text>
-        <Text
-          variant="bodySmall"
-          style={[styles.descricao, {color: theme.colors.onSurfaceVariant}]}>
-          {passo.descricao}
-        </Text>
-      </View>
-    </View>
+        <VStack flex={1} gap={2}>
+          <Text variant="titleSmall">{passo.titulo}</Text>
+          <Text
+            variant="bodySmall"
+            style={{color: theme.colors.onSurfaceVariant}}>
+            {passo.descricao}
+          </Text>
+        </VStack>
+      </HStack>
   );
 };
 
@@ -75,117 +79,64 @@ const Provisionar = () => {
   };
 
   return (
-    <SafeAreaView
-      edges={['top']}
-      style={[styles.tela, {backgroundColor: theme.colors.background}]}>
-      <ScrollView contentContainerStyle={styles.conteudo}>
-        <View style={styles.cabecalho}>
-          <Icon source="nfc-tap" size={48} color={theme.colors.primary} />
-          <Text variant="headlineSmall" style={styles.titulo}>
-            Provisionar etiqueta
+    <Tela scroll>
+      <VStack gap={24}>
+        <VStack align="center" gap={8}>
+        <Icon source="nfc-tap" size={48} color={theme.colors.primary} />
+        <Text variant="headlineSmall">Provisionar etiqueta</Text>
+        <Text
+          variant="bodyMedium"
+          style={[styles.centralizado, {color: theme.colors.onSurfaceVariant}]}>
+          Vincula uma etiqueta NFC a um pedido e bloqueia sua escrita.
           </Text>
-          <Text
-            variant="bodyMedium"
-            style={[styles.subtitulo, {color: theme.colors.onSurfaceVariant}]}>
-            Vincula uma etiqueta NFC a um pedido e bloqueia sua escrita.
-          </Text>
-        </View>
+        </VStack>
 
-        <Divider style={styles.divisor} />
+        <VStack gap={12}>
+          {PASSOS.map(passo => (
+            <ItemPasso key={passo.numero} passo={passo} />
+          ))}
+        </VStack>
 
-        {PASSOS.map(passo => (
-          <ItemPasso key={passo.numero} passo={passo} />
-        ))}
+        <Card
+          style={[
+            styles.aviso,
+            {backgroundColor: theme.colors.warningContainer},
+          ]}>
+          <HStack gap={12} align="flex-start">
+            <Icon
+              source="alert-outline"
+              size={20}
+              color={theme.colors.onWarningContainer}
+            />
+            <VStack flex={1}>
+              <Text
+                variant="bodySmall"
+                style={{color: theme.colors.onWarningContainer}}>
+                O bloqueio altera as chaves da etiqueta. Confira os dados antes
+                de confirmar.
+              </Text>
+            </VStack>
+          </HStack>
+        </Card>
 
-        <View
-          style={[styles.aviso, {backgroundColor: theme.colors.warningContainer}]}>
-          <Icon
-            source="alert-outline"
-            size={20}
-            color={theme.colors.onWarningContainer}
-          />
-          <Text
-            variant="bodySmall"
-            style={[
-              styles.avisoTexto,
-              {color: theme.colors.onWarningContainer},
-            ]}>
-            O bloqueio altera as chaves da etiqueta. Confira os dados antes de
-            confirmar.
-          </Text>
-        </View>
-      </ScrollView>
-
-      <View
-        style={[
-          styles.rodape,
-          {
-            backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.outline,
-          },
-        ]}>
-        <Button mode="contained" icon="nfc-tap" onPress={iniciar}>
-          Iniciar
-        </Button>
-      </View>
-    </SafeAreaView>
+        <Botao onPress={iniciar}>Iniciar</Botao>
+      </VStack>
+    </Tela>
   );
 };
 
 const styles = StyleSheet.create({
-  tela: {
-    flex: 1,
-  },
-  conteudo: {
-    padding: 24,
-    paddingBottom: 32,
-  },
-  cabecalho: {
-    alignItems: 'center',
-  },
-  titulo: {
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  subtitulo: {
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  divisor: {
-    marginVertical: 24,
-  },
-  passo: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
   numero: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
   },
-  passoTexto: {
-    flex: 1,
-  },
-  descricao: {
-    marginTop: 2,
+  centralizado: {
+    textAlign: 'center',
   },
   aviso: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
     borderRadius: 8,
-    marginTop: 4,
-  },
-  avisoTexto: {
-    flex: 1,
-  },
-  rodape: {
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
   },
 });
 
