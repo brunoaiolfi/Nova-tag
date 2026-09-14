@@ -1,21 +1,20 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {Text} from 'react-native-paper';
 import {useAppTheme} from '../../theme';
 
 type TelaProps = {
-  titulo: string;
+  children: React.ReactNode;
 };
 
-const Tela = ({titulo}: TelaProps) => {
+const Tela = ({children}: TelaProps) => {
   const theme = useAppTheme();
 
   return (
     <SafeAreaView
       edges={['top']}
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <Text variant="headlineMedium">{titulo}</Text>
+      {children}
     </SafeAreaView>
   );
 };
