@@ -4,18 +4,22 @@ import Tela from '../../../../components/Base/Tela';
 import VStack from '../../../../components/Base/VStack';
 import Input from '../../../../components/Base/Input';
 import Botao from '../../../../components/Base/Botao';
-import {Etapa, type EtapaProps} from '../types';
+
+interface IIdentificarPedido {
+  onIdentificarPedido: (codigoPedido: string) => void;
+  codigoTag: string;
+}
 
 const IdentificarPedido = ({
-  avancarEtapa,
-  dados,
-}: EtapaProps<Etapa.IDENTIFICAR_PEDIDO>) => {
+  onIdentificarPedido,
+  codigoTag,
+}: IIdentificarPedido) => {
   const [codigoPedido, setCodigoPedido] = React.useState('');
 
   return (
     <Tela>
       <VStack gap={16}>
-        <Input label="UID da etiqueta" value={dados.uid} disabled />
+        <Input label="UID da etiqueta" value={codigoTag} disabled />
 
         <Input
           label="Código do pedido"
@@ -26,7 +30,7 @@ const IdentificarPedido = ({
         />
 
         <Botao
-          onPress={() => avancarEtapa({codigoPedido})}
+          onPress={() => onIdentificarPedido(codigoPedido)}
           disabled={!codigoPedido}>
           Continuar
         </Botao>

@@ -1,27 +1,30 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 
 import Espera from '../../../../components/Nfc/Espera';
-import {Etapa, type EtapaProps} from '../types';
+import NfcManager, { NfcTech } from 'react-native-nfc-manager';
 
-/** Mock: tempo simulado de leitura enquanto o NFC não está implementado. */
-const TEMPO_MOCK_LEITURA = 1500;
+interface ILeituraInicial {
+  onLeituraNfc: (uid: string) => void;
+}
 
-/** Mock: UID fixo até a leitura NFC existir. */
-const MOCK_UID = '04A1B2C3D4E580';
+NfcManager.start();
 
-const LeituraInicial = ({avancarEtapa}: EtapaProps<Etapa.LEITURA_INICIAL>) => {
-  useEffect(() => {
-    // TODO: adicionar a leitura NFC — ativar o reader mode e capturar
-    // UID, techList e GET_VERSION, avançando quando a etiqueta for lida.
-    const timeout = setTimeout(
-      () => avancarEtapa({uid: MOCK_UID}),
-      TEMPO_MOCK_LEITURA,
-    );
+const LeituraInicial = ({ onLeituraNfc }: ILeituraInicial) => {
 
-    return () => clearTimeout(timeout);
-  }, [avancarEtapa]);
+  async function readNdef() {
+    try {
+      await NfcManager.requestTechnology([NfcTech.IsoDep, NfcTech.NfcA, NfcTech.NfcB]);
+      const tag = await NfcManager.getTag();
+      onLeituraNfc(tag?.id ?? '');
+    } catch (ex) {
+      console.log('Oops!', ex);
+    } finally {
+      NfcManager.cancelTechnologyRequest();
+    }
+  }
 
-  return <Espera />;
+
+  return <Espera onPress={readNdef} />;
 };
 
 export default LeituraInicial;
