@@ -1,18 +1,17 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 
 import { DadosProvisionamento, Etapa } from './types';
 import IdentificarPedido from './IdentificarPedido';
 import Leitor from '../../../components/Nfc/Leitor';
-import { provisionarEtiqueta } from '../../../services/provisionamento';
+import { toast } from '../../../infra/implementations/toast';
+import { provisionamentoApplication } from '../../../appplication/provisionamento';
 
 const EtapasProvisionamento = () => {
   const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
     Etapa.IDENTIFICAR_PEDIDO,
   );
-
   const [dados, setDados] = React.useState<DadosProvisionamento>({});
 
   const navigation = useNavigation();
@@ -26,10 +25,7 @@ const EtapasProvisionamento = () => {
   };
 
   const handleErroLeitura = (mensagem: string) => {
-    Toast.show({
-      type: 'error',
-      text1: mensagem,
-    });
+    toast.erro(mensagem);
 
     setEtapaAtual(Etapa.IDENTIFICAR_PEDIDO);
   };
@@ -38,12 +34,9 @@ const EtapasProvisionamento = () => {
     setDados(dadosAtuais => ({ ...dadosAtuais, uid }));
 
     try {
-      await provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', uid });
+      await provisionamentoApplication.provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid });
 
-      Toast.show({
-        type: 'success',
-        text1: 'Tag provisionada com sucesso!',
-      });
+      toast.sucesso('Tag provisionada com sucesso!');
 
       navigation.goBack();
     } catch (ex) {

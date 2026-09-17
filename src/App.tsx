@@ -5,7 +5,7 @@ import { PaperProvider } from 'react-native-paper';
 
 import Navigator from './navigation';
 import { tema } from './theme';
-import Toast from 'react-native-toast-message';
+import Toasts from './components/Base/Toast';
 
 const App = () => (
   <SafeAreaProvider>
@@ -15,8 +15,8 @@ const App = () => (
         backgroundColor={tema.colors.background}
       />
       <Navigator />
+      <Toasts />
     </PaperProvider>
-    <Toast />
   </SafeAreaProvider>
 );
 
