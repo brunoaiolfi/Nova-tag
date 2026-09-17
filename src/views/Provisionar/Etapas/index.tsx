@@ -1,57 +1,71 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-
-import { DadosProvisionamento, Etapa } from './types';
 import Toast from 'react-native-toast-message';
-import LeituraInicial from './LeituraInicial';
-import IdentificarPedido from './IdentificarPedido';
-import Bloquear from './Bloquear';
 import { useNavigation } from '@react-navigation/native';
 
-const ORDEM: Etapa[] = [
-  Etapa.LEITURA_INICIAL,
-  Etapa.IDENTIFICAR_PEDIDO,
-  Etapa.BLOQUEAR,
-];
-
+import { DadosProvisionamento, Etapa } from './types';
+import IdentificarPedido from './IdentificarPedido';
+import Leitor from '../../../components/Nfc/Leitor';
+import { provisionarEtiqueta } from '../../../services/provisionamento';
 
 const EtapasProvisionamento = () => {
   const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
-    Etapa.LEITURA_INICIAL,
+    Etapa.IDENTIFICAR_PEDIDO,
   );
 
   const [dados, setDados] = React.useState<DadosProvisionamento>({});
 
   const navigation = useNavigation();
 
-  const isEtapaLeituraInicial = etapaAtual === Etapa.LEITURA_INICIAL;
   const isEtapaIdentificarPedido = etapaAtual === Etapa.IDENTIFICAR_PEDIDO;
-  const isEtapaBloquear = etapaAtual === Etapa.BLOQUEAR;
+  const isEtapaLeituraEBloqueio = etapaAtual === Etapa.LEITURA_E_BLOQUEIO;
 
-  const handleLeituraNfc = (uid: string) => {
-    setDados({ codigoPedido: '', uid });
+  const handleIdentificarPedido = (codigoPedido: string) => {
+    setDados({ codigoPedido });
+    setEtapaAtual(Etapa.LEITURA_E_BLOQUEIO);
+  };
+
+  const handleErroLeitura = (mensagem: string) => {
+    Toast.show({
+      type: 'error',
+      text1: mensagem,
+    });
+
     setEtapaAtual(Etapa.IDENTIFICAR_PEDIDO);
   };
 
-  const handleIdentificarPedido = (codigoPedido: string) => {
-    setDados({ ...dados, codigoPedido });
-    setEtapaAtual(Etapa.BLOQUEAR);
-  };
+  const handleLeituraRealizada = async (uid: string) => {
+    setDados(dadosAtuais => ({ ...dadosAtuais, uid }));
 
-  const handleBloquearTag = () => {
-    Toast.show({
-      type: 'success',
-      text1: 'Tag bloqueada com sucesso!',
-    });
+    try {
+      await provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', uid });
 
-    navigation.goBack();
+      Toast.show({
+        type: 'success',
+        text1: 'Tag provisionada com sucesso!',
+      });
+
+      navigation.goBack();
+    } catch (ex) {
+      handleErroLeitura('Falha ao provisionar a etiqueta. Tente novamente.');
+    }
   };
 
   return (
     <View style={styles.container}>
-      {isEtapaLeituraInicial && <LeituraInicial onLeituraNfc={handleLeituraNfc} />}
-      {isEtapaIdentificarPedido && <IdentificarPedido codigoTag={dados.uid || ''} onIdentificarPedido={handleIdentificarPedido} />}
-      {isEtapaBloquear && <Bloquear onBloquearTag={handleBloquearTag} />}
+      {isEtapaIdentificarPedido && (
+        <IdentificarPedido
+          codigoPedidoInicial={dados.codigoPedido}
+          onIdentificarPedido={handleIdentificarPedido}
+        />
+      )}
+
+      {isEtapaLeituraEBloqueio && (
+        <Leitor
+          onLeituraRealizada={handleLeituraRealizada}
+          onErroLeitura={handleErroLeitura}
+        />
+      )}
     </View>
   );
 };

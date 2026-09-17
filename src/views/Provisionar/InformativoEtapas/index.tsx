@@ -21,19 +21,14 @@ type Passo = {
 const PASSOS: Passo[] = [
   {
     numero: 1,
-    titulo: 'Ler a etiqueta',
-    descricao: 'Aproxime a etiqueta para identificar o UID e o modelo do chip.',
+    titulo: 'Identificar o pedido',
+    descricao: 'Informe o código do pedido que será vinculado à etiqueta.',
   },
   {
     numero: 2,
-    titulo: 'Identificar o pedido',
-    descricao: 'Busque pelo código do pedido que será vinculado à etiqueta.',
-  },
-  {
-    numero: 3,
-    titulo: 'Bloquear a etiqueta',
+    titulo: 'Ler e bloquear a etiqueta',
     descricao:
-      'Aproxime a mesma etiqueta novamente para gravar as chaves e bloquear a escrita.',
+      'Aproxime a etiqueta uma única vez: o UID é lido, vinculado ao pedido e a escrita é bloqueada.',
   },
 ];
 

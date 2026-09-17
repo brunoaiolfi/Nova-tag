@@ -1,17 +1,15 @@
 export enum Etapa {
-  LEITURA_INICIAL = 'leitura_inicial',
   IDENTIFICAR_PEDIDO = 'identificar_pedido',
-  BLOQUEAR = 'bloquear',
+  LEITURA_E_BLOQUEIO = 'leitura_e_bloqueio',
 }
 
 export type DadosEtapa = {
-  [Etapa.LEITURA_INICIAL]: {uid: string};
   [Etapa.IDENTIFICAR_PEDIDO]: {codigoPedido: string};
-  [Etapa.BLOQUEAR]: void;
+  [Etapa.LEITURA_E_BLOQUEIO]: {uid: string};
 };
 
 export type DadosProvisionamento = Partial<
-  DadosEtapa[Etapa.LEITURA_INICIAL] & DadosEtapa[Etapa.IDENTIFICAR_PEDIDO]
+  DadosEtapa[Etapa.IDENTIFICAR_PEDIDO] & DadosEtapa[Etapa.LEITURA_E_BLOQUEIO]
 >;
 
 export type EtapaProps<E extends Etapa = Etapa> = {
