@@ -1,5 +1,5 @@
 import { ProvisionarEtiquetaDTO } from './dto';
 
-export interface IProvisionamentoService {
+export interface IPedidoEtiquetaService {
     provisionarEtiqueta(params: ProvisionarEtiquetaDTO): Promise<void>;
 }

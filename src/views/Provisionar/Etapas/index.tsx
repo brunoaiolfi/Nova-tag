@@ -6,7 +6,7 @@ import { DadosProvisionamento, Etapa } from './types';
 import IdentificarPedido from './IdentificarPedido';
 import Leitor from '../../../components/Nfc/Leitor';
 import { toast } from '../../../infra/implementations/toast';
-import { provisionamentoApplication } from '../../../appplication/provisionamento';
+import { pedidoEtiquetaApplication } from '../../../appplication/pedidoEtiqueta';
 
 const EtapasProvisionamento = () => {
   const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
@@ -34,7 +34,7 @@ const EtapasProvisionamento = () => {
     setDados(dadosAtuais => ({ ...dadosAtuais, uid }));
 
     try {
-      await provisionamentoApplication.provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid });
+      await pedidoEtiquetaApplication.provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid });
 
       toast.sucesso('Tag provisionada com sucesso!');
 
