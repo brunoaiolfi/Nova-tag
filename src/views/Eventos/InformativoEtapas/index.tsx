@@ -10,50 +10,55 @@ import VStack from '../../../components/Base/VStack';
 import Aviso from '../../../components/Aviso';
 import ListaPassos, {Passo} from '../../../components/ListaPassos';
 import {useAppTheme} from '../../../theme';
-import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
+import type {RotasEventos} from '../../../navigation/EventosNavigator';
 
 const PASSOS: Passo[] = [
   {
     numero: 1,
-    titulo: 'Identificar o pedido',
-    descricao: 'Informe o código do pedido que será vinculado à etiqueta.',
+    titulo: 'Selecionar o tipo de evento',
+    descricao:
+      'Escolha o que está acontecendo com o pedido: coleta, recebimento, movimentação, expedição ou entrega.',
   },
   {
     numero: 2,
-    titulo: 'Ler e bloquear a etiqueta',
+    titulo: 'Ler a etiqueta',
     descricao:
-      'Aproxime a etiqueta uma única vez: o UID é lido, vinculado ao pedido e a escrita é bloqueada.',
+      'Aproxime a etiqueta do pedido: o vínculo é resolvido pelo UID e o evento é registrado na cadeia de custódia.',
   },
 ];
 
 const InformativoEtapas = () => {
   const theme = useAppTheme();
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RotasEventos>>();
 
-  const iniciar = () => navigation.navigate('EtapasProvisionamento');
+  const iniciar = () => navigation.navigate('EtapasEvento');
 
   return (
     <Tela scroll>
       <VStack gap={24}>
         <VStack align="center" gap={8}>
-          <Icon source="nfc-tap" size={48} color={theme.colors.primary} />
-          <Text variant="headlineSmall">Provisionar etiqueta</Text>
+          <Icon
+            source="timeline-plus-outline"
+            size={48}
+            color={theme.colors.primary}
+          />
+          <Text variant="headlineSmall">Registrar evento</Text>
           <Text
             variant="bodyMedium"
             style={[
               styles.centralizado,
               {color: theme.colors.onSurfaceVariant},
             ]}>
-            Vincula uma etiqueta NFC a um pedido e bloqueia sua escrita.
+            Registra uma movimentação do pedido a partir da leitura da etiqueta
+            NFC.
           </Text>
         </VStack>
 
         <ListaPassos passos={PASSOS} />
 
-        <Aviso>
-          O bloqueio altera as chaves da etiqueta. Confira os dados antes de
-          confirmar.
+        <Aviso icone="cloud-off-outline">
+          O registro exige conexão com a internet. Sem rede, o evento não é
+          salvo e a leitura precisa ser refeita.
         </Aviso>
 
         <Botao onPress={iniciar}>Iniciar</Botao>

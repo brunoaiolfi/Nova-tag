@@ -11,7 +11,7 @@ import TabBar from './TabBar';
 import {useAppTheme} from '../theme';
 import ProvisionarNavigator from './ProvisionarNavigator';
 import Home from '../views/Home';
-import Eventos from '../views/Eventos';
+import EventosNavigator from './EventosNavigator';
 
 export type RotasTab = {
   Provisionar: undefined;
@@ -76,8 +76,15 @@ const Navigator = () => {
         />
         <Tab.Screen
           name="Eventos"
-          component={Eventos}
-          options={{title: 'Eventos', tabBarIcon: IconeEventos}}
+          component={EventosNavigator}
+          options={({route}) => ({
+            title: 'Eventos',
+            tabBarIcon: IconeEventos,
+            tabBarStyle:
+              getFocusedRouteNameFromRoute(route) === 'EtapasEvento'
+                ? {display: 'none'}
+                : undefined,
+          })}
         />
       </Tab.Navigator>
     </NavigationContainer>
