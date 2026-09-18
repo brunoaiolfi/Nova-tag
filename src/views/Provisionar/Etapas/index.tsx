@@ -34,9 +34,14 @@ const EtapasProvisionamento = () => {
     setDados(dadosAtuais => ({ ...dadosAtuais, uid }));
 
     try {
-      await pedidoEtiquetaApplication.provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid });
+      const resposta = await pedidoEtiquetaApplication.provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid });
 
-      toast.sucesso('Tag provisionada com sucesso!');
+      if (!resposta.sucesso) {
+        handleErroLeitura(resposta.mensagem);
+        return;
+      }
+
+      toast.sucesso(resposta.mensagem);
 
       navigation.goBack();
     } catch (ex) {
