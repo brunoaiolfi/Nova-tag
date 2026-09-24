@@ -1,10 +1,8 @@
 name: Android and session checks
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 concurrency:
-  group: mobile-${{ github.event.pull_request.number || github.ref }}
+  group: mobile-${{ github.ref }}
   cancel-in-progress: true
 permissions:
   contents: read
