@@ -1,7 +1,11 @@
 name: Android and session checks
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: mobile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -23,10 +27,13 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.1.12297006'
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x android/gradlew
-      - run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon
+      - run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --no-daemon
         working-directory: android
       - uses: actions/upload-artifact@v4
         with:
