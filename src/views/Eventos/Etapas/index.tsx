@@ -39,7 +39,7 @@ const EtapasEvento = () => {
     setEtapaAtual(Etapa.SELECIONAR_EVENTO);
   };
 
-  const handleLeituraRealizada = async (uid: string) => {
+  const handleLeituraRealizada = async (uid: string, textoNdef?: string) => {
     setDados(dadosAtuais => ({ ...dadosAtuais, uid }));
 
     if (!dados.tipo) {
@@ -50,6 +50,7 @@ const EtapasEvento = () => {
     try {
       const resposta = await pedidoEtiquetaApplication.anexarEvento({
         codigoEtiqueta: uid,
+        textoNdef,
         tipoEvento: dados.tipo,
       });
 

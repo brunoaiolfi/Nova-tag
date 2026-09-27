@@ -38,11 +38,11 @@ class PedidoEtiquetaApplication implements IPedidoEtiquetaApplication {
         return this._service.provisionarEtiqueta({
             codigoPedido: model.codigoPedido,
             uid: model.codigoEtiqueta,
+            estrategia: EnumEstrategiasNFC.UID,
         });
     }
 
     private provisionarEtiquetaNDEF(model: ProvisionarEtiquetaModel): Promise<ResponsePadrao<void>> {
-        debugger;
         const validation = validateProvisionarEtiqueta(model);
 
         if (!validation.sucesso) {
@@ -55,6 +55,7 @@ class PedidoEtiquetaApplication implements IPedidoEtiquetaApplication {
         return this._service.provisionarEtiqueta({
             codigoPedido: model.codigoPedido,
             uid: model.codigoEtiqueta,
+            estrategia: EnumEstrategiasNFC.NDEF_ESTATICO,
         });
     }
 
@@ -70,6 +71,7 @@ class PedidoEtiquetaApplication implements IPedidoEtiquetaApplication {
 
         return this._service.anexarEvento({
             uid: model.codigoEtiqueta,
+            textoNdef: model.textoNdef,
             tipoEvento: model.tipoEvento,
         });
     }

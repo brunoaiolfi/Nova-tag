@@ -8,6 +8,7 @@ import Leitor from '../../../components/Nfc/Leitor';
 import { toast } from '../../../infra/implementations/toast';
 import { pedidoEtiquetaApplication } from '../../../appplication/pedidoEtiqueta';
 import type { RotasProvisionar } from '../../../navigation/ProvisionarNavigator';
+import { EnumEstrategiasNFC } from '../../../domain/enums/estrategiasNFC';
 
 const EtapasProvisionamento = () => {
   const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
@@ -63,6 +64,11 @@ const EtapasProvisionamento = () => {
 
       {isEtapaLeituraEBloqueio && (
         <Leitor
+          textoParaGravar={
+            estrategia === EnumEstrategiasNFC.NDEF_ESTATICO
+              ? dados.codigoPedido
+              : undefined
+          }
           onLeituraRealizada={handleLeituraRealizada}
           onErroLeitura={handleErroLeitura}
         />
