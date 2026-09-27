@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
-import { Icon, Text } from 'react-native-paper';
-import NfcManager, { NfcTech } from 'react-native-nfc-manager';
+import React, {useEffect, useRef} from 'react';
+import {StyleSheet} from 'react-native';
+import {Icon, Text} from 'react-native-paper';
+import NfcManager, {NfcTech} from 'react-native-nfc-manager';
 
 import Tela from '../../Base/Tela';
 import VStack from '../../Base/VStack';
-import { useAppTheme } from '../../../theme';
+import {useAppTheme} from '../../../theme';
 
 const TEMPO_LIMITE_MS = 40000;
 
@@ -19,41 +19,45 @@ type LeitorProps = {
 
 NfcManager.start();
 
-const Leitor = ({ onLeituraRealizada, onErroLeitura }: LeitorProps) => {
+const Leitor = ({onLeituraRealizada, onErroLeitura}: LeitorProps) => {
   const theme = useAppTheme();
-
-  const ler = async () => {
-    try {
-      await NfcManager.requestTechnology(
-        [NfcTech.IsoDep, NfcTech.NfcA, NfcTech.NfcB],
-        {
-          readerModeDelay: TEMPO_LIMITE_MS,
-        },
-      );
-
-      const tag = await NfcManager.getTag();
-      const uid = tag?.id;
-
-      if (!uid) {
-        throw new Error('Não foi possível ler o UID da etiqueta.');
-      }
-
-      onLeituraRealizada(uid);
-    } catch (ex: any) {
-      onErroLeitura('Falha ao ler a etiqueta. Tente novamente.');
-    } finally {
-      encerrar();
-    }
-  };
-
-  const encerrar = () => {
-    NfcManager.cancelTechnologyRequest().catch(() => { });
-  };
+  const callbacks = useRef({onLeituraRealizada, onErroLeitura});
+  callbacks.current = {onLeituraRealizada, onErroLeitura};
 
   useEffect(() => {
+    const ler = async () => {
+      try {
+        await NfcManager.requestTechnology(
+          [NfcTech.IsoDep, NfcTech.NfcA, NfcTech.NfcB],
+          {
+            readerModeDelay: TEMPO_LIMITE_MS,
+          },
+        );
+
+        const tag = await NfcManager.getTag();
+        const uid = tag?.id;
+
+        if (!uid) {
+          throw new Error('Não foi possível ler o UID da etiqueta.');
+        }
+
+        callbacks.current.onLeituraRealizada(uid);
+      } catch (ex: any) {
+        callbacks.current.onErroLeitura(
+          'Falha ao ler a etiqueta. Tente novamente.',
+        );
+      } finally {
+        encerrar();
+      }
+    };
+
+    const encerrar = () => {
+      NfcManager.cancelTechnologyRequest().catch(() => {});
+    };
+
     const tempoLimite = setTimeout(() => {
       encerrar();
-      onErroLeitura(MENSAGEM_TEMPO_ESGOTADO);
+      callbacks.current.onErroLeitura(MENSAGEM_TEMPO_ESGOTADO);
     }, TEMPO_LIMITE_MS);
 
     ler();
@@ -77,7 +81,7 @@ const Leitor = ({ onLeituraRealizada, onErroLeitura }: LeitorProps) => {
             variant="bodyMedium"
             style={[
               styles.centralizado,
-              { color: theme.colors.onSurfaceVariant },
+              {color: theme.colors.onSurfaceVariant},
             ]}>
             Encoste o celular na etiqueta NFC para realizar a leitura.
           </Text>
