@@ -1,6 +1,7 @@
+import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Button, Checkbox, PaperProvider} from 'react-native-paper';
+import {Checkbox, PaperProvider} from 'react-native-paper';
 import EtapasProvisionamento from '../src/views/Provisionar/Etapas';
 import OrderSelect from '../src/components/Nfc/OrderSelect';
 import Leitor from '../src/components/Nfc/Leitor';
@@ -38,7 +39,7 @@ test('selecting an order permits scanning with an unknown model and activation s
       </PaperProvider>,
     );
   });
-  expect(button('2. Ler etiqueta do pedido').props.disabled).toBe(true);
+  expect(button('2. Ler etiqueta do pedido')).toBeUndefined();
   const order = {
     id: 'order',
     codigo: 'TCC-001',
@@ -62,16 +63,14 @@ test('selecting an order permits scanning with an unknown model and activation s
       .findByType(Leitor)
       .props.onLeituraRealizada(reading, '2026-10-05T12:00:00.000Z');
   });
-  jest
-    .mocked(traceability.register)
-    .mockResolvedValueOnce({
-      id: 'link',
-      pedidoId: order.id,
-      uid: reading.uid,
-      estrategia: 'UID',
-      status: 'REGISTRADA',
-      referenciaNdef: null,
-    });
+  jest.mocked(traceability.register).mockResolvedValueOnce({
+    id: 'link',
+    pedidoId: order.id,
+    uid: reading.uid,
+    estrategia: 'UID',
+    status: 'REGISTRADA',
+    referenciaNdef: null,
+  });
   await act(async () => {
     button('3. Vincular etiqueta ao pedido').props.onPress();
   });

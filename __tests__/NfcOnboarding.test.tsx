@@ -1,6 +1,7 @@
+import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Button, PaperProvider} from 'react-native-paper';
+import {PaperProvider} from 'react-native-paper';
 import Leitor from '../src/components/Nfc/Leitor';
 import TagDetails from '../src/components/Nfc/TagDetails';
 import {readPhysicalTag, cancelPhysicalRead} from '../src/infra/nfc/reader';

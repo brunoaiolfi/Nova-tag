@@ -1,8 +1,8 @@
+import {StyleSheet} from 'react-native';
+import {ActionButton as Button} from '../Tracking';
 import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Button,
-  Card,
   RadioButton,
   Searchbar,
   Text,
@@ -10,6 +10,8 @@ import {
 import type {OrderSummary} from '../../appplication/traceability/workflow';
 import {traceability} from '../../infra/traceability/runtime';
 import VStack from '../Base/VStack';
+import {View} from 'react-native';
+import {stateLabel} from '../../views/traceability-labels';
 
 export default function OrderSelect({
   selected,
@@ -109,101 +111,109 @@ export default function OrderSelect({
   }
 
   return (
-    <Card mode="outlined">
-      <Card.Content>
-        <VStack gap={12}>
-          <Text variant="titleMedium">
-            {purpose === 'history'
-              ? 'Consultar por pedido'
-              : '1. Escolha o pedido'}
-          </Text>
-          {selected ? (
-            <>
-              <Text variant="titleLarge">{selected.codigo}</Text>
-              {!!selected.descricao && <Text>{selected.descricao}</Text>}
-              <Text>
-                {purpose === 'history'
-                  ? 'O histórico inclui todos os vínculos deste pedido.'
-                  : 'Esta etiqueta representará um volume deste pedido.'}
-              </Text>
-              {!disabled && (
-                <Button onPress={() => onSelect(undefined)}>
-                  Trocar pedido
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              <Text>
-                {purpose === 'history'
-                  ? 'Escolha o pedido para consultar as operações, inclusive após a entrega.'
-                  : 'Selecione um pedido cadastrado. Pedidos que já avançaram na logística não podem receber uma nova etiqueta.'}
-              </Text>
-              <Searchbar
-                placeholder="Buscar pedido por código ou descrição"
-                value={search}
-                onChangeText={setSearch}
-                editable={!disabled}
+    <View>
+      <VStack gap={12}>
+        <Text variant="titleMedium">
+          {purpose === 'history'
+            ? 'Ou busque pelo pedido'
+            : '1. Escolha o pedido'}
+        </Text>
+        {selected ? (
+          <>
+            <Text variant="titleLarge">{selected.codigo}</Text>
+            {!!selected.descricao && <Text>{selected.descricao}</Text>}
+            <Text>
+              {purpose === 'history'
+                ? 'O histórico inclui todos os vínculos deste pedido.'
+                : 'Esta etiqueta representará um volume deste pedido.'}
+            </Text>
+            {!disabled && (
+              <Button onPress={() => onSelect(undefined)}>Trocar pedido</Button>
+            )}
+          </>
+        ) : (
+          <>
+            <Text>
+              {purpose === 'history'
+                ? 'Toque em um pedido para abrir seu caminho.'
+                : 'Escolha um pedido que ainda não iniciou o trajeto.'}
+            </Text>
+            <Searchbar
+              placeholder="Buscar pedido por código ou descrição"
+              value={search}
+              onChangeText={setSearch}
+              editable={!disabled}
+            />
+            {orders.map(order => (
+              <RadioButton.Item
+                style={layoutStyles.orderRow}
+                labelStyle={layoutStyles.orderLabel}
+                key={order.id}
+                label={`${order.codigo}${
+                  order.descricao ? ` · ${order.descricao}` : ''
+                }${
+                  order.estado !== 'CADASTRADO'
+                    ? ` (${stateLabel(order.estado)})`
+                    : ''
+                }`}
+                value={order.id}
+                status="unchecked"
+                position="leading"
+                disabled={
+                  disabled ||
+                  (purpose === 'provisioning' && order.estado !== 'CADASTRADO')
+                }
+                onPress={() => onSelect(order)}
               />
-              {orders.map(order => (
-                <RadioButton.Item
-                  key={order.id}
-                  label={`${order.codigo}${
-                    order.descricao ? ` · ${order.descricao}` : ''
-                  }${
-                    order.estado !== 'CADASTRADO'
-                      ? ` (${order.estado.toLowerCase()})`
-                      : ''
-                  }`}
-                  value={order.id}
-                  status="unchecked"
-                  position="leading"
-                  disabled={
-                    disabled ||
-                    (purpose === 'provisioning' &&
-                      order.estado !== 'CADASTRADO')
-                  }
-                  onPress={() => onSelect(order)}
-                />
-              ))}
-              {busy && (
-                <ActivityIndicator accessibilityLabel="Carregando pedidos" />
-              )}
-              {!busy && !error && orders.length === 0 && (
-                <Text>
-                  Nenhum pedido encontrado. Ajuste a busca ou cadastre um pedido
-                  no servidor.
-                </Text>
-              )}
-              {!!error && (
-                <>
-                  <Text accessibilityRole="alert">{error}</Text>
-                  <Button
-                    disabled={busy}
-                    onPress={() => {
-                      if (page === 0) {
-                        setRetry(value => value + 1);
-                      } else {
-                        void loadMore();
-                      }
-                    }}>
-                    Tentar novamente
-                  </Button>
-                </>
-              )}
-              {page > 0 && page * 10 < total && !error && (
+            ))}
+            {busy && (
+              <ActivityIndicator accessibilityLabel="Carregando pedidos" />
+            )}
+            {!busy && !error && orders.length === 0 && (
+              <Text>
+                Nenhum pedido encontrado. Ajuste a busca ou cadastre um pedido
+                no servidor.
+              </Text>
+            )}
+            {!!error && (
+              <>
+                <Text accessibilityRole="alert">{error}</Text>
                 <Button
                   disabled={busy}
                   onPress={() => {
-                    void loadMore();
+                    if (page === 0) {
+                      setRetry(value => value + 1);
+                    } else {
+                      void loadMore();
+                    }
                   }}>
-                  Carregar mais pedidos
+                  Tentar novamente
                 </Button>
-              )}
-            </>
-          )}
-        </VStack>
-      </Card.Content>
-    </Card>
+              </>
+            )}
+            {page > 0 && page * 10 < total && !error && (
+              <Button
+                disabled={busy}
+                onPress={() => {
+                  void loadMore();
+                }}>
+                Carregar mais pedidos
+              </Button>
+            )}
+          </>
+        )}
+      </VStack>
+    </View>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  orderRow: {
+    minHeight: 76,
+    borderBottomWidth: 1,
+    borderBottomColor: '#D6E1EB',
+    backgroundColor: 'white',
+    paddingVertical: 16,
+  },
+  orderLabel: {textAlign: 'left', fontSize: 16, lineHeight: 24},
+});

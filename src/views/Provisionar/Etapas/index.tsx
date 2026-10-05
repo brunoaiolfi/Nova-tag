@@ -1,6 +1,8 @@
+import {ActionButton as Button} from '../../../components/Tracking';
 import React, {useState} from 'react';
 import {RouteProp, useRoute} from '@react-navigation/native';
-import {Button, Card, Checkbox, List, Text} from 'react-native-paper';
+import {Checkbox, List, Text} from 'react-native-paper';
+import {FlowSteps, StatusPanel} from '../../../components/Tracking';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
 import Leitor from '../../../components/Nfc/Leitor';
@@ -103,6 +105,11 @@ export default function EtapasProvisionamento() {
     <Tela scroll>
       <VStack gap={16}>
         <Text variant="headlineSmall">Vincular etiqueta ao pedido</Text>
+        <FlowSteps
+          labels={['Pedido', 'Leitura', 'Vínculo', 'Ativação']}
+          current={!order ? 1 : !reading ? 2 : !provisioning ? 3 : 4}
+          complete={provisioning?.status === 'ATIVA'}
+        />
         <Text>
           {strategy === 'UID'
             ? 'Por número da etiqueta (UID) · não grava NDEF'
@@ -120,7 +127,7 @@ export default function EtapasProvisionamento() {
             disabled={!!provisioning || busy}
           />
         )}
-        {!provisioning && (
+        {order && !provisioning && (
           <Button
             mode={reading ? 'outlined' : 'contained'}
             disabled={!order || busy}
@@ -132,7 +139,7 @@ export default function EtapasProvisionamento() {
           </Button>
         )}
         {reading && <TagDetails reading={reading} capturedAt={capturedAt} />}
-        {!provisioning && (
+        {reading && !provisioning && (
           <Button
             mode="contained"
             disabled={!reading || !order || !model.trim() || busy}
@@ -145,68 +152,67 @@ export default function EtapasProvisionamento() {
         )}
         {provisioning && (
           <>
-            <Card mode="outlined">
-              <Card.Content>
-                <VStack gap={12}>
-                  <Text variant="titleLarge">
-                    {provisioning.status === 'ATIVA'
-                      ? 'Etiqueta pronta para uso'
-                      : 'Vínculo salvo · falta ativar'}
-                  </Text>
-                  <Text>
-                    {provisioning.status === 'ATIVA'
-                      ? `Agora você pode registrar eventos para ${order?.codigo} na aba Eventos.`
-                      : 'O pedido ainda não aceita eventos desta etiqueta. Conclua a configuração abaixo. Se sair, selecione o mesmo pedido e leia a mesma tag para retomar.'}
-                  </Text>
-                  {provisioning.status !== 'ATIVA' && (
-                    <>
-                      {strategy === 'NDEF_ESTATICO' && !verified && (
-                        <Button
-                          mode="contained"
-                          disabled={busy}
-                          onPress={() => {
-                            setConfirmed(false);
-                            setMessage('');
-                            setMode('write');
-                          }}>
-                          Gravar referência NDEF
-                        </Button>
-                      )}
-                      <Text>
-                        {strategy === 'UID'
-                          ? 'UID conferido. '
-                          : verified
-                          ? 'Referência NDEF gravada e conferida. '
-                          : 'Primeiro grave e confira o NDEF. '}
-                        Antes de ativar, confira a configuração física e o
-                        bloqueio definidos para seu ensaio com a ferramenta
-                        usada para configurar a tag. Este aplicativo não
-                        bloqueia a escrita.
-                      </Text>
-                      <Checkbox.Item
-                        label="Conferi a configuração física e o bloqueio do ensaio"
-                        status={confirmed ? 'checked' : 'unchecked'}
-                        onPress={() => setConfirmed(!confirmed)}
-                        disabled={busy}
-                      />
+            <StatusPanel
+              tone={provisioning.status === 'ATIVA' ? 'success' : 'warning'}>
+              <VStack gap={12}>
+                <Text variant="titleLarge">
+                  {provisioning.status === 'ATIVA'
+                    ? 'Etiqueta pronta para uso'
+                    : 'Vínculo salvo · falta ativar'}
+                </Text>
+                <Text>
+                  {provisioning.status === 'ATIVA'
+                    ? `Agora você pode registrar etapas para ${order?.codigo} na aba Registrar.`
+                    : 'O pedido ainda não aceita eventos desta etiqueta. Conclua a configuração abaixo. Se sair, selecione o mesmo pedido e leia a mesma tag para retomar.'}
+                </Text>
+                {provisioning.status !== 'ATIVA' && (
+                  <>
+                    {strategy === 'NDEF_ESTATICO' && !verified && (
                       <Button
                         mode="contained"
-                        disabled={!verified || !confirmed || busy}
-                        loading={busy}
+                        disabled={busy}
                         onPress={() => {
-                          void activate();
+                          setConfirmed(false);
+                          setMessage('');
+                          setMode('write');
                         }}>
-                        4. Ativar etiqueta
+                        Gravar referência NDEF
                       </Button>
-                    </>
-                  )}
-                  <List.Accordion title="Detalhes do vínculo">
-                    <Text selectable>{provisioning.id}</Text>
-                    <Text>Situação: {provisioning.status}</Text>
-                  </List.Accordion>
-                </VStack>
-              </Card.Content>
-            </Card>
+                    )}
+                    <Text>
+                      {strategy === 'UID'
+                        ? 'UID conferido. '
+                        : verified
+                        ? 'Referência NDEF gravada e conferida. '
+                        : 'Primeiro grave e confira o NDEF. '}
+                      Antes de ativar, confira a configuração física e o
+                      bloqueio definidos para seu ensaio com a ferramenta usada
+                      para configurar a tag. Este aplicativo não bloqueia a
+                      escrita.
+                    </Text>
+                    <Checkbox.Item
+                      label="Conferi a configuração física e o bloqueio do ensaio"
+                      status={confirmed ? 'checked' : 'unchecked'}
+                      onPress={() => setConfirmed(!confirmed)}
+                      disabled={busy}
+                    />
+                    <Button
+                      mode="contained"
+                      disabled={!verified || !confirmed || busy}
+                      loading={busy}
+                      onPress={() => {
+                        void activate();
+                      }}>
+                      4. Ativar etiqueta
+                    </Button>
+                  </>
+                )}
+                <List.Accordion title="Detalhes do vínculo">
+                  <Text selectable>{provisioning.id}</Text>
+                  <Text>Situação: {provisioning.status}</Text>
+                </List.Accordion>
+              </VStack>
+            </StatusPanel>
             {provisioning.status === 'ATIVA' && (
               <Button
                 mode="contained"

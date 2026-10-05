@@ -57,16 +57,16 @@ Os testes de regressão exercitam essas transições com o leitor e a sessão ju
 
 ## Histórico no aplicativo
 
-A aba Histórico usa as consultas existentes de pedidos, provisionamentos e
+A aba Rastreio usa as consultas existentes de pedidos, provisionamentos e
 `GET /pedidos/:id/eventos`, sem endpoints novos nem alterações de dados. Pode ser
 aberta pela busca de pedidos (incluindo os entregues), pela leitura física ou
 pelo comprovante do evento. A consulta se atualiza ao retornar à aba.
 
 NDEF resolve o vínculo exato pela referência; UID resolve o último vínculo
-cadastrado. Não há fallback de referência inválida para UID. A opção Vínculo lido
+cadastrado. Não há fallback de referência inválida para UID. A opção Esta etiqueta
 filtra pelo identificador do provisionamento, evitando misturar épocas; páginas
 contendo somente outros vínculos são percorridas até haver um resultado ou acabar
-o histórico. Todo pedido inclui todos os vínculos daquele pedido, e a busca
+o histórico. Pedido completo inclui todos os vínculos daquele pedido, e a busca
 permite consultar outros pedidos anteriores. O total mostrado para a visão do
 vínculo conta os registros carregados, sem inventar um total filtrado da API.
 

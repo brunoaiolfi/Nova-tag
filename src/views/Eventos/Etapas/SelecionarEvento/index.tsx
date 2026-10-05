@@ -1,9 +1,9 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {Icon, Text, TouchableRipple} from 'react-native-paper';
 
 import Tela from '../../../../components/Base/Tela';
-import Card from '../../../../components/Base/Card';
+import {FlowSteps} from '../../../../components/Tracking';
 import Botao from '../../../../components/Base/Botao';
 import VStack from '../../../../components/Base/VStack';
 import HStack from '../../../../components/Base/HStack';
@@ -76,14 +76,19 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
       style={styles.toque}
       onPress={() => onSelecionar(tipo)}
       accessibilityRole="radio"
-      accessibilityState={{selected: selecionada}}>
-      <Card
-        style={selecionada ? {borderColor: theme.colors.primary} : undefined}>
+      accessibilityState={{checked: selecionada}}>
+      <View
+        style={[
+          styles.option,
+          selecionada ? styles.selected : styles.unselected,
+        ]}>
         <HStack gap={12} align="center">
-          <Icon source={icone} size={24} color={cor} />
+          <Icon source={icone} size={32} color={cor} />
 
           <VStack flex={1} gap={2}>
-            <Text variant="titleSmall">{descricaoEnumTipoEvento[tipo]}</Text>
+            <Text variant="titleMedium" style={styles.optionTitle}>
+              {descricaoEnumTipoEvento[tipo]}
+            </Text>
             <Text
               variant="bodySmall"
               style={{color: theme.colors.onSurfaceVariant}}>
@@ -99,7 +104,7 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
             />
           )}
         </HStack>
-      </Card>
+      </View>
     </TouchableRipple>
   );
 };
@@ -119,10 +124,20 @@ const SelecionarEvento = ({
   >(tipoInicial);
 
   return (
-    <Tela scroll>
+    <Tela
+      scroll
+      footer={
+        <Botao
+          onPress={() => tipoSelecionado && onSelecionarEvento(tipoSelecionado)}
+          disabled={!tipoSelecionado}>
+          Continuar
+        </Botao>
+      }>
       <VStack flex={1} gap={24}>
         <VStack gap={4}>
-          <Text variant="titleLarge">Selecionar o tipo de evento</Text>
+          <Text variant="headlineSmall" style={layoutStyles.title}>
+            O que aconteceu com o pedido?
+          </Text>
           <Text
             variant="bodyMedium"
             style={{color: theme.colors.onSurfaceVariant}}>
@@ -130,8 +145,9 @@ const SelecionarEvento = ({
             etiqueta.
           </Text>
         </VStack>
+        <FlowSteps labels={['Escolher', 'Ler', 'Confirmar']} current={1} />
 
-        <VStack gap={12}>
+        <VStack gap={0} style={layoutStyles.options}>
           {TIPOS_SELECIONAVEIS.map(tipo => (
             <ItemOpcao
               key={tipo}
@@ -141,12 +157,6 @@ const SelecionarEvento = ({
             />
           ))}
         </VStack>
-
-        <Botao
-          onPress={() => tipoSelecionado && onSelecionarEvento(tipoSelecionado)}
-          disabled={!tipoSelecionado}>
-          Continuar
-        </Botao>
       </VStack>
     </Tela>
   );
@@ -154,8 +164,18 @@ const SelecionarEvento = ({
 
 const styles = StyleSheet.create({
   toque: {
-    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#D6E1EB',
   },
+  option: {padding: 18, minHeight: 100},
+  optionTitle: {fontWeight: '700'},
+  selected: {backgroundColor: '#EAF1FA'},
+  unselected: {backgroundColor: 'white'},
 });
 
 export default SelecionarEvento;
+
+const layoutStyles = StyleSheet.create({
+  title: {fontWeight: '700'},
+  options: {borderRadius: 16, overflow: 'hidden'},
+});

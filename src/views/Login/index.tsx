@@ -1,8 +1,11 @@
+import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
 import {KeyboardAvoidingView, ScrollView, StyleSheet} from 'react-native';
-import {Button, HelperText, Text, TextInput} from 'react-native-paper';
+import {HelperText, Text, TextInput} from 'react-native-paper';
 import {useSession} from '../../components/Auth/SessionProvider';
 import {defaultApiUrl} from '../../infra/auth/default-api-url';
+import {PageHero} from '../../components/Tracking';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export default function Login() {
   const {manager, state} = useSession();
@@ -11,6 +14,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [connectionSettings, setConnectionSettings] = useState(!defaultApiUrl);
+  const insets = useSafeAreaInsets();
   const submit = async () => {
     if (busy) {
       return;
@@ -31,20 +36,20 @@ export default function Login() {
   return (
     <KeyboardAvoidingView style={styles.root} behavior="height">
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {paddingTop: 24 + insets.top, paddingBottom: 24 + insets.bottom},
+        ]}
         keyboardShouldPersistTaps="handled">
-        <Text variant="headlineMedium">Entrar no Nova-tag</Text>
+        <PageHero
+          title="Do cadastro à entrega."
+          description="Acompanhe cada etapa com a etiqueta NFC do pedido."
+          icon="map-marker-path"
+        />
+        <Text variant="titleLarge">Entrar no Nova-tag</Text>
         <Text>Use sua conta do laboratório.</Text>
         <TextInput
-          label="Endereço da API"
-          value={server}
-          onChangeText={setServer}
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!busy}
-          keyboardType="url"
-        />
-        <TextInput
+          mode="outlined"
           label="Login"
           value={login}
           onChangeText={setLogin}
@@ -54,6 +59,7 @@ export default function Login() {
           editable={!busy}
         />
         <TextInput
+          mode="outlined"
           label="Senha"
           value={password}
           onChangeText={setPassword}
@@ -78,11 +84,28 @@ export default function Login() {
           }}>
           Entrar
         </Button>
+        <Button
+          disabled={busy}
+          onPress={() => setConnectionSettings(value => !value)}>
+          Configuração de conexão
+        </Button>
+        {connectionSettings && (
+          <TextInput
+            mode="outlined"
+            label="Endereço da API"
+            value={server}
+            onChangeText={setServer}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!busy}
+            keyboardType="url"
+          />
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 const styles = StyleSheet.create({
-  root: {flex: 1},
+  root: {flex: 1, backgroundColor: '#F3F6FA'},
   content: {flexGrow: 1, justifyContent: 'center', padding: 24, gap: 16},
 });

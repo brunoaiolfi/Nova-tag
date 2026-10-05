@@ -1,5 +1,6 @@
 import React, {PropsWithChildren} from 'react';
-import {ActivityIndicator, Button, Text} from 'react-native-paper';
+import {ActivityIndicator, Text} from 'react-native-paper';
+import {ActionButton as Button} from '../Tracking';
 import {View, StyleSheet} from 'react-native';
 import {useSession} from './SessionProvider';
 import Login from '../../views/Login';

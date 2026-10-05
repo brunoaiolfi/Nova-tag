@@ -1,34 +1,37 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {Icon, Text} from 'react-native-paper';
+import {PageHero} from '../../../components/Tracking';
 
 import Tela from '../../../components/Base/Tela';
 import Botao from '../../../components/Base/Botao';
 import VStack from '../../../components/Base/VStack';
 import Aviso from '../../../components/Aviso';
 import ListaPassos, {Passo} from '../../../components/ListaPassos';
-import {useAppTheme} from '../../../theme';
 import type {RotasEventos} from '../../../navigation/EventosNavigator';
 
 const PASSOS: Passo[] = [
   {
     numero: 1,
-    titulo: 'Selecionar o tipo de evento',
+    titulo: 'Escolha o que aconteceu',
     descricao:
       'Escolha o que está acontecendo com o pedido: coleta, recebimento, movimentação, expedição ou entrega.',
   },
   {
     numero: 2,
-    titulo: 'Ler a etiqueta física',
+    titulo: 'Leia a etiqueta do pedido',
     descricao:
-      'Aproxime a etiqueta, confira a captura e envie para receber a decisão da API.',
+      'Aproxime a etiqueta do iPhone. O número e o horário da leitura são preenchidos pelo app.',
+  },
+  {
+    numero: 3,
+    titulo: 'Confira e confirme',
+    descricao:
+      'Envie o registro e confira se a etapa foi autorizada antes de continuar.',
   },
 ];
 
 const InformativoEtapas = () => {
-  const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RotasEventos>>();
 
   const iniciar = () => navigation.navigate('EtapasEvento');
@@ -36,22 +39,12 @@ const InformativoEtapas = () => {
   return (
     <Tela scroll>
       <VStack gap={24}>
-        <VStack align="center" gap={8}>
-          <Icon
-            source="timeline-plus-outline"
-            size={48}
-            color={theme.colors.primary}
-          />
-          <Text variant="headlineSmall">Registrar evento</Text>
-          <Text
-            variant="bodyMedium"
-            style={[
-              styles.centralizado,
-              {color: theme.colors.onSurfaceVariant},
-            ]}>
-            Registre uma captura física e consulte a decisão logística da API.
-          </Text>
-        </VStack>
+        <PageHero
+          title="Atualize o caminho do pedido."
+          description="Registre o que aconteceu com o volume usando sua etiqueta NFC."
+          icon="timeline-plus-outline"
+          eyebrow="REGISTRAR ETAPA"
+        />
 
         <ListaPassos passos={PASSOS} />
 
@@ -65,11 +58,5 @@ const InformativoEtapas = () => {
     </Tela>
   );
 };
-
-const styles = StyleSheet.create({
-  centralizado: {
-    textAlign: 'center',
-  },
-});
 
 export default InformativoEtapas;

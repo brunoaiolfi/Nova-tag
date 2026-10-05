@@ -1,6 +1,7 @@
+import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Button, PaperProvider} from 'react-native-paper';
+import {PaperProvider} from 'react-native-paper';
 import EtapasEvento from '../src/views/Eventos/Etapas';
 import SelecionarEvento from '../src/views/Eventos/Etapas/SelecionarEvento';
 import Leitor from '../src/components/Nfc/Leitor';

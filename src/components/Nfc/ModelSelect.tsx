@@ -1,5 +1,8 @@
+import {StyleSheet} from 'react-native';
+import {ActionButton as Button} from '../Tracking';
 import React, {useState} from 'react';
-import {Button, Card, RadioButton, Text, TextInput} from 'react-native-paper';
+import {RadioButton, Text, TextInput} from 'react-native-paper';
+import {View} from 'react-native';
 import VStack from '../Base/VStack';
 
 const models = [
@@ -23,56 +26,58 @@ export default function ModelSelect({
   const [expanded, setExpanded] = useState(false);
   const [custom, setCustom] = useState(false);
   return (
-    <Card mode="outlined">
-      <Card.Content>
-        <VStack gap={8}>
-          <Text variant="titleMedium">Modelo da tag</Text>
-          <Text>
-            {models.find(model => model.value === value)?.label ?? value}
-          </Text>
-          <Text variant="bodySmall">
-            Pode deixar como desconhecido. Só escolha outro modelo se souber
-            qual é o chip; “fitinha” e ISO 14443-4 não definem o modelo.
-          </Text>
-          {!disabled && (
-            <Button onPress={() => setExpanded(!expanded)}>
-              {expanded ? 'Fechar opções' : 'Escolher modelo'}
-            </Button>
-          )}
-          {expanded && !disabled && (
-            <>
-              {models.map(model => (
-                <RadioButton.Item
-                  key={model.value}
-                  label={model.label}
-                  value={model.value}
-                  position="leading"
-                  status={
-                    (custom ? model.value === 'OUTRO' : model.value === value)
-                      ? 'checked'
-                      : 'unchecked'
+    <View style={layoutStyles.options}>
+      <VStack gap={8}>
+        <Text variant="titleMedium">Modelo da etiqueta · opcional</Text>
+        <Text>
+          {models.find(model => model.value === value)?.label ?? value}
+        </Text>
+        <Text variant="bodySmall">
+          Pode continuar com Desconhecido. Informe outro modelo apenas se
+          conhecer o chip.
+        </Text>
+        {!disabled && (
+          <Button onPress={() => setExpanded(!expanded)}>
+            {expanded ? 'Fechar opções' : 'Escolher modelo'}
+          </Button>
+        )}
+        {expanded && !disabled && (
+          <>
+            {models.map(model => (
+              <RadioButton.Item
+                key={model.value}
+                label={model.label}
+                value={model.value}
+                position="leading"
+                status={
+                  (custom ? model.value === 'OUTRO' : model.value === value)
+                    ? 'checked'
+                    : 'unchecked'
+                }
+                onPress={() => {
+                  setCustom(model.value === 'OUTRO');
+                  onChange(model.value === 'OUTRO' ? '' : model.value);
+                  if (model.value !== 'OUTRO') {
+                    setExpanded(false);
                   }
-                  onPress={() => {
-                    setCustom(model.value === 'OUTRO');
-                    onChange(model.value === 'OUTRO' ? '' : model.value);
-                    if (model.value !== 'OUTRO') {
-                      setExpanded(false);
-                    }
-                  }}
-                />
-              ))}
-              {custom && (
-                <TextInput
-                  label="Nome do modelo conhecido"
-                  value={value}
-                  onChangeText={onChange}
-                  maxLength={64}
-                />
-              )}
-            </>
-          )}
-        </VStack>
-      </Card.Content>
-    </Card>
+                }}
+              />
+            ))}
+            {custom && (
+              <TextInput
+                label="Nome do modelo conhecido"
+                value={value}
+                onChangeText={onChange}
+                maxLength={64}
+              />
+            )}
+          </>
+        )}
+      </VStack>
+    </View>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  options: {borderTopWidth: 1, borderTopColor: '#D6E1EB', paddingTop: 16},
+});

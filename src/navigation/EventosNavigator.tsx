@@ -31,7 +31,7 @@ const EventosNavigator = () => {
       <Stack.Screen
         name="EtapasEvento"
         component={EtapasEvento}
-        options={{title: 'Registrar evento'}}
+        options={{title: 'Registrar etapa'}}
       />
     </Stack.Navigator>
   );

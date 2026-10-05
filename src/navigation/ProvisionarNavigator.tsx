@@ -32,7 +32,7 @@ const ProvisionarNavigator = () => {
       <Stack.Screen
         name="EtapasProvisionamento"
         component={EtapasProvisionamento}
-        options={{title: 'Provisionamento'}}
+        options={{title: 'Vincular etiqueta'}}
       />
     </Stack.Navigator>
   );

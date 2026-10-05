@@ -1,10 +1,12 @@
+import {ActionButton as Button} from '../../../components/Tracking';
 import React, {useRef, useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import type {RotasTab} from '../../../navigation';
 import type {RotasEventos} from '../../../navigation/EventosNavigator';
-import {Button, Card, List, Text} from 'react-native-paper';
+import {List, Text} from 'react-native-paper';
+import {FlowSteps, StatusPanel} from '../../../components/Tracking';
 import * as Crypto from 'expo-crypto';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
@@ -115,6 +117,11 @@ export default function EtapasEvento() {
             ? 'Resultado do registro'
             : `3. Confirmar ${descricaoEnumTipoEvento[type]}`}
         </Text>
+        <FlowSteps
+          labels={['Escolher', 'Ler', 'Confirmar']}
+          current={3}
+          complete={!!result}
+        />
         {!result && (
           <Text>
             A leitura foi concluída. O evento só será enviado quando você
@@ -161,44 +168,42 @@ export default function EtapasEvento() {
         )}
         {result && (
           <>
-            <Card mode="outlined">
-              <Card.Content>
-                <VStack gap={12}>
-                  <Text variant="titleLarge" accessibilityRole="alert">
-                    {result.armazenada
-                      ? 'Captura salva no histórico'
-                      : 'Captura não armazenada'}
+            <StatusPanel tone={result.decisao.autorizada ? 'success' : 'error'}>
+              <VStack gap={12}>
+                <Text variant="titleLarge" accessibilityRole="alert">
+                  {result.armazenada
+                    ? 'Captura salva no histórico'
+                    : 'Captura não armazenada'}
+                </Text>
+                <Text variant="titleMedium">
+                  {result.decisao.autorizada
+                    ? `Operação autorizada · ${descricaoEnumTipoEvento[type]}`
+                    : 'Operação rejeitada · pedido não alterado'}
+                </Text>
+                <Text>{reasonLabel(result.decisao.motivo)}</Text>
+                <Text>
+                  {result.decisao.classificacao === 'SUSPEITO'
+                    ? 'Leitura suspeita: confira os dados da etiqueta antes de prosseguir.'
+                    : 'Leitura sem divergências identificadas.'}
+                </Text>
+                {result.decisao.avisos.map((warning, index) => (
+                  <Text key={`${warning}-${index}`}>
+                    {reasonLabel(warning)}
                   </Text>
-                  <Text variant="titleMedium">
-                    {result.decisao.autorizada
-                      ? `Operação autorizada · ${descricaoEnumTipoEvento[type]}`
-                      : 'Operação rejeitada · pedido não alterado'}
-                  </Text>
-                  <Text>{reasonLabel(result.decisao.motivo)}</Text>
-                  <Text>
-                    {result.decisao.classificacao === 'SUSPEITO'
-                      ? 'Leitura suspeita: confira os dados da etiqueta antes de prosseguir.'
-                      : 'Leitura sem divergências identificadas.'}
-                  </Text>
-                  {result.decisao.avisos.map((warning, index) => (
-                    <Text key={`${warning}-${index}`}>
-                      {reasonLabel(warning)}
-                    </Text>
-                  ))}
-                  <List.Accordion title="Comprovante do registro">
-                    <Text selectable>Identificador: {pending.current?.id}</Text>
-                    <Text>Evento: {descricaoEnumTipoEvento[type]}</Text>
-                    <Text>Motivo: {result.decisao.motivo}</Text>
-                  </List.Accordion>
-                </VStack>
-              </Card.Content>
-            </Card>
+                ))}
+                <List.Accordion title="Comprovante do registro">
+                  <Text selectable>Identificador: {pending.current?.id}</Text>
+                  <Text>Evento: {descricaoEnumTipoEvento[type]}</Text>
+                  <Text>Motivo: {result.decisao.motivo}</Text>
+                </List.Accordion>
+              </VStack>
+            </StatusPanel>
             <TagDetails
               reading={reading}
               capturedAt={pending.current?.occurredAt}
             />
             <Button
-              mode="contained"
+              mode="outlined"
               onPress={() => {
                 setType(undefined);
                 setReading(undefined);
@@ -210,7 +215,7 @@ export default function EtapasEvento() {
               Nova captura
             </Button>
             <Button
-              mode="outlined"
+              mode="contained"
               onPress={() =>
                 navigation
                   .getParent<BottomTabNavigationProp<RotasTab>>()

@@ -1,7 +1,8 @@
+import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import {AppState} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Button, PaperProvider} from 'react-native-paper';
+import {PaperProvider} from 'react-native-paper';
 import {SessionProvider} from '../src/components/Auth/SessionProvider';
 import {SessionGate} from '../src/components/Auth/SessionGate';
 import Leitor from '../src/components/Nfc/Leitor';

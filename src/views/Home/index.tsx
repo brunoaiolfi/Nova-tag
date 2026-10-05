@@ -1,5 +1,9 @@
+import {StyleSheet} from 'react-native';
+import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
-import {Button, Card, Text} from 'react-native-paper';
+import {Text} from 'react-native-paper';
+import {View} from 'react-native';
+import {ActionRow, PageHero} from '../../components/Tracking';
 import {useNavigation} from '@react-navigation/native';
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import type {RotasTab} from '../../navigation';
@@ -41,26 +45,20 @@ const Home = () => {
   return (
     <Tela scroll>
       <VStack gap={20}>
-        <Text variant="headlineMedium">Olá, {state.session?.user.nome}</Text>
-        <Text>O que você quer fazer com a etiqueta?</Text>
-        <Card mode="outlined">
-          <Card.Content>
-            <VStack gap={12}>
-              <Text variant="titleLarge">Escanear e ver a tag</Text>
-              <Text>
-                Veja o número da etiqueta, o conteúdo NDEF e a tecnologia lida.
-                Esta consulta não altera a tag nem movimenta o pedido.
-              </Text>
-              <Button
-                mode="contained"
-                accessibilityLabel="Escanear etiqueta"
-                icon="nfc-search-variant"
-                onPress={() => setScanning(true)}>
-                Escanear etiqueta
-              </Button>
-            </VStack>
-          </Card.Content>
-        </Card>
+        <Text variant="bodyMedium">Olá, {state.session?.user.nome}</Text>
+        <PageHero
+          title="Rastreie seu pedido."
+          description="Leia a etiqueta para encontrar o pedido e acompanhar o que aconteceu com ele."
+          icon="map-marker-path"
+        />
+        <Button
+          mode="contained"
+          accessibilityLabel="Escanear etiqueta"
+          icon="nfc-search-variant"
+          onPress={() => setScanning(true)}>
+          Escanear etiqueta
+        </Button>
+        <Text style={layoutStyles.hint}>A consulta não altera o pedido.</Text>
         {reading && (
           <>
             <TagDetails reading={reading} capturedAt={capturedAt} />
@@ -71,58 +69,33 @@ const Home = () => {
             </Button>
           </>
         )}
-        <Card mode="outlined">
-          <Card.Content>
-            <VStack gap={8}>
-              <Text variant="titleMedium">Consultar histórico</Text>
-              <Text>
-                Veja provisionamento, coleta, recebimento e os demais registros
-                pela etiqueta ou pelo pedido.
-              </Text>
-              <Button
-                mode="outlined"
-                onPress={() => navigation.navigate('Historico')}>
-                Abrir histórico
-              </Button>
-            </VStack>
-          </Card.Content>
-        </Card>
-        {state.session?.user.perfil === 'ADMINISTRADOR' && (
-          <Card mode="outlined">
-            <Card.Content>
-              <VStack gap={8}>
-                <Text variant="titleMedium">Vincular a um pedido</Text>
-                <Text>
-                  Escolha um pedido e configure a etiqueta para começar a
-                  rastrear um volume.
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={() => navigation.navigate('Provisionar')}>
-                  Vincular etiqueta
-                </Button>
-              </VStack>
-            </Card.Content>
-          </Card>
-        )}
-        {state.session?.user.perfil !== 'CONSULTA' && (
-          <Card mode="outlined">
-            <Card.Content>
-              <VStack gap={8}>
-                <Text variant="titleMedium">Registrar uma operação</Text>
-                <Text>
-                  Com a etiqueta já ativa, registre coleta, recebimento,
-                  movimentação, expedição ou entrega.
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={() => navigation.navigate('Eventos')}>
-                  Registrar evento
-                </Button>
-              </VStack>
-            </Card.Content>
-          </Card>
-        )}
+        <Text variant="titleLarge" style={layoutStyles.sectionTitle}>
+          Acompanhar e atualizar
+        </Text>
+        <View style={layoutStyles.actionList}>
+          <ActionRow
+            title="Abrir histórico"
+            description="Busque um pedido e veja suas etapas, do cadastro à entrega."
+            icon="map-marker-path"
+            onPress={() => navigation.navigate('Historico')}
+          />
+          {state.session?.user.perfil === 'ADMINISTRADOR' && (
+            <ActionRow
+              title="Vincular etiqueta"
+              description="Prepare uma etiqueta para identificar um volume do pedido."
+              icon="nfc-tap"
+              onPress={() => navigation.navigate('Provisionar')}
+            />
+          )}
+          {state.session?.user.perfil !== 'CONSULTA' && (
+            <ActionRow
+              title="Registrar etapa"
+              description="Informe uma coleta, recebimento, movimentação, saída ou entrega."
+              icon="timeline-plus-outline"
+              onPress={() => navigation.navigate('Eventos')}
+            />
+          )}
+        </View>
         <Button
           onPress={() => {
             void manager.logout();
@@ -135,3 +108,9 @@ const Home = () => {
 };
 
 export default Home;
+
+const layoutStyles = StyleSheet.create({
+  hint: {textAlign: 'center'},
+  sectionTitle: {fontWeight: '700'},
+  actionList: {borderRadius: 16, overflow: 'hidden'},
+});

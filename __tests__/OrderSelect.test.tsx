@@ -1,11 +1,7 @@
+import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {
-  Button,
-  PaperProvider,
-  RadioButton,
-  Searchbar,
-} from 'react-native-paper';
+import {PaperProvider, RadioButton, Searchbar} from 'react-native-paper';
 import OrderSelect from '../src/components/Nfc/OrderSelect';
 import {traceability} from '../src/infra/traceability/runtime';
 import type {OrderPage} from '../src/appplication/traceability/workflow';

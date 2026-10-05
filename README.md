@@ -49,19 +49,19 @@ dados nem cadastra vínculo.
 
 Para vincular, selecione um pedido da lista com busca e paginação. O modelo vem
 como **Desconhecido**; use as opções apenas se souber o chip. Leia e confira a tag,
-vincule ao pedido e conclua a configuração/ativação. Na aba Eventos, escolha a
+vincule ao pedido e conclua a configuração/ativação. Na aba Registrar, escolha a
 operação, leia, confira e confirme o envio. O comprovante permanece na tela e
 distingue captura salva, operação autorizada/rejeitada e leitura suspeita.
 
-Na aba **Histórico**, leia a etiqueta ou busque o pedido na lista. Também há o
+Na aba **Rastreio**, leia a etiqueta ou busque o pedido na lista. Também há o
 botão **Ver histórico desta etiqueta** no resultado da leitura e após enviar um
 evento. A consulta mostra provisionamento, operações autorizadas e tentativas
 rejeitadas, estado atual do pedido e horários do servidor/aparelho. **Carregar mais
 registros** continua a paginação; **Atualizar histórico** consulta novamente a API.
 O histórico é atualizado ao retornar à aba depois de registrar uma operação.
 
-Ao consultar uma tag, **Vínculo lido** mostra somente o provisionamento identificado;
-**Todo pedido** inclui seus demais vínculos. UID consulta o último vínculo da tag,
+Ao consultar uma tag, **Esta etiqueta** mostra somente o provisionamento identificado;
+**Pedido completo** inclui seus demais vínculos. UID consulta o último vínculo da tag,
 enquanto a referência NDEF consulta o vínculo exato, inclusive se encerrado. Para
 pedidos de épocas anteriores, use a busca por pedido. A consulta não altera a tag
 nem registra outro evento e está disponível também para o perfil Consulta.
@@ -69,6 +69,22 @@ nem registra outro evento e está disponível também para o perfil Consulta.
 Mudanças apenas de interface/JavaScript são carregadas pelo Metro no development
 build já instalado, sem iniciar outra compilação EAS. Dependências ou configurações
 nativas novas exigiriam outro build.
+
+## Interface de rastreio
+
+A situação atual do pedido aparece acima das etapas conectadas: cadastro,
+coleta, recebimento e entrega. A expedição aparece como um marco adicional quando
+registrada; não é requisito para mostrar a entrega. A linha do tempo abaixo
+preserva a ordem do servidor e inclui tentativas rejeitadas, sem avançar o trajeto.
+O horário declarado pelo aparelho, autoria e identificadores ficam nos detalhes
+de cada registro. Divergências e rejeições permanecem visíveis.
+
+As ações principais têm altura mínima de 58 px e texto que pode ocupar mais de
+uma linha. Leitura, vínculo e registro mostram seu progresso e exigem confirmação
+explícita. A tela inicial agrupa as ações em uma lista, com a leitura em destaque.
+O login utiliza a conexão configurada no ambiente; o endereço pode ser alterado
+em **Configuração de conexão**. Não houve alteração do contrato HTTP ou do leitor
+NFC nativo nesta revisão visual.
 
 ## Operações reais
 

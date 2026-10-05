@@ -1,5 +1,7 @@
+import {StyleSheet} from 'react-native';
+import {ActionButton as Button} from '../../Tracking';
 import React, {useEffect, useRef, useState} from 'react';
-import {Button, Icon, Text} from 'react-native-paper';
+import {Icon, Text} from 'react-native-paper';
 import Tela from '../../Base/Tela';
 import VStack from '../../Base/VStack';
 import {
@@ -9,6 +11,8 @@ import {
 } from '../../../infra/nfc/reader';
 import type {Reading} from '../../../appplication/traceability/workflow';
 import TagDetails from '../TagDetails';
+import {View} from 'react-native';
+import {FlowSteps, PageHero, StatusPanel} from '../../Tracking';
 
 type Props = {
   write?: {uid: string; reference: string};
@@ -75,25 +79,72 @@ export default function Leitor({
     }
   }
   return (
-    <Tela scroll>
+    <Tela
+      scroll
+      footer={
+        result ? (
+          <Button
+            mode="contained"
+            onPress={() =>
+              onVerHistorico
+                ? onVerHistorico(result.reading, result.capturedAt)
+                : onLeituraRealizada(result.reading, result.capturedAt)
+            }>
+            {onVerHistorico ? 'Ver histórico desta etiqueta' : continueLabel}
+          </Button>
+        ) : (
+          <Button
+            mode="contained"
+            disabled={busy || !physicalNfcAvailable}
+            loading={busy}
+            onPress={() => {
+              void read();
+            }}>
+            {write ? 'Gravar e conferir etiqueta' : 'Ler etiqueta'}
+          </Button>
+        )
+      }>
       <VStack gap={16}>
         {!!context && <Text variant="labelLarge">{context}</Text>}
-        <Icon source={result ? 'check-circle-outline' : 'nfc-tap'} size={56} />
-        <Text variant="headlineSmall">
-          {result
-            ? write
-              ? 'Gravação conferida'
-              : 'Leitura concluída'
-            : write
-            ? 'Gravar referência NDEF'
-            : 'Escanear etiqueta NFC'}
-        </Text>
+        <PageHero
+          title={
+            result
+              ? write
+                ? 'Gravação conferida'
+                : 'Leitura concluída'
+              : write
+              ? 'Gravar referência NDEF'
+              : 'Vamos ler a etiqueta.'
+          }
+          description={
+            result
+              ? 'Você já pode afastar a etiqueta. O resultado fica aqui até você continuar.'
+              : 'Use a parte superior do iPhone, perto da câmera.'
+          }
+          icon={result ? 'check-circle-outline' : 'nfc-tap'}
+          eyebrow="LEITURA DA ETIQUETA"
+        />
+        <FlowSteps
+          labels={['Iniciar', 'Aproximar', 'Conferir']}
+          current={result ? 3 : busy ? 2 : 1}
+          complete={!!result}
+        />
         {!result && (
-          <Text>
-            {write
-              ? 'A gravação substitui o conteúdo NDEF atual. Use a mesma etiqueta registrada e mantenha-a próxima até a releitura terminar.'
-              : '1. Toque em Ler etiqueta.\n2. Encoste a tag na parte superior do iPhone, perto da câmera.\n3. Mantenha-a parada até a leitura terminar.'}
-          </Text>
+          <View style={layoutStyles.scanInstructions}>
+            <View style={layoutStyles.scanTarget}>
+              <Icon source="cellphone-nfc" size={64} color="#155EEF" />
+            </View>
+            <Text variant="titleMedium" style={layoutStyles.instructionTitle}>
+              {busy
+                ? 'Mantenha a etiqueta parada'
+                : 'Toque no botão e aproxime a etiqueta'}
+            </Text>
+            <Text style={layoutStyles.instructionText}>
+              {write
+                ? 'O conteúdo NDEF atual será substituído. Use a mesma etiqueta e aguarde a gravação e a releitura.'
+                : 'Aguarde a confirmação do iPhone antes de afastar a etiqueta.'}
+            </Text>
+          </View>
         )}
         {!write && !result && (
           <Text>
@@ -109,28 +160,17 @@ export default function Leitor({
         )}
         {result ? (
           <>
-            <Text>
-              Você já pode afastar a etiqueta. Confira os dados abaixo; esta
-              tela ficará aberta até você continuar.
-            </Text>
             <TagDetails
               reading={result.reading}
               capturedAt={result.capturedAt}
             />
-            <Button
-              mode="contained"
-              onPress={() =>
-                onLeituraRealizada(result.reading, result.capturedAt)
-              }>
-              {continueLabel}
-            </Button>
             {onVerHistorico && (
               <Button
                 mode="outlined"
                 onPress={() =>
-                  onVerHistorico(result.reading, result.capturedAt)
+                  onLeituraRealizada(result.reading, result.capturedAt)
                 }>
-                Ver histórico desta etiqueta
+                {continueLabel}
               </Button>
             )}
             <Button
@@ -140,17 +180,7 @@ export default function Leitor({
               {write ? 'Gravar e conferir novamente' : 'Ler outra etiqueta'}
             </Button>
           </>
-        ) : (
-          <Button
-            mode="contained"
-            disabled={busy || !physicalNfcAvailable}
-            loading={busy}
-            onPress={() => {
-              void read();
-            }}>
-            {write ? 'Gravar e conferir etiqueta' : 'Ler etiqueta'}
-          </Button>
-        )}
+        ) : null}
         {busy && (
           <Text accessibilityRole="alert">
             Aguardando a etiqueta… Se não reconhecer, afaste a tag e aproxime
@@ -169,7 +199,11 @@ export default function Leitor({
             Cancelar leitura
           </Button>
         )}
-        {!!message && <Text accessibilityRole="alert">{message}</Text>}
+        {!!message && (
+          <StatusPanel tone="warning">
+            <Text accessibilityRole="alert">{message}</Text>
+          </StatusPanel>
+        )}
         {onVoltar && (
           <Button disabled={busy} onPress={onVoltar}>
             Voltar
@@ -179,3 +213,20 @@ export default function Leitor({
     </Tela>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  scanInstructions: {alignItems: 'center', paddingVertical: 18, gap: 14},
+  scanTarget: {
+    height: 120,
+    width: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#155EEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAF1FA',
+  },
+  instructionTitle: {textAlign: 'center', fontWeight: '700'},
+  instructionText: {textAlign: 'center'},
+});

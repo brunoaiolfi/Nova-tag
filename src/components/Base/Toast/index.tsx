@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, useWindowDimensions} from 'react-native';
 import ToastMessage, {
   BaseToast,
   BaseToastProps,
@@ -13,17 +13,23 @@ type ToastTematicoProps = BaseToastProps & {
   cor: string;
 };
 
-const ToastTematico = ({cor, ...rest}: ToastTematicoProps) => (
-  <BaseToast
-    {...rest}
-    style={[styles.toast, {borderLeftColor: cor}]}
-    contentContainerStyle={styles.conteudo}
-    text1Style={styles.titulo}
-    text2Style={styles.descricao}
-    text1NumberOfLines={2}
-    text2NumberOfLines={3}
-  />
-);
+const ToastTematico = ({cor, ...rest}: ToastTematicoProps) => {
+  const {width} = useWindowDimensions();
+  return (
+    <BaseToast
+      {...rest}
+      style={[
+        styles.toast,
+        {borderLeftColor: cor, width: Math.min(400, width - 32)},
+      ]}
+      contentContainerStyle={styles.conteudo}
+      text1Style={styles.titulo}
+      text2Style={styles.descricao}
+      text1NumberOfLines={2}
+      text2NumberOfLines={3}
+    />
+  );
+};
 
 const criarToast = (obterCor: (tema: TemaApp) => string) => {
   const Toast = (props: BaseToastProps) => {

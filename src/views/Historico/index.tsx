@@ -1,3 +1,5 @@
+import {StyleSheet} from 'react-native';
+import {ActionButton as Button} from '../../components/Tracking';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   RouteProp,
@@ -8,8 +10,6 @@ import {
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {
   ActivityIndicator,
-  Button,
-  Card,
   List,
   SegmentedButtons,
   Text,
@@ -28,87 +28,15 @@ import Tela from '../../components/Base/Tela';
 import VStack from '../../components/Base/VStack';
 import OrderSelect from '../../components/Nfc/OrderSelect';
 import Leitor from '../../components/Nfc/Leitor';
-import {eventLabel, reasonLabel, stateLabel} from '../traceability-labels';
+import {View} from 'react-native';
+import {OrderJourney, PageHero, StatusPanel} from '../../components/Tracking';
+import {HistoryItem} from '../../components/Tracking/HistoryTimeline';
 
 type Target =
   | {kind: 'tag'; reading: Reading}
   | {kind: 'order'; order: OrderSummary};
 type Context = {order: OrderDetails; provisioning?: Provisioning};
-const date = (value: string) => new Date(value).toLocaleString('pt-BR');
-
-export function HistoryItem({
-  entry,
-  anotherLink,
-}: {
-  entry: HistoryEntry;
-  anotherLink: boolean;
-}) {
-  const decision = entry.decisao;
-  return (
-    <Card mode="outlined">
-      <Card.Content>
-        <VStack gap={8}>
-          <Text variant="titleLarge">{eventLabel(entry.tipo)}</Text>
-          <Text variant="titleMedium">
-            {decision.autorizada
-              ? 'Operação autorizada'
-              : 'Operação rejeitada · pedido não alterado'}
-          </Text>
-          {decision.classificacao === 'SUSPEITO' && (
-            <Text>Leitura suspeita · divergências identificadas</Text>
-          )}
-          <Text>{reasonLabel(decision.motivo)}</Text>
-          <Text>
-            {decision.alterouEstado
-              ? `${stateLabel(decision.estadoAnterior)} → ${stateLabel(
-                  decision.estadoResultante,
-                )}`
-              : `Estado mantido: ${stateLabel(decision.estadoResultante)}`}
-          </Text>
-          <Text>Recebido pelo servidor: {date(entry.recebidoEm)}</Text>
-          <Text>
-            {entry.origem === 'SISTEMA'
-              ? 'Horário da ativação'
-              : 'Horário declarado pelo aparelho'}
-            : {date(entry.ocorridoEm)}
-          </Text>
-          {anotherLink && <Text>Outro vínculo deste pedido</Text>}
-          <List.Accordion title="Detalhes do registro">
-            <Text>
-              Origem:{' '}
-              {entry.origem === 'SISTEMA'
-                ? 'Ativação da etiqueta pelo sistema'
-                : 'Captura enviada pelo aplicativo'}
-            </Text>
-            <Text>
-              Classificação:{' '}
-              {decision.classificacao === 'SUSPEITO' ? 'Suspeito' : 'Regular'}
-            </Text>
-            {!!entry.autoria && (
-              <Text>
-                Autoria:{' '}
-                {entry.autoria.tipo === 'AUTENTICADA'
-                  ? 'Operador autenticado'
-                  : 'Informação declarada'}
-              </Text>
-            )}
-            {!!entry.autoria?.usuarioId && (
-              <Text selectable>
-                Identificador do operador: {entry.autoria.usuarioId}
-              </Text>
-            )}
-            {decision.avisos.map((warning, index) => (
-              <Text key={`${warning}-${index}`}>{reasonLabel(warning)}</Text>
-            ))}
-            <Text selectable>Registro: {entry.id}</Text>
-            <Text selectable>Vínculo: {entry.provisionamentoId}</Text>
-            <Text>Motivo: {decision.motivo}</Text>
-          </List.Accordion>
-        </VStack>
-      </Card.Content>
-    </Card>
-  );
-}
+export {HistoryItem} from '../../components/Tracking/HistoryTimeline';
 
 export default function Historico() {
   const navigation =
@@ -264,101 +192,102 @@ export default function Historico() {
   return (
     <Tela scroll>
       <VStack gap={16}>
-        <Text variant="headlineSmall">Histórico</Text>
-        <Text>
-          Consulte as operações salvas no servidor, inclusive as tentativas
-          rejeitadas.
-        </Text>
-        <Button mode="contained" onPress={() => setScanning(true)}>
-          Ler etiqueta para ver histórico
-        </Button>
         {!target && (
-          <OrderSelect
-            purpose="history"
-            disabled={false}
-            onSelect={order => order && choose({kind: 'order', order})}
-          />
-        )}
-        {target && (
           <>
-            <Button disabled={busy} onPress={() => choose()}>
-              Consultar outro pedido
-            </Button>
+            <PageHero
+              title="Onde está o pedido no trajeto?"
+              description="Consulte a situação atual e acompanhe cada etapa registrada."
+              icon="map-marker-path"
+            />
             <Button
-              disabled={busy}
-              onPress={() => setTarget(value => (value ? {...value} : value))}>
-              Atualizar histórico
+              mode="contained"
+              icon="nfc-search-variant"
+              onPress={() => setScanning(true)}>
+              Ler etiqueta para ver histórico
             </Button>
+            <OrderSelect
+              purpose="history"
+              disabled={false}
+              onSelect={order => order && choose({kind: 'order', order})}
+            />
           </>
         )}
+        {context && <OrderJourney order={context.order} />}
+        {context?.provisioning && (
+          <Text variant="bodySmall">
+            {context.provisioning.status === 'ATIVA'
+              ? 'Etiqueta cadastrada: ativa neste pedido.'
+              : context.provisioning.status === 'REGISTRADA'
+              ? 'Esta etiqueta aguarda ativação e ainda não pode registrar etapas.'
+              : 'O vínculo desta etiqueta foi encerrado. Seu histórico está preservado.'}
+          </Text>
+        )}
+        {context?.provisioning &&
+          target?.kind === 'tag' &&
+          target.reading.uid !== context.provisioning.uid && (
+            <StatusPanel tone="warning">
+              <Text>
+                A referência NDEF aponta para este vínculo, mas o UID lido é
+                diferente: {target.reading.uid}. Esta consulta não autentica a
+                etiqueta.
+              </Text>
+            </StatusPanel>
+          )}
         {target?.kind === 'tag' && (
           <SegmentedButtons
             value={scope}
             onValueChange={setScope}
             buttons={[
-              {value: 'vinculo', label: 'Vínculo lido', disabled: busy},
-              {value: 'pedido', label: 'Todo pedido', disabled: busy},
+              {value: 'vinculo', label: 'Esta etiqueta', disabled: busy},
+              {value: 'pedido', label: 'Pedido completo', disabled: busy},
             ]}
           />
         )}
         {context && (
-          <Card mode="outlined">
-            <Card.Content>
-              <VStack gap={8}>
-                <Text variant="titleLarge">Pedido {context.order.codigo}</Text>
-                {!!context.order.descricao && (
-                  <Text>{context.order.descricao}</Text>
-                )}
-                <Text>
-                  Estado atual: {stateLabel(context.order.estado)}
-                  {context.order.expedido ? ' · expedição registrada' : ''}
-                </Text>
-                {context.provisioning && (
-                  <>
-                    <Text selectable>
-                      Etiqueta cadastrada: {context.provisioning.uid}
-                    </Text>
-                    <Text>
-                      Vínculo{' '}
-                      {context.provisioning.epoca
-                        ? `· época ${context.provisioning.epoca}`
-                        : ''}
-                      :{' '}
-                      {context.provisioning.status === 'ATIVA'
-                        ? 'Ativo'
-                        : context.provisioning.status === 'REGISTRADA'
-                        ? 'Aguardando ativação'
-                        : 'Encerrado'}
-                    </Text>
-                    <Text>
-                      Identificação por{' '}
-                      {context.provisioning.estrategia === 'UID'
-                        ? 'UID'
-                        : 'referência NDEF'}
-                      .
-                    </Text>
-                    {target?.kind === 'tag' &&
-                      target.reading.uid !== context.provisioning.uid && (
-                        <Text>
-                          A referência NDEF aponta para este vínculo, mas o UID
-                          lido é diferente: {target.reading.uid}. Esta consulta
-                          não autentica a etiqueta.
-                        </Text>
-                      )}
-                  </>
-                )}
-                <Text>
-                  {scope === 'vinculo'
-                    ? `${entries.length} registro(s) deste vínculo carregado(s)`
-                    : `${total} registro(s) no pedido`}
-                </Text>
-                <Text variant="bodySmall">
-                  Do primeiro ao mais recente, pela ordem de recebimento no
-                  servidor. O horário do aparelho aparece separadamente.
-                </Text>
-              </VStack>
-            </Card.Content>
-          </Card>
+          <VStack gap={8}>
+            <Text variant="titleLarge" style={layoutStyles.sectionTitle}>
+              Caminho do pedido
+            </Text>
+            <Text variant="bodySmall">
+              Do primeiro ao mais recente, na ordem de recebimento pelo
+              servidor. Tentativas rejeitadas não avançam o pedido.
+            </Text>
+            <Text variant="bodySmall">
+              {scope === 'vinculo'
+                ? `${entries.length} registro(s) deste vínculo carregado(s)`
+                : `${total} registro(s) no pedido`}
+            </Text>
+            {context.provisioning && (
+              <List.Accordion
+                title="Sobre a etiqueta deste pedido"
+                titleStyle={layoutStyles.detailsTitle}>
+                <View style={layoutStyles.details}>
+                  <Text selectable>
+                    Etiqueta cadastrada: {context.provisioning.uid}
+                  </Text>
+                  <Text>
+                    Vínculo{' '}
+                    {context.provisioning.epoca
+                      ? `· época ${context.provisioning.epoca}`
+                      : ''}
+                    :{' '}
+                    {context.provisioning.status === 'ATIVA'
+                      ? 'Ativo'
+                      : context.provisioning.status === 'REGISTRADA'
+                      ? 'Aguardando ativação'
+                      : 'Encerrado'}
+                  </Text>
+                  <Text>
+                    Identificação por{' '}
+                    {context.provisioning.estrategia === 'UID'
+                      ? 'UID'
+                      : 'referência NDEF'}
+                    .
+                  </Text>
+                </View>
+              </List.Accordion>
+            )}
+          </VStack>
         )}
         {busy && (
           <ActivityIndicator accessibilityLabel="Carregando histórico" />
@@ -385,16 +314,19 @@ export default function Historico() {
             {scope === 'vinculo' ? 'neste vínculo' : 'neste pedido'}.
           </Text>
         )}
-        {entries.map(entry => (
-          <HistoryItem
-            key={entry.id}
-            entry={entry}
-            anotherLink={
-              !!context?.provisioning &&
-              entry.provisionamentoId !== context.provisioning.id
-            }
-          />
-        ))}
+        <View>
+          {entries.map((entry, index) => (
+            <HistoryItem
+              key={entry.id}
+              entry={entry}
+              isLast={index === entries.length - 1 && nextPage === null}
+              anotherLink={
+                !!context?.provisioning &&
+                entry.provisionamentoId !== context.provisioning.id
+              }
+            />
+          ))}
+        </View>
         {nextPage !== null && (
           <Button
             disabled={busy}
@@ -404,7 +336,30 @@ export default function Historico() {
             Carregar mais registros
           </Button>
         )}
+        {target && (
+          <VStack gap={8}>
+            <Button
+              mode="outlined"
+              icon="refresh"
+              disabled={busy}
+              onPress={() => setTarget(value => (value ? {...value} : value))}>
+              Atualizar histórico
+            </Button>
+            <Button icon="magnify" disabled={busy} onPress={() => choose()}>
+              Consultar outro pedido
+            </Button>
+            <Button icon="nfc-search-variant" onPress={() => setScanning(true)}>
+              Ler outra etiqueta
+            </Button>
+          </VStack>
+        )}
       </VStack>
     </Tela>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  sectionTitle: {fontWeight: '700'},
+  detailsTitle: {fontSize: 15},
+  details: {gap: 10, padding: 12},
+});

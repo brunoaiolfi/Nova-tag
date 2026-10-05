@@ -36,7 +36,7 @@ const criarIconeTab =
 const IconeProvisionar = criarIconeTab('nfc-tap');
 const IconeHome = criarIconeTab('home-variant');
 const IconeEventos = criarIconeTab('timeline-text-outline');
-const IconeHistorico = criarIconeTab('history');
+const IconeHistorico = criarIconeTab('map-marker-path');
 
 const Tab = createBottomTabNavigator<RotasTab>();
 
@@ -64,20 +64,6 @@ const Navigator = () => {
         initialRouteName="Home"
         screenOptions={{headerShown: false}}
         tabBar={TabBar}>
-        {role === 'ADMINISTRADOR' && (
-          <Tab.Screen
-            name="Provisionar"
-            component={ProvisionarNavigator}
-            options={({route}) => ({
-              title: 'Provisionar',
-              tabBarIcon: IconeProvisionar,
-              tabBarStyle:
-                getFocusedRouteNameFromRoute(route) === 'EtapasProvisionamento'
-                  ? {display: 'none'}
-                  : undefined,
-            })}
-          />
-        )}
         <Tab.Screen
           name="Home"
           component={Home}
@@ -86,17 +72,31 @@ const Navigator = () => {
         <Tab.Screen
           name="Historico"
           component={Historico}
-          options={{title: 'Histórico', tabBarIcon: IconeHistorico}}
+          options={{title: 'Rastreio', tabBarIcon: IconeHistorico}}
         />
         {role !== 'CONSULTA' && (
           <Tab.Screen
             name="Eventos"
             component={EventosNavigator}
             options={({route}) => ({
-              title: 'Eventos',
+              title: 'Registrar',
               tabBarIcon: IconeEventos,
               tabBarStyle:
                 getFocusedRouteNameFromRoute(route) === 'EtapasEvento'
+                  ? {display: 'none'}
+                  : undefined,
+            })}
+          />
+        )}
+        {role === 'ADMINISTRADOR' && (
+          <Tab.Screen
+            name="Provisionar"
+            component={ProvisionarNavigator}
+            options={({route}) => ({
+              title: 'Vincular',
+              tabBarIcon: IconeProvisionar,
+              tabBarStyle:
+                getFocusedRouteNameFromRoute(route) === 'EtapasProvisionamento'
                   ? {display: 'none'}
                   : undefined,
             })}

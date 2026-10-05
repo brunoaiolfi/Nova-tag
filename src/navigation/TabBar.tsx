@@ -22,6 +22,7 @@ const TabBar = ({
   return (
     <BottomNavigation.Bar
       navigationState={state}
+      style={layoutStyles.bar}
       safeAreaInsets={insets}
       onTabPress={({route, preventDefault}) => {
         const event = navigation.emit({
@@ -55,3 +56,11 @@ const TabBar = ({
 };
 
 export default TabBar;
+
+const layoutStyles = StyleSheet.create({
+  bar: {
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#D6E1EB',
+  },
+});

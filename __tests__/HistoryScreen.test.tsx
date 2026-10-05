@@ -1,6 +1,12 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Button, PaperProvider, SegmentedButtons} from 'react-native-paper';
+import {
+  List,
+  PaperProvider,
+  SegmentedButtons,
+  TouchableRipple,
+} from 'react-native-paper';
+import {ActionButton as Button, OrderJourney} from '../src/components/Tracking';
 import Historico, {HistoryItem} from '../src/views/Historico';
 import OrderSelect from '../src/components/Nfc/OrderSelect';
 import type {
@@ -97,8 +103,16 @@ test('order selection shows stored rejection, current state and separate server/
     tree.root.findByType(OrderSelect).props.onSelect(order);
   });
   expect(traceability.history).toHaveBeenCalledWith(order.id, 1, undefined);
+  expect(tree.root.findByType(OrderJourney).props.order).toEqual(order);
+  await act(async () =>
+    tree.root
+      .findAllByType(List.Accordion)
+      .find(item => item.props.title === 'Detalhes do registro')!
+      .findByType(TouchableRipple)
+      .props.onPress(),
+  );
   const text = JSON.stringify(tree.toJSON());
-  expect(text).toContain('Pedido ');
+  expect(text).toContain(order.codigo);
   expect(text).toContain('Entregue');
   expect(text).toContain('Operação rejeitada · pedido não alterado');
   expect(text).toContain('Recebido pelo servidor:');
@@ -166,7 +180,7 @@ test('a lookup abandoned for NFC cannot update the screen or issue a stale histo
     tree.root.findByType(OrderSelect).props.onSelect(order);
   });
   await act(async () => {
-    button('Ler etiqueta para ver histórico').props.onPress();
+    button('Ler outra etiqueta').props.onPress();
   });
   await act(async () => {
     finish(order);
@@ -190,4 +204,44 @@ test('a network failure offers retry without losing the selected order', async (
   });
   expect(tree.root.findAllByType(HistoryItem)).toHaveLength(1);
   expect(traceability.order).toHaveBeenCalledTimes(2);
+});
+
+test('a rejected delivery does not advance the journey and delivery does not require expedition', async () => {
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({...order, estado: 'CADASTRADO', expedido: false});
+  jest
+    .mocked(traceability.history)
+    .mockResolvedValue({
+      itens: [
+        {
+          ...entry,
+          tipo: 'ENTREGA',
+          decisao: {
+            ...entry.decisao,
+            estadoAnterior: 'CADASTRADO',
+            estadoResultante: 'CADASTRADO',
+          },
+        },
+      ],
+      proximaPagina: null,
+      totalDoPedido: 1,
+    });
+  await render();
+  await act(async () =>
+    tree.root.findByType(OrderSelect).props.onSelect(order),
+  );
+  expect(tree.root.findByType(OrderJourney).props.order.estado).toBe(
+    'CADASTRADO',
+  );
+  expect(JSON.stringify(tree.toJSON())).toContain(
+    'Entrega: ainda não registrada',
+  );
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({...order, expedido: false});
+  await act(async () => button('Atualizar histórico').props.onPress());
+  const text = JSON.stringify(tree.toJSON());
+  expect(text).toContain('Entrega: etapa atual');
+  expect(text).not.toContain('Saída para entrega registrada');
 });
