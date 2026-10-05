@@ -9,10 +9,20 @@ import {
 } from '../../domain/auth/types';
 
 export type AuthSnapshot =
-  | {status: 'checking'; session?: Session; message?: string}
+  | {
+      status: 'checking';
+      session?: Session;
+      previouslyVerified?: true;
+      message?: string;
+    }
   | {status: 'anonymous'; session?: undefined; message?: string}
   | {status: 'authenticated'; session: Session; message?: string}
-  | {status: 'unavailable'; session?: Session; message: string};
+  | {
+      status: 'unavailable';
+      session?: Session;
+      previouslyVerified?: true;
+      message: string;
+    };
 type LoginResult = {tokenAcesso: string; expiraEm: string; usuario: User};
 
 export class SessionManager {
@@ -43,8 +53,20 @@ export class SessionManager {
     return result;
   }
   async restore() {
+    const previous = this.snapshot;
+    const verifiedSession =
+      previous.status === 'authenticated' ||
+      ((previous.status === 'checking' || previous.status === 'unavailable') &&
+        previous.previouslyVerified)
+        ? previous.session
+        : undefined;
     const generation = ++this.generation;
-    this.publish({status: 'checking'});
+    this.publish({
+      status: 'checking',
+      ...(verifiedSession
+        ? {session: verifiedSession, previouslyVerified: true as const}
+        : {}),
+    });
     let session: Session | null = null;
     try {
       await this.writes;
@@ -115,7 +137,11 @@ export class SessionManager {
       } else {
         this.publish({
           status: 'unavailable',
-          ...(session ? {session} : {}),
+          ...(verifiedSession
+            ? {session: verifiedSession, previouslyVerified: true as const}
+            : session
+            ? {session}
+            : {}),
           message:
             'Não foi possível verificar a sessão. Confira a conexão e tente novamente.',
         });

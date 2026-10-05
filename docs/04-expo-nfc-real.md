@@ -41,6 +41,20 @@ O UUID é criado ao aceitar a leitura para um evento. Retry mantém corpo exato 
 original na tela. Não há fila offline, persistência de captura pendente ou retomada
 após reinício; isso não encerra a issue de sincronização offline.
 
+## Leitura e ciclo de vida da sessão
+
+A janela nativa NFC pode alternar o iOS entre `active` e `inactive`. Voltar de
+`inactive` verifica apenas a expiração local, sem reiniciar a sessão nem desmontar
+o leitor. Voltar de `background` continua validando o token no servidor, mesmo
+quando o iOS passa por `inactive` antes de retornar a `active`.
+
+Durante essa validação, uma tela que já estava autenticada permanece montada sob
+uma camada opaca, sem interação ou acesso por acessibilidade. O sucesso permite
+continuar com a mesma leitura; uma falha de conexão permite tentar novamente.
+Sessão expirada/revogada remove o conteúdo, e mudança de operador reinicia a tela.
+Token salvo ainda não verificado nunca monta o conteúdo protegido ao abrir o app.
+Os testes de regressão exercitam essas transições com o leitor e a sessão juntos.
+
 ## iOS/EAS
 
 Bundle `com.joaoaugustopf.novatag.nfc`, esquema `novatag`, entitlement `TAG`,

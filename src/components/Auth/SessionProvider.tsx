@@ -17,9 +17,19 @@ export function SessionProvider({
   const state = useSyncExternalStore(manager.subscribe, manager.getSnapshot);
   useEffect(() => {
     void manager.restore();
+    let backgrounded = AppState.currentState === 'background';
     const subscription = AppState.addEventListener('change', next => {
+      if (next === 'background') {
+        backgrounded = true;
+      }
       if (next === 'active') {
-        void manager.restore();
+        // Native NFC sheets briefly make iOS inactive; they are not a new session.
+        if (backgrounded) {
+          backgrounded = false;
+          void manager.restore();
+        } else {
+          void manager.expireIfNeeded();
+        }
       }
     });
     return () => subscription.remove();
