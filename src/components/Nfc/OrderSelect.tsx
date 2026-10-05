@@ -15,10 +15,12 @@ export default function OrderSelect({
   selected,
   disabled,
   onSelect,
+  purpose = 'provisioning',
 }: {
   selected?: OrderSummary;
   disabled: boolean;
   onSelect: (order?: OrderSummary) => void;
+  purpose?: 'provisioning' | 'history';
 }) {
   const [search, setSearch] = useState('');
   const [orders, setOrders] = useState<OrderSummary[]>([]);
@@ -110,12 +112,20 @@ export default function OrderSelect({
     <Card mode="outlined">
       <Card.Content>
         <VStack gap={12}>
-          <Text variant="titleMedium">1. Escolha o pedido</Text>
+          <Text variant="titleMedium">
+            {purpose === 'history'
+              ? 'Consultar por pedido'
+              : '1. Escolha o pedido'}
+          </Text>
           {selected ? (
             <>
               <Text variant="titleLarge">{selected.codigo}</Text>
               {!!selected.descricao && <Text>{selected.descricao}</Text>}
-              <Text>Esta etiqueta representará um volume deste pedido.</Text>
+              <Text>
+                {purpose === 'history'
+                  ? 'O histórico inclui todos os vínculos deste pedido.'
+                  : 'Esta etiqueta representará um volume deste pedido.'}
+              </Text>
               {!disabled && (
                 <Button onPress={() => onSelect(undefined)}>
                   Trocar pedido
@@ -125,8 +135,9 @@ export default function OrderSelect({
           ) : (
             <>
               <Text>
-                Selecione um pedido cadastrado. Pedidos que já avançaram na
-                logística não podem receber uma nova etiqueta.
+                {purpose === 'history'
+                  ? 'Escolha o pedido para consultar as operações, inclusive após a entrega.'
+                  : 'Selecione um pedido cadastrado. Pedidos que já avançaram na logística não podem receber uma nova etiqueta.'}
               </Text>
               <Searchbar
                 placeholder="Buscar pedido por código ou descrição"
@@ -147,7 +158,11 @@ export default function OrderSelect({
                   value={order.id}
                   status="unchecked"
                   position="leading"
-                  disabled={disabled || order.estado !== 'CADASTRADO'}
+                  disabled={
+                    disabled ||
+                    (purpose === 'provisioning' &&
+                      order.estado !== 'CADASTRADO')
+                  }
                   onPress={() => onSelect(order)}
                 />
               ))}

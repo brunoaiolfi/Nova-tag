@@ -29,6 +29,12 @@ const Home = () => {
           setScanning(false);
         }}
         onErroLeitura={() => {}}
+        onVerHistorico={(value, time) => {
+          setReading(value);
+          setCapturedAt(time);
+          setScanning(false);
+          navigation.navigate('Historico', {reading: value});
+        }}
       />
     );
   }
@@ -55,7 +61,32 @@ const Home = () => {
             </VStack>
           </Card.Content>
         </Card>
-        {reading && <TagDetails reading={reading} capturedAt={capturedAt} />}
+        {reading && (
+          <>
+            <TagDetails reading={reading} capturedAt={capturedAt} />
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('Historico', {reading})}>
+              Ver histórico desta etiqueta
+            </Button>
+          </>
+        )}
+        <Card mode="outlined">
+          <Card.Content>
+            <VStack gap={8}>
+              <Text variant="titleMedium">Consultar histórico</Text>
+              <Text>
+                Veja provisionamento, coleta, recebimento e os demais registros
+                pela etiqueta ou pelo pedido.
+              </Text>
+              <Button
+                mode="outlined"
+                onPress={() => navigation.navigate('Historico')}>
+                Abrir histórico
+              </Button>
+            </VStack>
+          </Card.Content>
+        </Card>
         {state.session?.user.perfil === 'ADMINISTRADOR' && (
           <Card mode="outlined">
             <Card.Content>

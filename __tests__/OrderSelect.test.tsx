@@ -21,12 +21,12 @@ const order = {
   descricao: 'Volume de teste',
   estado: 'CADASTRADO',
 };
-async function render() {
+async function render(purpose: 'provisioning' | 'history' = 'provisioning') {
   const select = jest.fn();
   await act(async () => {
     tree = TestRenderer.create(
       <PaperProvider>
-        <OrderSelect onSelect={select} disabled={false} />
+        <OrderSelect onSelect={select} disabled={false} purpose={purpose} />
       </PaperProvider>,
     );
   });
@@ -99,4 +99,16 @@ test('a stale search response cannot replace the current search results', async 
   expect(tree.root.findAllByType(RadioButton.Item)[0].props.label).toContain(
     'TCC-NEW',
   );
+});
+
+test('history allows selecting delivered orders while provisioning does not', async () => {
+  const delivered = {...order, estado: 'ENTREGUE'};
+  list.mockResolvedValueOnce({itens: [delivered], total: 1});
+  const select = await render('history');
+  const option = tree.root.findByType(RadioButton.Item);
+  expect(option.props.disabled).toBe(false);
+  await act(async () => {
+    option.props.onPress();
+  });
+  expect(select).toHaveBeenCalledWith(delivered);
 });

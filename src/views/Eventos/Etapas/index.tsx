@@ -1,4 +1,9 @@
 import React, {useRef, useState} from 'react';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
+import type {RotasTab} from '../../../navigation';
+import type {RotasEventos} from '../../../navigation/EventosNavigator';
 import {Button, Card, List, Text} from 'react-native-paper';
 import * as Crypto from 'expo-crypto';
 import Tela from '../../../components/Base/Tela';
@@ -20,23 +25,10 @@ import {
   installationId,
 } from '../../../infra/traceability/runtime';
 import {sessionManager} from '../../../infra/auth/runtime';
-
-const reasons: Record<string, string> = {
-  ACEITA: 'O evento está de acordo com a sequência logística do pedido.',
-  SEQUENCIA_INVALIDA:
-    'Este evento não é permitido no estado atual do pedido. Confira se as etapas anteriores já foram registradas.',
-  VINCULO_INATIVO:
-    'A etiqueta precisa estar ativa. Conclua o provisionamento antes de registrar eventos.',
-  VINCULO_NAO_ENCONTRADO: 'O vínculo desta etiqueta não foi encontrado.',
-  UID_DIVERGENTE: 'O número da etiqueta lida é diferente do número cadastrado.',
-  NDEF_DIVERGENTE:
-    'A referência NDEF lida é diferente da referência do vínculo.',
-  MODELO_DIVERGENTE: 'O modelo informado diverge do modelo cadastrado.',
-  EVENTO_RESERVADO:
-    'O provisionamento é registrado somente ao ativar a etiqueta.',
-};
+import {reasonLabel} from '../../traceability-labels';
 
 export default function EtapasEvento() {
+  const navigation = useNavigation<NativeStackNavigationProp<RotasEventos>>();
   const [type, setType] = useState<EnumTipoEvento>();
   const [reading, setReading] = useState<Reading>();
   const [busy, setBusy] = useState(false);
@@ -182,10 +174,7 @@ export default function EtapasEvento() {
                       ? `Operação autorizada · ${descricaoEnumTipoEvento[type]}`
                       : 'Operação rejeitada · pedido não alterado'}
                   </Text>
-                  <Text>
-                    {reasons[result.decisao.motivo] ??
-                      `Motivo informado pelo servidor: ${result.decisao.motivo}`}
-                  </Text>
+                  <Text>{reasonLabel(result.decisao.motivo)}</Text>
                   <Text>
                     {result.decisao.classificacao === 'SUSPEITO'
                       ? 'Leitura suspeita: confira os dados da etiqueta antes de prosseguir.'
@@ -193,7 +182,7 @@ export default function EtapasEvento() {
                   </Text>
                   {result.decisao.avisos.map((warning, index) => (
                     <Text key={`${warning}-${index}`}>
-                      {reasons[warning] ?? warning}
+                      {reasonLabel(warning)}
                     </Text>
                   ))}
                   <List.Accordion title="Comprovante do registro">
@@ -219,6 +208,15 @@ export default function EtapasEvento() {
                 pending.current = undefined;
               }}>
               Nova captura
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() =>
+                navigation
+                  .getParent<BottomTabNavigationProp<RotasTab>>()
+                  ?.navigate('Historico', {reading})
+              }>
+              Ver histórico desta etiqueta
             </Button>
           </>
         )}

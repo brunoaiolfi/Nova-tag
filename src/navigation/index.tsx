@@ -13,11 +13,14 @@ import ProvisionarNavigator from './ProvisionarNavigator';
 import Home from '../views/Home';
 import EventosNavigator from './EventosNavigator';
 import {useSession} from '../components/Auth/SessionProvider';
+import Historico from '../views/Historico';
+import type {Reading} from '../appplication/traceability/workflow';
 
 export type RotasTab = {
   Provisionar: undefined;
   Home: undefined;
   Eventos: undefined;
+  Historico: {reading?: Reading} | undefined;
 };
 
 type IconeTabProps = {
@@ -33,6 +36,7 @@ const criarIconeTab =
 const IconeProvisionar = criarIconeTab('nfc-tap');
 const IconeHome = criarIconeTab('home-variant');
 const IconeEventos = criarIconeTab('timeline-text-outline');
+const IconeHistorico = criarIconeTab('history');
 
 const Tab = createBottomTabNavigator<RotasTab>();
 
@@ -78,6 +82,11 @@ const Navigator = () => {
           name="Home"
           component={Home}
           options={{title: 'Início', tabBarIcon: IconeHome}}
+        />
+        <Tab.Screen
+          name="Historico"
+          component={Historico}
+          options={{title: 'Histórico', tabBarIcon: IconeHistorico}}
         />
         {role !== 'CONSULTA' && (
           <Tab.Screen

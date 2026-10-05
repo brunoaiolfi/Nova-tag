@@ -55,6 +55,27 @@ Sessão expirada/revogada remove o conteúdo, e mudança de operador reinicia a 
 Token salvo ainda não verificado nunca monta o conteúdo protegido ao abrir o app.
 Os testes de regressão exercitam essas transições com o leitor e a sessão juntos.
 
+## Histórico no aplicativo
+
+A aba Histórico usa as consultas existentes de pedidos, provisionamentos e
+`GET /pedidos/:id/eventos`, sem endpoints novos nem alterações de dados. Pode ser
+aberta pela busca de pedidos (incluindo os entregues), pela leitura física ou
+pelo comprovante do evento. A consulta se atualiza ao retornar à aba.
+
+NDEF resolve o vínculo exato pela referência; UID resolve o último vínculo
+cadastrado. Não há fallback de referência inválida para UID. A opção Vínculo lido
+filtra pelo identificador do provisionamento, evitando misturar épocas; páginas
+contendo somente outros vínculos são percorridas até haver um resultado ou acabar
+o histórico. Todo pedido inclui todos os vínculos daquele pedido, e a busca
+permite consultar outros pedidos anteriores. O total mostrado para a visão do
+vínculo conta os registros carregados, sem inventar um total filtrado da API.
+
+Os registros preservam a ordem de recebimento do servidor e mostram o horário
+declarado em separado. Rejeições e leituras suspeitas aparecem com o motivo e o
+estado preservado; o provisionamento é identificado como origem do sistema.
+Paginação, retomada após falhas e descarte de respostas de consultas abandonadas
+são cobertos por testes, além da consulta visual com a API/PostgreSQL locais.
+
 ## iOS/EAS
 
 Bundle `com.joaoaugustopf.novatag.nfc`, esquema `novatag`, entitlement `TAG`,

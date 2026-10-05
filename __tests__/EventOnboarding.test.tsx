@@ -7,6 +7,11 @@ import Leitor from '../src/components/Nfc/Leitor';
 import {EnumTipoEvento} from '../src/domain/enums/tipoEvento';
 import {traceability} from '../src/infra/traceability/runtime';
 
+const mockNavigate = jest.fn();
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({getParent: () => ({navigate: mockNavigate})}),
+}));
+
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
@@ -99,4 +104,8 @@ test('confirmation uses the physical scan time and retries the exact observation
   expect(text).toContain('Captura salva no histórico');
   expect(text).toContain('Operação rejeitada · pedido não alterado');
   expect(text).toContain('etapas anteriores');
+  await act(async () => {
+    button('Ver histórico desta etiqueta').props.onPress();
+  });
+  expect(mockNavigate).toHaveBeenCalledWith('Historico', {reading});
 });

@@ -17,6 +17,7 @@ type Props = {
   onVoltar?: () => void;
   continueLabel?: string;
   context?: string;
+  onVerHistorico?: (reading: Reading, capturedAt: string) => void;
 };
 export default function Leitor({
   write,
@@ -25,6 +26,7 @@ export default function Leitor({
   onVoltar,
   continueLabel = 'Continuar com esta etiqueta',
   context,
+  onVerHistorico,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -122,6 +124,15 @@ export default function Leitor({
               }>
               {continueLabel}
             </Button>
+            {onVerHistorico && (
+              <Button
+                mode="outlined"
+                onPress={() =>
+                  onVerHistorico(result.reading, result.capturedAt)
+                }>
+                Ver histórico desta etiqueta
+              </Button>
+            )}
             <Button
               onPress={() => {
                 void read();

@@ -53,6 +53,19 @@ vincule ao pedido e conclua a configuração/ativação. Na aba Eventos, escolha
 operação, leia, confira e confirme o envio. O comprovante permanece na tela e
 distingue captura salva, operação autorizada/rejeitada e leitura suspeita.
 
+Na aba **Histórico**, leia a etiqueta ou busque o pedido na lista. Também há o
+botão **Ver histórico desta etiqueta** no resultado da leitura e após enviar um
+evento. A consulta mostra provisionamento, operações autorizadas e tentativas
+rejeitadas, estado atual do pedido e horários do servidor/aparelho. **Carregar mais
+registros** continua a paginação; **Atualizar histórico** consulta novamente a API.
+O histórico é atualizado ao retornar à aba depois de registrar uma operação.
+
+Ao consultar uma tag, **Vínculo lido** mostra somente o provisionamento identificado;
+**Todo pedido** inclui seus demais vínculos. UID consulta o último vínculo da tag,
+enquanto a referência NDEF consulta o vínculo exato, inclusive se encerrado. Para
+pedidos de épocas anteriores, use a busca por pedido. A consulta não altera a tag
+nem registra outro evento e está disponível também para o perfil Consulta.
+
 Mudanças apenas de interface/JavaScript são carregadas pelo Metro no development
 build já instalado, sem iniciar outra compilação EAS. Dependências ou configurações
 nativas novas exigiriam outro build.

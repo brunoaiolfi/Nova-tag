@@ -14,6 +14,32 @@ export interface OrderPage {
   itens: OrderSummary[];
   total: number;
 }
+export interface OrderDetails extends OrderSummary {
+  expedido: boolean;
+}
+export interface HistoryEntry {
+  id: string;
+  tipo: string;
+  ocorridoEm: string;
+  recebidoEm: string;
+  provisionamentoId: string;
+  origem: 'CAPTURA' | 'SISTEMA';
+  autoria: {
+    tipo: 'AUTENTICADA' | 'DECLARADA';
+    usuarioId: string | null;
+    perfil: string | null;
+  } | null;
+  decisao: Decision['decisao'] & {
+    alterouEstado: boolean;
+    estadoAnterior: string | null;
+    estadoResultante: string | null;
+  };
+}
+export interface HistoryPage {
+  itens: HistoryEntry[];
+  proximaPagina: number | null;
+  totalDoPedido: number;
+}
 export interface Provisioning {
   id: string;
   pedidoId: string;
@@ -21,6 +47,8 @@ export interface Provisioning {
   estrategia: Strategy;
   status: 'REGISTRADA' | 'ATIVA' | 'DESPROVISIONADA';
   referenciaNdef: string | null;
+  epoca?: number;
+  modelo?: string;
 }
 export interface Observation {
   id: string;
@@ -58,6 +86,38 @@ export class TraceabilityWorkflow {
         search.trim(),
       )}&pagina=${page}&limite=10`,
     );
+  }
+
+  order(id: string): Promise<OrderDetails> {
+    return this.api.request<OrderDetails>(`/pedidos/${encodeURIComponent(id)}`);
+  }
+
+  async history(
+    orderId: string,
+    page = 1,
+    provisioningId?: string,
+  ): Promise<HistoryPage> {
+    for (let current = page; ; current++) {
+      const result = await this.api.request<{
+        itens: HistoryEntry[];
+        total: number;
+      }>(
+        `/pedidos/${encodeURIComponent(
+          orderId,
+        )}/eventos?pagina=${current}&limite=20`,
+      );
+      const itens = provisioningId
+        ? result.itens.filter(item => item.provisionamentoId === provisioningId)
+        : result.itens;
+      const proximaPagina =
+        current * 20 >= result.total || result.itens.length === 0
+          ? null
+          : current + 1;
+      // A page can contain only another epoch; continue until a match or the end.
+      if (itens.length || proximaPagina === null) {
+        return {itens, proximaPagina, totalDoPedido: result.total};
+      }
+    }
   }
 
   async register(
@@ -168,13 +228,7 @@ export class TraceabilityWorkflow {
     );
   }
 
-  async prepare(
-    reading: Reading,
-    type: string,
-    id: string,
-    occurredAt: string,
-    deviceId: string,
-  ): Promise<Observation> {
+  async resolveProvisioning(reading: Reading): Promise<Provisioning> {
     let provisioning: Provisioning | null;
     if (reading.ndef?.startsWith('urn:nfc-trace:provisioning:')) {
       const match = referencePattern.exec(reading.ndef);
@@ -192,6 +246,17 @@ export class TraceabilityWorkflow {
     if (!provisioning) {
       throw new Error('Etiqueta ainda não provisionada.');
     }
+    return provisioning;
+  }
+
+  async prepare(
+    reading: Reading,
+    type: string,
+    id: string,
+    occurredAt: string,
+    deviceId: string,
+  ): Promise<Observation> {
+    const provisioning = await this.resolveProvisioning(reading);
     return {
       id,
       versaoContrato: 1,
