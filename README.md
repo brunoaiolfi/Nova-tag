@@ -1,6 +1,6 @@
 # Nova-tag NFC — Expo Development Build
 
-Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/expo-nfc-real`, no
+Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/nfc-onboarding`, no
 worktree `C:\src\Nova-tag-expo`, dentro do mesmo repositório. O checkout original
 em `C:\src\Nova-tag` permanece separado. Não foi feito merge na main.
 
@@ -41,8 +41,21 @@ Wi-Fi. Esse QR abre o projeto; não instala o aplicativo. Use iOS 16.4 ou poster
 usando o IP do computador e `/api/v1`, nunca localhost no iPhone. Permita rede
 local no iPhone. Não coloque credenciais em variáveis `EXPO_PUBLIC_*`.
 
-Após login, use **Testar leitura NFC sem alterar a etiqueta** na tela inicial para
-conferir UID, NDEF e tecnologias, sem gravar ou cadastrar vínculo.
+Após login, use **Escanear etiqueta** na tela inicial. Toque em **Ler etiqueta**,
+aproxime a tag da parte superior do iPhone e mantenha-a parada. O resultado fica
+aberto até **Concluir consulta**, com UID, conteúdo NDEF e detalhes técnicos.
+Você pode afastar a etiqueta assim que a leitura terminar. Essa consulta não grava
+dados nem cadastra vínculo.
+
+Para vincular, selecione um pedido da lista com busca e paginação. O modelo vem
+como **Desconhecido**; use as opções apenas se souber o chip. Leia e confira a tag,
+vincule ao pedido e conclua a configuração/ativação. Na aba Eventos, escolha a
+operação, leia, confira e confirme o envio. O comprovante permanece na tela e
+distingue captura salva, operação autorizada/rejeitada e leitura suspeita.
+
+Mudanças apenas de interface/JavaScript são carregadas pelo Metro no development
+build já instalado, sem iniciar outra compilação EAS. Dependências ou configurações
+nativas novas exigiriam outro build.
 
 ## Operações reais
 
@@ -83,11 +96,14 @@ npm test -- --runInBand
 npx expo export --platform all
 ```
 
-32 testes cobrem autenticação, NFC com adaptador nativo substituído por mock,
-decodificação URI/texto, gravação/releitura, divergência, retomada, reenvio e rejeição.
+Os testes cobrem autenticação, NFC com adaptador nativo substituído por mock,
+decodificação URI/texto, gravação/releitura, divergência, retomada, reenvio e rejeição,
+resultado persistente até confirmação, cancelamento, seleção paginada de pedidos,
+buscas concorrentes e preservação do horário da leitura durante o reenvio.
 O contrato UID/NDEF também foi exercitado contra API/PostgreSQL locais com fixtures
-sintéticas. Plugin e schema Codegen foram verificados. Isso **não confirma build
-iOS nem leitura física**.
+sintéticas. Plugin e schema Codegen foram verificados. O development build iOS
+`7ca41977-dee3-48b9-8d98-acb74368a285` foi concluído no EAS e instalado pelo usuário.
+Os testes automatizados não substituem o ensaio físico de leitura e escrita.
 
 `react-native-nfc-manager@4.0.0-beta.10` suporta a nova arquitetura segundo o
 mantenedor, mas é beta. Expo Doctor mantém aviso de metadados da React Native

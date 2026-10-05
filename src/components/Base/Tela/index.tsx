@@ -17,7 +17,9 @@ const Tela = ({children, scroll}: TelaProps) => {
       edges={['top']}
       style={[styles.tela, {backgroundColor: theme.colors.background}]}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.conteudo}>
+        <ScrollView
+          contentContainerStyle={styles.conteudo}
+          keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       ) : (

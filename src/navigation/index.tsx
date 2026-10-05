@@ -77,7 +77,7 @@ const Navigator = () => {
         <Tab.Screen
           name="Home"
           component={Home}
-          options={{title: 'Home', tabBarIcon: IconeHome}}
+          options={{title: 'Início', tabBarIcon: IconeHome}}
         />
         {role !== 'CONSULTA' && (
           <Tab.Screen

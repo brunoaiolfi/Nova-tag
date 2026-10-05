@@ -4,6 +4,16 @@ export interface Reading {
   ndef?: string;
   tecnologias?: string[];
 }
+export interface OrderSummary {
+  id: string;
+  codigo: string;
+  descricao: string | null;
+  estado: string;
+}
+export interface OrderPage {
+  itens: OrderSummary[];
+  total: number;
+}
 export interface Provisioning {
   id: string;
   pedidoId: string;
@@ -41,6 +51,14 @@ const referencePattern =
 
 export class TraceabilityWorkflow {
   constructor(private readonly api: Api) {}
+
+  listOrders(search = '', page = 1): Promise<OrderPage> {
+    return this.api.request<OrderPage>(
+      `/pedidos?busca=${encodeURIComponent(
+        search.trim(),
+      )}&pagina=${page}&limite=10`,
+    );
+  }
 
   async register(
     code: string,

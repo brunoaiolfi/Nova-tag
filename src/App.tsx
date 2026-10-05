@@ -1,7 +1,7 @@
 import React from 'react';
 import {StatusBar, View, StyleSheet} from 'react-native';
-import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
-import {PaperProvider, Text} from 'react-native-paper';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {PaperProvider} from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import Navigator from './navigation';
@@ -37,11 +37,6 @@ const App = () => (
             </SessionGate>
           </SessionProvider>
         </View>
-        <SafeAreaView edges={['bottom']} style={styles.noticeBackground}>
-          <Text style={styles.notice}>
-            Laboratório · NFC físico requer o aplicativo Nova-tag NFC
-          </Text>
-        </SafeAreaView>
       </View>
       <Toasts />
     </PaperProvider>
@@ -52,11 +47,4 @@ export default App;
 const styles = StyleSheet.create({
   root: {flex: 1, minHeight: 0},
   content: {flex: 1, minHeight: 0},
-  noticeBackground: {backgroundColor: '#fff3cd'},
-  notice: {
-    textAlign: 'center',
-    padding: 8,
-    backgroundColor: '#fff3cd',
-    paddingBottom: 16,
-  },
 });

@@ -17,7 +17,8 @@ const PASSOS: Passo[] = [
   {
     numero: 1,
     titulo: 'Identificar o pedido',
-    descricao: 'Informe o código do pedido que será vinculado à etiqueta.',
+    descricao:
+      'Selecione um pedido da lista. O modelo da tag pode ficar como desconhecido.',
   },
   {
     numero: 2,
@@ -28,8 +29,14 @@ const PASSOS: Passo[] = [
 ];
 
 const ESTRATEGIAS: {valor: EnumEstrategiasNFC; titulo: string}[] = [
-  {valor: EnumEstrategiasNFC.UID, titulo: 'UID'},
-  {valor: EnumEstrategiasNFC.NDEF_ESTATICO, titulo: 'NDEF estático'},
+  {
+    valor: EnumEstrategiasNFC.UID,
+    titulo: 'UID · usar o número da tag, sem gravar NDEF',
+  },
+  {
+    valor: EnumEstrategiasNFC.NDEF_ESTATICO,
+    titulo: 'NDEF estático · gravar a referência do pedido na tag',
+  },
 ];
 
 const InformativoEtapas = () => {
@@ -83,7 +90,7 @@ const InformativoEtapas = () => {
           a configuração física e o bloqueio definidos para o ensaio.
         </Aviso>
 
-        <Botao onPress={iniciar}>Iniciar</Botao>
+        <Botao onPress={iniciar}>Escolher pedido</Botao>
       </VStack>
     </Tela>
   );

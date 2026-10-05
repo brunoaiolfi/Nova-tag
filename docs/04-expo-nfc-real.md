@@ -2,7 +2,7 @@
 
 ## Decisão e fronteiras
 
-Mesmo repositório, worktree `C:\src\Nova-tag-expo` e branch `codex/expo-nfc-real`,
+Mesmo repositório, worktree `C:\src\Nova-tag-expo` e branch `codex/nfc-onboarding`,
 sem merge na main. Expo 57 e React Native 0.86.3 usam a nova arquitetura.
 `react-native-nfc-manager@4.0.0-beta.10` fica fixado no lockfile: o
 [mantenedor](https://github.com/revtel/react-native-nfc-manager) documenta v3 para
@@ -16,7 +16,10 @@ removidos. Identificador da instalação não prova identidade: autoria vem da A
 
 ## Fluxos
 
-1. Informar pedido existente/modelo e ler a tag sem escrever.
+1. Selecionar pedido existente com busca/paginação e ler a tag sem escrever.
+   Modelo desconhecido é o padrão; fabricante e protocolo não comprovam chip.
+   A leitura permanece na tela até confirmação explícita. Erros permitem tentar
+   novamente sem sair do leitor; cancelar descarta inclusive um resultado tardio.
 2. Consultar código exato normalizado, com paginação. Não criar pedido silenciosamente.
 3. Registrar vínculo ou retomar exatamente o pendente. Após perda de resposta,
    recuperar somente o vínculo do mesmo pedido/estratégia. Reutilização incompatível
@@ -33,7 +36,8 @@ Referência malformada não tenta UID. Sem referência NFC Trace, cadastro pelo 
 identifica o vínculo e servidor aplica sua estratégia, podendo rejeitar o NDEF.
 Armazenamento e autorização são apresentados separadamente.
 
-UUID/horário são criados na leitura física. Retry mantém corpo exato e operador
+O horário é registrado ao concluir a leitura física, antes da confirmação da tela.
+O UUID é criado ao aceitar a leitura para um evento. Retry mantém corpo exato e operador
 original na tela. Não há fila offline, persistência de captura pendente ou retomada
 após reinício; isso não encerra a issue de sincronização offline.
 
@@ -42,7 +46,8 @@ após reinício; isso não encerra a issue de sincronização offline.
 Bundle `com.joaoaugustopf.novatag.nfc`, esquema `novatag`, entitlement `TAG`,
 permissão NFC e AID NDEF `D2760000850101`. Plugin foi verificado por introspecção.
 Schema Codegen passou com React Native instalado. Windows não gera/compila o
-projeto iOS local; EAS executará prebuild. Swift/linkediOS ainda não foram validados.
+projeto iOS local; EAS executa prebuild. O build de desenvolvimento
+`7ca41977-dee3-48b9-8d98-acb74368a285` foi concluído e instalado no iPhone pelo usuário.
 Diretórios nativos gerados ficam ignorados.
 
 `NSAllowsArbitraryLoads` permite HTTP do laboratório. Só há perfil EAS de
@@ -56,8 +61,8 @@ no Git. Nenhum build foi iniciado automaticamente. Procedimento no README.
 
 ## Aceite pendente no iPhone
 
-- Instalar build assinado e conectar Metro/API pelo Wi-Fi do laboratório.
-- Conferir UID/NDEF pelo botão de diagnóstico, sem alterar a tag.
+- Conferir UID/NDEF pela consulta, sem alterar a tag, e verificar que os dados
+  permanecem visíveis até continuar. O build já está instalado.
 - Registrar vínculo, gravar referência e validar releitura física.
 - Verificar configuração/bloqueio conforme modelo, ativar e exercitar os eventos.
 - Validar cancelamento, fora de alcance, capacidade, escrita protegida e retomada
