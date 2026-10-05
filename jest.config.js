@@ -3,6 +3,7 @@ const pacotesEsm = [
   '@react-native(-community)?',
   '@react-navigation',
   'react-native-paper',
+  'react-native-nfc-manager',
   'react-native-safe-area-context',
   'react-native-screens',
   'react-native-toast-message',

@@ -39,7 +39,7 @@ const App = () => (
         </View>
         <SafeAreaView edges={['bottom']} style={styles.noticeBackground}>
           <Text style={styles.notice}>
-            Prévia Expo Go · NFC e operações simulados
+            Laboratório · NFC físico requer o aplicativo Nova-tag NFC
           </Text>
         </SafeAreaView>
       </View>

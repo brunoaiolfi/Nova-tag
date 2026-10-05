@@ -1,84 +1,96 @@
-import React, {useState} from 'react';
-import {ScrollView, StyleSheet} from 'react-native';
-import {Button, HelperText, Icon, Text, TextInput} from 'react-native-paper';
+import React, {useEffect, useRef, useState} from 'react';
+import {Button, Text} from 'react-native-paper';
 import Tela from '../../Base/Tela';
 import VStack from '../../Base/VStack';
-import {useAppTheme} from '../../../theme';
+import {
+  cancelPhysicalRead,
+  physicalNfcAvailable,
+  readPhysicalTag,
+} from '../../../infra/nfc/reader';
+import type {Reading} from '../../../appplication/traceability/workflow';
 
-type LeitorProps = {
-  textoParaGravar?: string;
-  onLeituraRealizada: (uid: string, textoNdef?: string) => void;
-  onErroLeitura: (mensagem: string) => void;
+type Props = {
+  write?: {uid: string; reference: string};
+  onLeituraRealizada: (reading: Reading) => void;
+  onErroLeitura: (message: string) => void;
 };
-
 export default function Leitor({
-  textoParaGravar,
+  write,
   onLeituraRealizada,
   onErroLeitura,
-}: LeitorProps) {
-  const theme = useAppTheme();
-  const [uid, setUid] = useState('04A1B2C3D4E5F6');
-  const [ndef, setNdef] = useState(textoParaGravar ?? '');
-  const normalizedUid = uid.replace(/[\s:-]/g, '').toUpperCase();
-  const valid = /^(?:[A-F0-9]{2}){4,10}$/.test(normalizedUid);
+}: Props) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      void cancelPhysicalRead();
+    };
+  }, []);
+  async function read() {
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    setMessage('');
+    try {
+      const reading = await readPhysicalTag(write);
+      if (mounted.current) {
+        onLeituraRealizada(reading);
+      }
+    } catch (error) {
+      if (mounted.current) {
+        const detail =
+          error instanceof Error
+            ? error.message
+            : 'Leitura cancelada ou etiqueta não compatível. Tente novamente.';
+        setMessage(detail);
+        onErroLeitura(detail);
+      }
+    } finally {
+      if (mounted.current) {
+        setBusy(false);
+      }
+    }
+  }
   return (
     <Tela>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled">
-        <VStack gap={16}>
-          <Icon source="nfc" size={64} color={theme.colors.primary} />
-          <Text variant="headlineSmall">Captura simulada</Text>
+      <VStack gap={16}>
+        <Text variant="headlineSmall">
+          {write ? 'Gravar referência NDEF' : 'Ler etiqueta NFC'}
+        </Text>
+        <Text>
+          {write
+            ? 'A gravação substitui o conteúdo NDEF atual. Use a mesma etiqueta registrada e mantenha-a próxima até a releitura terminar.'
+            : 'Toque em Ler etiqueta e aproxime a tag da parte superior do iPhone.'}
+        </Text>
+        {!physicalNfcAvailable && (
           <Text>
-            O Expo Go não lê, grava nem bloqueia etiquetas NFC. Informe dados
-            fictícios para testar as telas.
+            Instale o aplicativo de desenvolvimento Nova-tag com NFC. Esta
+            função não está disponível no Expo Go ou no navegador.
           </Text>
-          <TextInput
-            label="UID simulado"
-            value={uid}
-            onChangeText={setUid}
-            autoCapitalize="characters"
-            autoCorrect={false}
-          />
-          {!valid && (
-            <HelperText type="error">
-              Informe de 4 a 10 bytes em hexadecimal.
-            </HelperText>
-          )}
-          <TextInput
-            label={
-              textoParaGravar
-                ? 'Texto NDEF simulado para gravação'
-                : 'Texto NDEF simulado (opcional)'
-            }
-            value={textoParaGravar ?? ndef}
-            onChangeText={setNdef}
-            editable={textoParaGravar === undefined}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        )}
+        <Button
+          mode="contained"
+          disabled={busy || !physicalNfcAvailable}
+          loading={busy}
+          onPress={() => {
+            void read();
+          }}>
+          {write ? 'Gravar e conferir etiqueta' : 'Ler etiqueta'}
+        </Button>
+        {busy && (
           <Button
-            mode="contained"
-            disabled={!valid}
-            onPress={() =>
-              onLeituraRealizada(
-                normalizedUid,
-                textoParaGravar ?? (ndef || undefined),
-              )
-            }>
-            Simular captura
+            onPress={() => {
+              void cancelPhysicalRead();
+            }}>
+            Cancelar leitura
           </Button>
-          <Button
-            onPress={() =>
-              onErroLeitura(
-                'Falha simulada na captura. Nenhuma etiqueta foi acessada.',
-              )
-            }>
-            Simular falha
-          </Button>
-        </VStack>
-      </ScrollView>
+        )}
+        {!!message && <Text accessibilityRole="alert">{message}</Text>}
+      </VStack>
     </Tela>
   );
 }
-const styles = StyleSheet.create({content: {padding: 20, flexGrow: 1}});

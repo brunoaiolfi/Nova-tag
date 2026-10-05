@@ -1,5 +1,8 @@
 # Prévia do Nova-tag no Expo Go
 
+Documento histórico da branch `feat/expo-go-iphone`. A branch atual usa NFC físico
+com development build: veja [Expo NFC real](04-expo-nfc-real.md) e o README.
+
 ## Isolamento e decisão
 
 Worktree `C:\src\Nova-tag-expo`, branch `feat/expo-go-iphone`, mesmo repositório

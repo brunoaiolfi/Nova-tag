@@ -1,4 +1,4 @@
-name: Expo preview checks (manual)
+name: Expo NFC checks (manual)
 on:
   workflow_dispatch:
 concurrency:

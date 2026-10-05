@@ -21,9 +21,9 @@ const PASSOS: Passo[] = [
   },
   {
     numero: 2,
-    titulo: 'Simular captura',
+    titulo: 'Ler a etiqueta física',
     descricao:
-      'Informe UID e texto NDEF fictícios para testar a próxima tela. Nenhuma etiqueta será acessada.',
+      'Aproxime a etiqueta, confira a captura e envie para receber a decisão da API.',
   },
 ];
 
@@ -49,15 +49,15 @@ const InformativoEtapas = () => {
               styles.centralizado,
               {color: theme.colors.onSurfaceVariant},
             ]}>
-            Teste as telas de evento com uma captura simulada.
+            Registre uma captura física e consulte a decisão logística da API.
           </Text>
         </VStack>
 
         <ListaPassos passos={PASSOS} />
 
         <Aviso icone="cloud-off-outline">
-          Nesta prévia, os eventos não são enviados à API. O login exige que
-          a API esteja disponível.
+          Este fluxo exige conexão. Uma captura armazenada pode ter uma operação
+          rejeitada. Confira a decisão antes de seguir com o pedido.
         </Aviso>
 
         <Botao onPress={iniciar}>Iniciar</Botao>

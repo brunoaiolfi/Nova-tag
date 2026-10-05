@@ -1,17 +1,17 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Icon, RadioButton, Text } from 'react-native-paper';
+import {StyleSheet} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {Icon, RadioButton, Text} from 'react-native-paper';
 
 import Tela from '../../../components/Base/Tela';
 import Botao from '../../../components/Base/Botao';
 import VStack from '../../../components/Base/VStack';
 import Aviso from '../../../components/Aviso';
-import ListaPassos, { Passo } from '../../../components/ListaPassos';
-import { useAppTheme } from '../../../theme';
-import type { RotasProvisionar } from '../../../navigation/ProvisionarNavigator';
-import { EnumEstrategiasNFC } from '../../../domain/enums/estrategiasNFC';
+import ListaPassos, {Passo} from '../../../components/ListaPassos';
+import {useAppTheme} from '../../../theme';
+import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
+import {EnumEstrategiasNFC} from '../../../domain/enums/estrategiasNFC';
 
 const PASSOS: Passo[] = [
   {
@@ -21,15 +21,15 @@ const PASSOS: Passo[] = [
   },
   {
     numero: 2,
-    titulo: 'Ler e bloquear a etiqueta',
+    titulo: 'Ler, registrar e configurar',
     descricao:
-      'Aproxime a etiqueta uma única vez: o UID é lido, vinculado ao pedido e a escrita é bloqueada.',
+      'Leia a etiqueta e registre o vínculo na API. Para NDEF, grave e confira a referência do servidor antes da ativação.',
   },
 ];
 
-const ESTRATEGIAS: { valor: EnumEstrategiasNFC; titulo: string }[] = [
-  { valor: EnumEstrategiasNFC.UID, titulo: 'UID' },
-  { valor: EnumEstrategiasNFC.NDEF_ESTATICO, titulo: 'NDEF estático' },
+const ESTRATEGIAS: {valor: EnumEstrategiasNFC; titulo: string}[] = [
+  {valor: EnumEstrategiasNFC.UID, titulo: 'UID'},
+  {valor: EnumEstrategiasNFC.NDEF_ESTATICO, titulo: 'NDEF estático'},
 ];
 
 const InformativoEtapas = () => {
@@ -40,7 +40,7 @@ const InformativoEtapas = () => {
   const [estrategia, setEstrategia] = React.useState(EnumEstrategiasNFC.UID);
 
   const iniciar = () =>
-    navigation.navigate('EtapasProvisionamento', { estrategia });
+    navigation.navigate('EtapasProvisionamento', {estrategia});
 
   return (
     <Tela scroll>
@@ -52,9 +52,9 @@ const InformativoEtapas = () => {
             variant="bodyMedium"
             style={[
               styles.centralizado,
-              { color: theme.colors.onSurfaceVariant },
+              {color: theme.colors.onSurfaceVariant},
             ]}>
-            Vincula uma etiqueta NFC a um pedido e bloqueia sua escrita.
+            Vincula uma etiqueta NFC física a um pedido existente na API.
           </Text>
         </VStack>
 
@@ -65,7 +65,7 @@ const InformativoEtapas = () => {
           <RadioButton.Group
             value={String(estrategia)}
             onValueChange={valor => setEstrategia(Number(valor))}>
-            {ESTRATEGIAS.map(({ valor, titulo }) => (
+            {ESTRATEGIAS.map(({valor, titulo}) => (
               <RadioButton.Item
                 key={valor}
                 label={titulo}
@@ -78,8 +78,9 @@ const InformativoEtapas = () => {
         </VStack>
 
         <Aviso>
-          O bloqueio altera as chaves da etiqueta. Confira os dados antes de
-          confirmar.
+          A gravação NDEF substitui o conteúdo atual. Esta versão não altera
+          chaves nem bloqueia a escrita. A ativação exige conferir externamente
+          a configuração física e o bloqueio definidos para o ensaio.
         </Aviso>
 
         <Botao onPress={iniciar}>Iniciar</Botao>
