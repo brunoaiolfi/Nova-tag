@@ -1,12 +1,14 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { DadosProvisionamento, Etapa } from './types';
 import IdentificarPedido from './IdentificarPedido';
 import Leitor from '../../../components/Nfc/Leitor';
 import { toast } from '../../../infra/implementations/toast';
 import { pedidoEtiquetaApplication } from '../../../appplication/pedidoEtiqueta';
+import type { RotasProvisionar } from '../../../navigation/ProvisionarNavigator';
+import { EnumEstrategiasNFC } from '../../../domain/enums/estrategiasNFC';
 
 const EtapasProvisionamento = () => {
   const [etapaAtual, setEtapaAtual] = React.useState<Etapa>(
@@ -15,6 +17,8 @@ const EtapasProvisionamento = () => {
   const [dados, setDados] = React.useState<DadosProvisionamento>({});
 
   const navigation = useNavigation();
+  const { estrategia } =
+    useRoute<RouteProp<RotasProvisionar, 'EtapasProvisionamento'>>().params;
 
   const isEtapaIdentificarPedido = etapaAtual === Etapa.IDENTIFICAR_PEDIDO;
   const isEtapaLeituraEBloqueio = etapaAtual === Etapa.LEITURA_E_BLOQUEIO;
@@ -34,7 +38,7 @@ const EtapasProvisionamento = () => {
     setDados(dadosAtuais => ({ ...dadosAtuais, uid }));
 
     try {
-      const resposta = await pedidoEtiquetaApplication.provisionarEtiqueta({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid });
+      const resposta = await pedidoEtiquetaApplication.provisionarConformeEstrategia({ codigoPedido: dados.codigoPedido ?? '', codigoEtiqueta: uid }, estrategia);
 
       if (!resposta.sucesso) {
         handleErroLeitura(resposta.mensagem);
@@ -60,6 +64,11 @@ const EtapasProvisionamento = () => {
 
       {isEtapaLeituraEBloqueio && (
         <Leitor
+          textoParaGravar={
+            estrategia === EnumEstrategiasNFC.NDEF_ESTATICO
+              ? dados.codigoPedido
+              : undefined
+          }
           onLeituraRealizada={handleLeituraRealizada}
           onErroLeitura={handleErroLeitura}
         />

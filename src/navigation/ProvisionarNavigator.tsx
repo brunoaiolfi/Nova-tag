@@ -4,10 +4,11 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import InformativoEtapas from '../views/Provisionar/InformativoEtapas';
 import EtapasProvisionamento from '../views/Provisionar/Etapas';
 import {useAppTheme} from '../theme';
+import {EnumEstrategiasNFC} from '../domain/enums/estrategiasNFC';
 
 export type RotasProvisionar = {
   InformativoEtapas: undefined;
-  EtapasProvisionamento: undefined;
+  EtapasProvisionamento: {estrategia: EnumEstrategiasNFC};
 };
 
 const Stack = createNativeStackNavigator<RotasProvisionar>();
