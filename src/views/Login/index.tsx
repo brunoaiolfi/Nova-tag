@@ -2,10 +2,11 @@ import React, {useState} from 'react';
 import {KeyboardAvoidingView, ScrollView, StyleSheet} from 'react-native';
 import {Button, HelperText, Text, TextInput} from 'react-native-paper';
 import {useSession} from '../../components/Auth/SessionProvider';
+import {defaultApiUrl} from '../../infra/auth/default-api-url';
 
 export default function Login() {
   const {manager, state} = useSession();
-  const [server, setServer] = useState('http://127.0.0.1:3000/api/v1');
+  const [server, setServer] = useState(defaultApiUrl);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

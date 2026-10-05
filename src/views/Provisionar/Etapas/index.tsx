@@ -48,7 +48,7 @@ const EtapasProvisionamento = () => {
       toast.sucesso(resposta.mensagem);
 
       navigation.goBack();
-    } catch (ex) {
+    } catch {
       handleErroLeitura('Falha ao provisionar a etiqueta. Tente novamente.');
     }
   };

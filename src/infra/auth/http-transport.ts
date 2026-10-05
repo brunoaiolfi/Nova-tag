@@ -1,7 +1,9 @@
 import {SessionError, Transport} from '../../domain/auth/types';
 
 export class HttpTransport implements Transport {
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetcher: typeof fetch = (...args) => fetch(...args),
+  ) {}
   async send<T>(
     baseUrl: string,
     path: string,

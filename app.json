@@ -1,4 +1,13 @@
 {
-  "name": "NovaTag",
-  "displayName": "NovaTag"
+  "expo": {
+    "name": "Nova-tag Prévia",
+    "slug": "nova-tag-preview",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android", "web"],
+    "ios": {"supportsTablet": true},
+    "plugins": ["expo-secure-store"],
+    "extra": {"preview": true}
+  }
 }

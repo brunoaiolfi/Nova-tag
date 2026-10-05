@@ -62,7 +62,7 @@ const EtapasEvento = () => {
       toast.sucesso(resposta.mensagem);
 
       navigation.goBack();
-    } catch (ex) {
+    } catch {
       handleErroLeitura('Falha ao registrar o evento. Tente novamente.');
     }
   };

@@ -1,5 +1,9 @@
 # Sessão autenticada do Nova-tag
 
+> Histórico da implementação nativa anterior à migração desta branch. Para executar
+> a prévia atual com Expo Go, consulte [03-expo-go](03-expo-go.md). Nesta branch,
+> SecureStore substitui Keychain; o build Android deste guia não se aplica.
+
 Entrega da [issue #3](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/3).
 O login usa a API 1.1 da mesma entrega. A integração das telas operacionais NFC continua
 na #2; os serviços de pedido/etiqueta existentes ainda são simulados.

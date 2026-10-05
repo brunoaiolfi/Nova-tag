@@ -1,16 +1,9 @@
-import React, {useEffect, useRef} from 'react';
-import {StyleSheet} from 'react-native';
-import {Icon, Text} from 'react-native-paper';
-import NfcManager, {Ndef, NfcTech, TagEvent} from 'react-native-nfc-manager';
-
+import React, {useState} from 'react';
+import {ScrollView, StyleSheet} from 'react-native';
+import {Button, HelperText, Icon, Text, TextInput} from 'react-native-paper';
 import Tela from '../../Base/Tela';
 import VStack from '../../Base/VStack';
 import {useAppTheme} from '../../../theme';
-
-const TEMPO_LIMITE_MS = 40000;
-
-const MENSAGEM_TEMPO_ESGOTADO =
-  'Nenhuma etiqueta foi detectada. Verifique se o NFC está ligado e tente novamente.';
 
 type LeitorProps = {
   textoParaGravar?: string;
@@ -18,106 +11,74 @@ type LeitorProps = {
   onErroLeitura: (mensagem: string) => void;
 };
 
-NfcManager.start();
-
-const lerTextoNdef = (tag: TagEvent) => {
-  const registro = tag.ndefMessage?.find(r =>
-    Ndef.isType(r, Ndef.TNF_WELL_KNOWN, Ndef.RTD_TEXT),
-  );
-
-  return registro
-    ? Ndef.text.decodePayload(Uint8Array.from(registro.payload))
-    : undefined;
-};
-
-const Leitor = ({
+export default function Leitor({
   textoParaGravar,
   onLeituraRealizada,
   onErroLeitura,
-}: LeitorProps) => {
+}: LeitorProps) {
   const theme = useAppTheme();
-  const callbacks = useRef({onLeituraRealizada, onErroLeitura});
-  callbacks.current = {onLeituraRealizada, onErroLeitura};
-
-  useEffect(() => {
-    const ler = async () => {
-      try {
-        await NfcManager.requestTechnology(
-          textoParaGravar
-            ? NfcTech.Ndef
-            : [NfcTech.IsoDep, NfcTech.NfcA, NfcTech.NfcB],
-          {
-            readerModeDelay: TEMPO_LIMITE_MS,
-          },
-        );
-
-        const tag = await NfcManager.getTag();
-        if (!tag?.id) {
-          throw new Error('Não foi possível ler o UID da etiqueta.');
-        }
-
-        if (textoParaGravar) {
-          const bytes = Ndef.encodeMessage([Ndef.textRecord(textoParaGravar)]);
-          await NfcManager.ndefHandler.writeNdefMessage(bytes);
-        }
-
-        callbacks.current.onLeituraRealizada(
-          tag.id,
-          textoParaGravar ?? lerTextoNdef(tag),
-        );
-      } catch {
-        callbacks.current.onErroLeitura(
-          'Falha ao ler a etiqueta. Tente novamente.',
-        );
-      } finally {
-        encerrar();
-      }
-    };
-
-    const encerrar = () => {
-      NfcManager.cancelTechnologyRequest().catch(() => {});
-    };
-
-    const tempoLimite = setTimeout(() => {
-      encerrar();
-      callbacks.current.onErroLeitura(MENSAGEM_TEMPO_ESGOTADO);
-    }, TEMPO_LIMITE_MS);
-
-    ler();
-
-    return () => {
-      clearTimeout(tempoLimite);
-      encerrar();
-    };
-  }, [textoParaGravar]);
-
+  const [uid, setUid] = useState('04A1B2C3D4E5F6');
+  const [ndef, setNdef] = useState(textoParaGravar ?? '');
+  const normalizedUid = uid.replace(/[\s:-]/g, '').toUpperCase();
+  const valid = /^(?:[A-F0-9]{2}){4,10}$/.test(normalizedUid);
   return (
     <Tela>
-      <VStack flex={1} align="center" justify="center" gap={16}>
-        <Icon source="nfc" size={96} color={theme.colors.primary} />
-
-        <VStack align="center" gap={4}>
-          <Text variant="titleLarge" style={styles.centralizado}>
-            Aproxime a etiqueta
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled">
+        <VStack gap={16}>
+          <Icon source="nfc" size={64} color={theme.colors.primary} />
+          <Text variant="headlineSmall">Captura simulada</Text>
+          <Text>
+            O Expo Go não lê, grava nem bloqueia etiquetas NFC. Informe dados
+            fictícios para testar as telas.
           </Text>
-          <Text
-            variant="bodyMedium"
-            style={[
-              styles.centralizado,
-              {color: theme.colors.onSurfaceVariant},
-            ]}>
-            Encoste o celular na etiqueta NFC para realizar a leitura.
-          </Text>
+          <TextInput
+            label="UID simulado"
+            value={uid}
+            onChangeText={setUid}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          {!valid && (
+            <HelperText type="error">
+              Informe de 4 a 10 bytes em hexadecimal.
+            </HelperText>
+          )}
+          <TextInput
+            label={
+              textoParaGravar
+                ? 'Texto NDEF simulado para gravação'
+                : 'Texto NDEF simulado (opcional)'
+            }
+            value={textoParaGravar ?? ndef}
+            onChangeText={setNdef}
+            editable={textoParaGravar === undefined}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Button
+            mode="contained"
+            disabled={!valid}
+            onPress={() =>
+              onLeituraRealizada(
+                normalizedUid,
+                textoParaGravar ?? (ndef || undefined),
+              )
+            }>
+            Simular captura
+          </Button>
+          <Button
+            onPress={() =>
+              onErroLeitura(
+                'Falha simulada na captura. Nenhuma etiqueta foi acessada.',
+              )
+            }>
+            Simular falha
+          </Button>
         </VStack>
-      </VStack>
+      </ScrollView>
     </Tela>
   );
-};
-
-const styles = StyleSheet.create({
-  centralizado: {
-    textAlign: 'center',
-  },
-});
-
-export default Leitor;
+}
+const styles = StyleSheet.create({content: {padding: 20, flexGrow: 1}});

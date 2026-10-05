@@ -1,4 +1,4 @@
-import * as Keychain from 'react-native-keychain';
+import * as SecureStore from 'expo-secure-store';
 import {
   isSession,
   Session,
@@ -6,16 +6,16 @@ import {
   SessionStorage,
 } from '../../domain/auth/types';
 
-const options = {service: 'com.novatag.auth.session'};
+const key = 'com.novatag.preview.auth.session';
 export class SecureSessionStorage implements SessionStorage {
   async load(): Promise<Session | null> {
-    const credentials = await Keychain.getGenericPassword(options);
+    const credentials = await SecureStore.getItemAsync(key);
     if (!credentials) {
       return null;
     }
     let value: unknown;
     try {
-      value = JSON.parse(credentials.password);
+      value = JSON.parse(credentials);
     } catch {
       throw new SessionError('SESSAO_INVALIDA', 'Entre novamente.', 401);
     }
@@ -25,16 +25,9 @@ export class SecureSessionStorage implements SessionStorage {
     return value;
   }
   async save(session: Session) {
-    const saved = await Keychain.setGenericPassword(
-      session.user.id,
-      JSON.stringify(session),
-      options,
-    );
-    if (!saved) {
-      throw new Error('Secure session storage unavailable');
-    }
+    await SecureStore.setItemAsync(key, JSON.stringify(session));
   }
   async clear() {
-    await Keychain.resetGenericPassword(options);
+    await SecureStore.deleteItemAsync(key);
   }
 }

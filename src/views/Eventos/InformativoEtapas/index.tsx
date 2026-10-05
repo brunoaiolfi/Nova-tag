@@ -21,9 +21,9 @@ const PASSOS: Passo[] = [
   },
   {
     numero: 2,
-    titulo: 'Ler a etiqueta',
+    titulo: 'Simular captura',
     descricao:
-      'Aproxime a etiqueta do pedido: o vínculo é resolvido pelo UID e o evento é registrado na cadeia de custódia.',
+      'Informe UID e texto NDEF fictícios para testar a próxima tela. Nenhuma etiqueta será acessada.',
   },
 ];
 
@@ -49,16 +49,15 @@ const InformativoEtapas = () => {
               styles.centralizado,
               {color: theme.colors.onSurfaceVariant},
             ]}>
-            Registra uma movimentação do pedido a partir da leitura da etiqueta
-            NFC.
+            Teste as telas de evento com uma captura simulada.
           </Text>
         </VStack>
 
         <ListaPassos passos={PASSOS} />
 
         <Aviso icone="cloud-off-outline">
-          O registro exige conexão com a internet. Sem rede, o evento não é
-          salvo e a leitura precisa ser refeita.
+          Nesta prévia, os eventos não são enviados à API. O login exige que
+          a API esteja disponível.
         </Aviso>
 
         <Botao onPress={iniciar}>Iniciar</Botao>

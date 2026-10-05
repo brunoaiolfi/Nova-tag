@@ -7,10 +7,12 @@ const pacotesEsm = [
   'react-native-screens',
   'react-native-toast-message',
   '@react-native-vector-icons',
+  'expo(nent)?(-.*)?',
+  '@expo',
 ].join('|');
 
 module.exports = {
-  preset: 'react-native',
+  preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [`node_modules/(?!(?:.pnpm/)?(${pacotesEsm})/)`],
 };

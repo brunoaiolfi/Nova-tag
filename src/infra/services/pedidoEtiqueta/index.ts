@@ -15,7 +15,7 @@ export class PedidoEtiquetaService
 
     return {
       sucesso: true,
-      mensagem: 'Etiqueta provisionada com sucesso',
+      mensagem: 'Simulação concluída. Nenhuma etiqueta gravada ou registro enviado à API.',
     };
   }
 
@@ -25,7 +25,7 @@ export class PedidoEtiquetaService
 
     return {
       sucesso: true,
-      mensagem: 'Evento registrado com sucesso',
+      mensagem: 'Evento simulado. Nenhum registro enviado à API.',
     };
   }
 }
