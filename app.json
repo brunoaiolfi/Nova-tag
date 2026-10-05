@@ -5,8 +5,16 @@
     "scheme": "novatag",
     "version": "0.2.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
     "userInterfaceStyle": "light",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.joaoaugustopf.novatag.nfc",
@@ -16,11 +24,14 @@
           "NSAllowsArbitraryLoads": true
         },
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.joaoaugustopf.novatag.nfc",
-      "permissions": ["android.permission.NFC"]
+      "permissions": [
+        "android.permission.NFC"
+      ]
     },
     "plugins": [
       "expo-secure-store",
@@ -30,7 +41,9 @@
         {
           "nfcPermission": "Ler e configurar etiquetas NFC para rastrear pedidos do laboratório.",
           "includeNdefEntitlement": false,
-          "selectIdentifiers": ["D2760000850101"]
+          "selectIdentifiers": [
+            "D2760000850101"
+          ]
         }
       ]
     ],
