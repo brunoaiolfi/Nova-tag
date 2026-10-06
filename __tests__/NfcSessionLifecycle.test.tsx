@@ -150,7 +150,7 @@ test('real background revalidation blocks interaction without unmounting the cap
   expect(send).toHaveBeenCalledTimes(2);
 });
 
-test('network failure covers the retained screen and retry restores the same reading', async () => {
+test('network failure permits local work for a verified identity but blocks HTTP until reconnection', async () => {
   const {send, manager} = await render();
   const details = await scan();
   send.mockRejectedValueOnce(new SessionError('API_INDISPONIVEL', 'offline'));
@@ -158,10 +158,14 @@ test('network failure covers the retained screen and retry restores the same rea
     change('background');
     change('active');
   });
-  expect(manager.getSnapshot().status).toBe('unavailable');
+  expect(manager.getSnapshot().status).toBe('offline');
   expect(tree.root.findByType(TagDetails)).toBe(details);
+  await expect(manager.request('/pedidos')).rejects.toMatchObject({
+    code: 'SESSAO_OFFLINE',
+    status: 503,
+  });
   await act(async () => {
-    button('Tentar novamente').props.onPress();
+    await manager.restore();
   });
   expect(manager.getSnapshot().status).toBe('authenticated');
   expect(tree.root.findByType(TagDetails)).toBe(details);

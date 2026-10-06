@@ -64,8 +64,12 @@ describe('Session lifecycle and operator isolation', () => {
     expect(manager.getSnapshot().status).not.toBe('authenticated');
     save.resolve();
     await login;
-    expect(manager.getSnapshot()).toEqual({status: 'authenticated', session});
-    expect(storage.save).toHaveBeenCalledWith(session);
+    const verified = {...session, verifiedAt: '2029-01-01T12:00:00.000Z'};
+    expect(manager.getSnapshot()).toEqual({
+      status: 'authenticated',
+      session: verified,
+    });
+    expect(storage.save).toHaveBeenCalledWith(verified);
     expect(JSON.stringify(storage.save.mock.calls)).not.toContain(
       'the-password',
     );
@@ -244,6 +248,50 @@ describe('Session lifecycle and operator isolation', () => {
     await expect(
       production.login(baseUrl, 'operador.a', 'password'),
     ).rejects.toMatchObject({code: 'URL_INVALIDA'});
+  });
+});
+
+describe('Offline identity receipt', () => {
+  it('restores a previously verified identity offline without sending authenticated commands', async () => {
+    const {manager, send, storage} = setup({
+      ...session,
+      verifiedAt: '2028-12-31T12:00:00Z',
+    });
+    send.mockRejectedValueOnce(new SessionError('API_INDISPONIVEL', 'offline'));
+    await manager.restore();
+    expect(manager.getSnapshot().status).toBe('offline');
+    await expect(
+      manager.request('/eventos', {method: 'POST', body: {}}),
+    ).rejects.toMatchObject({code: 'SESSAO_OFFLINE'});
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(storage.clear).not.toHaveBeenCalled();
+  });
+  it('requires online verification for an expired or future offline receipt', async () => {
+    const future = setup({...session, verifiedAt: '2035-01-01T00:00:00Z'});
+    future.send.mockRejectedValueOnce(
+      new SessionError('API_INDISPONIVEL', 'offline'),
+    );
+    await future.manager.restore();
+    expect(future.manager.getSnapshot().status).toBe('unavailable');
+    const expired = setup({
+      ...session,
+      expiresAt: '2028-01-01T00:00:00Z',
+      verifiedAt: '2027-01-01T00:00:00Z',
+    });
+    await expired.manager.restore();
+    expect(expired.manager.getSnapshot().status).toBe('anonymous');
+    expect(expired.send).not.toHaveBeenCalled();
+  });
+  it('refuses a capture bound to a different API before transport', async () => {
+    const {manager, send} = setup();
+    send.mockResolvedValueOnce(result());
+    await manager.login(baseUrl, 'operador.a', 'password');
+    await expect(
+      manager.request('/eventos', {
+        expectedBaseUrl: 'https://another.example/api/v1',
+      }),
+    ).rejects.toMatchObject({code: 'API_DIVERGENTE'});
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });
 

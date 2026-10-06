@@ -54,7 +54,10 @@ export default function EtapasProvisionamento() {
       setProvisioning(result);
       setVerified(
         strategy === 'UID'
-          ? !reading.ndef?.startsWith('urn:nfc-trace:provisioning:')
+          ? !(
+              typeof reading.ndef === 'string' &&
+              reading.ndef.startsWith('urn:nfc-trace:provisioning:')
+            )
           : reading.ndef === result.referenciaNdef,
       );
       setMessage(
@@ -129,7 +132,10 @@ export default function EtapasProvisionamento() {
           if (provisioning) {
             setVerified(
               strategy === 'UID'
-                ? !value.ndef?.startsWith('urn:nfc-trace:provisioning:')
+                ? !(
+                    typeof value.ndef === 'string' &&
+                    value.ndef.startsWith('urn:nfc-trace:provisioning:')
+                  )
                 : value.ndef === provisioning.referenciaNdef,
             );
             setConfirmed(false);

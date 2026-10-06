@@ -16,6 +16,7 @@ import Home from '../views/Home';
 import EventosNavigator from './EventosNavigator';
 import {useSession} from '../components/Auth/SessionProvider';
 import Historico from '../views/Historico';
+import Envios from '../views/Envios';
 import type {Reading} from '../appplication/traceability/workflow';
 
 export type RotasTab = {
@@ -23,6 +24,7 @@ export type RotasTab = {
   Home: undefined;
   Eventos: undefined;
   Historico: {reading?: Reading} | undefined;
+  Envios: undefined;
 };
 
 type IconeTabProps = {
@@ -39,6 +41,7 @@ const IconeProvisionar = criarIconeTab('nfc-tap');
 const IconeHome = criarIconeTab('home-variant');
 const IconeEventos = criarIconeTab('timeline-text-outline');
 const IconeHistorico = criarIconeTab('map-marker-path');
+const IconeEnvios = criarIconeTab('cloud-upload-outline');
 
 const Tab = createBottomTabNavigator<RotasTab>();
 
@@ -76,6 +79,11 @@ const Navigator = () => {
           component={Historico}
           options={{title: 'Rastreio', tabBarIcon: IconeHistorico}}
         />
+        <Tab.Screen
+          name="Envios"
+          component={Envios}
+          options={{title: 'Envios', tabBarIcon: IconeEnvios}}
+        />
         {role !== 'CONSULTA' && (
           <Tab.Screen
             name="Eventos"
@@ -90,7 +98,7 @@ const Navigator = () => {
             })}
           />
         )}
-        {role === 'ADMINISTRADOR' && (
+        {role === 'ADMINISTRADOR' && state.status === 'authenticated' && (
           <Tab.Screen
             name="Provisionar"
             component={ProvisionarNavigator}

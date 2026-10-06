@@ -145,19 +145,24 @@ const Home = () => {
               layoutStyles.actionList,
               singleColumn && layoutStyles.singleColumn,
             ]}>
-            {user?.perfil === 'ADMINISTRADOR' && (
-              <ActionTile
-                title="Vincular etiqueta"
-                description="Prepare a identificação do pedido."
-                icon="nfc-tap"
-                onPress={() => navigation.navigate('Provisionar')}
-              />
-            )}
+            {user?.perfil === 'ADMINISTRADOR' &&
+              state.status === 'authenticated' && (
+                <ActionTile
+                  title="Vincular etiqueta"
+                  description="Prepare a identificação do pedido."
+                  icon="nfc-tap"
+                  onPress={() => navigation.navigate('Provisionar')}
+                />
+              )}
             <ActionTile
-              title="Como funciona"
-              description="Entenda a etiqueta e o rastreio."
-              icon="help-circle-outline"
-              onPress={() => setHelp(value => !value)}
+              title="Capturas e envios"
+              description={
+                state.status === 'offline'
+                  ? 'Veja os registros salvos sem conexão.'
+                  : 'Prepare etiquetas e acompanhe a sincronização.'
+              }
+              icon="cloud-upload-outline"
+              onPress={() => navigation.navigate('Envios')}
             />
             {user?.perfil !== 'ADMINISTRADOR' && !singleColumn && (
               <View style={layoutStyles.emptyTile} />

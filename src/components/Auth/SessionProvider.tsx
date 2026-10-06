@@ -35,7 +35,7 @@ export function SessionProvider({
     return () => subscription.remove();
   }, [manager]);
   useEffect(() => {
-    if (state.status !== 'authenticated') {
+    if (state.status !== 'authenticated' && state.status !== 'offline') {
       return;
     }
     const timer = setTimeout(() => {

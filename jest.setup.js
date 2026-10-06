@@ -4,6 +4,9 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn().mockResolvedValue(undefined),
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('expo-network', () => ({
+  addNetworkStateListener: jest.fn(() => ({remove: jest.fn()})),
+}));
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,

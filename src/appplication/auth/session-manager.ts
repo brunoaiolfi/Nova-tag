@@ -10,6 +10,12 @@ import {
 
 export type AuthSnapshot =
   | {
+      status: 'offline';
+      session: Session;
+      previouslyVerified: true;
+      message: string;
+    }
+  | {
       status: 'checking';
       session?: Session;
       previouslyVerified?: true;
@@ -60,6 +66,7 @@ export class SessionManager {
     const previous = this.snapshot;
     const verifiedSession =
       previous.status === 'authenticated' ||
+      previous.status === 'offline' ||
       ((previous.status === 'checking' || previous.status === 'unavailable') &&
         previous.previouslyVerified)
         ? previous.session
@@ -114,6 +121,7 @@ export class SessionManager {
         ...session,
         user: result.usuario,
         expiresAt: result.expiraEm,
+        verifiedAt: new Date(this.now()).toISOString(),
       };
       if (
         !isSession(verified) ||
@@ -139,6 +147,24 @@ export class SessionManager {
       ) {
         await this.invalidate(generation, error.message);
       } else {
+        const offlineSession =
+          verifiedSession ??
+          (session?.verifiedAt && Date.parse(session.verifiedAt) <= this.now()
+            ? session
+            : undefined);
+        if (
+          offlineSession &&
+          Date.parse(offlineSession.expiresAt) > this.now()
+        ) {
+          this.publish({
+            status: 'offline',
+            session: offlineSession,
+            previouslyVerified: true,
+            message:
+              'Sem acesso à API. Você pode salvar capturas das etiquetas já disponibilizadas; o envio aguarda conexão e verificação da sessão.',
+          });
+          return;
+        }
         this.publish({
           status: 'unavailable',
           ...(verifiedSession
@@ -168,6 +194,7 @@ export class SessionManager {
       token: response.tokenAcesso,
       expiresAt: response.expiraEm,
       user: response.usuario,
+      verifiedAt: new Date(this.now()).toISOString(),
     };
     if (!isSession(session) || Date.parse(session.expiresAt) <= this.now()) {
       throw new SessionError(
@@ -201,9 +228,21 @@ export class SessionManager {
   }
   async request<T>(
     path: string,
-    options?: {body?: unknown; method?: string; expectedUserId?: string},
+    options?: {
+      body?: unknown;
+      method?: string;
+      expectedUserId?: string;
+      expectedBaseUrl?: string;
+    },
   ): Promise<T> {
     const state = this.snapshot;
+    if (state.status === 'offline') {
+      throw new SessionError(
+        'SESSAO_OFFLINE',
+        'A captura pode ser salva neste aparelho. Reconecte-se para enviá-la.',
+        503,
+      );
+    }
     if (state.status !== 'authenticated') {
       throw new SessionError(
         'SESSAO_NECESSARIA',
@@ -213,6 +252,15 @@ export class SessionManager {
     }
     const session = state.session;
     const generation = this.generation;
+    if (
+      options?.expectedBaseUrl &&
+      options.expectedBaseUrl !== session.baseUrl
+    ) {
+      throw new SessionError(
+        'API_DIVERGENTE',
+        'Entre na API original para enviar esta captura.',
+      );
+    }
     if (Date.parse(session.expiresAt) <= this.now()) {
       await this.invalidate(generation, 'Sua sessão expirou. Entre novamente.');
       throw new SessionError('SESSAO_EXPIRADA', 'Entre novamente.', 401);

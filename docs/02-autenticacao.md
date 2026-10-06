@@ -40,12 +40,15 @@ logs ou configurações versionadas. A prévia web mantém a sessão apenas em m
 
 No Android, SecureStore usa dados cifrados com Android Keystore; no iOS, usa
 Keychain. O plugin exclui seus dados dos backups Android. Reinstalar no iPhone
-pode preservar os dados do Keychain: um token salvo sempre precisa ser validado
-pela API antes de abrir a área protegida. Essas propriedades seguem a
+pode preservar os dados do Keychain: o token precisa de validação na API para
+qualquer chamada HTTP. A #4 permite captura local com identidade previamente
+verificada e ainda válida quando a API está inacessível. Essas propriedades seguem a
 [documentação do SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/).
 
 - Ao iniciar ou retornar de background, conferir a sessão na API. Falha de rede
-  preserva os dados para **Tentar novamente**, sem liberar a área operacional.
+  preserva os dados. Identidade previamente verificada e ainda válida libera
+  coleta local com os vínculos em cache, mas bloqueia HTTP. Sem verificação anterior
+  ou validade, exigir login. Veja [fila offline](11-captura-offline.md).
 - A janela NFC do iOS alterna brevemente entre active/inactive. Isso não inicia
   outra sessão nem descarta a leitura. Verificar somente a expiração local.
 - Durante a verificação de uma sessão já autenticada, preservar o trabalho sob
@@ -78,8 +81,9 @@ const result = await sessionManager.request('/eventos', {
 Trocar de operador impede o envio da captura anterior. Respostas atrasadas de
 uma sessão antiga não encerram uma sessão nova nem apresentam dados de outro
 operador. Comandos não têm retry automático. UUID, evidência e conteúdo original
-devem permanecer iguais no reenvio. A futura fila offline (#4) terá armazenamento
-separado; autenticação não poderá apagá-la ou reatribuir capturas.
+devem permanecer iguais no reenvio. A fila offline (#4) usa SQLite separado;
+autenticação não a apaga nem reatribui capturas. Uma nova sessão na mesma API
+e com o operador original pode retomar o envio, preservando a entrada original.
 
 ## Verificação local
 
