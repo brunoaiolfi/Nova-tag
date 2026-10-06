@@ -1,4 +1,5 @@
 import {MD3LightTheme, useTheme} from 'react-native-paper';
+import {palette} from './tokens';
 import {
   arredondamento,
   error,
@@ -16,39 +17,63 @@ const BRANCO = '#FFFFFF';
 export const tema = {
   ...MD3LightTheme,
   roundness: arredondamento,
+  fonts: {
+    ...MD3LightTheme.fonts,
+    bodyMedium: {
+      ...MD3LightTheme.fonts.bodyMedium,
+      fontSize: 16,
+      lineHeight: 24,
+    },
+    bodySmall: {...MD3LightTheme.fonts.bodySmall, fontSize: 14, lineHeight: 21},
+    titleMedium: {
+      ...MD3LightTheme.fonts.titleMedium,
+      fontSize: 18,
+      lineHeight: 26,
+    },
+    titleSmall: {
+      ...MD3LightTheme.fonts.titleSmall,
+      fontSize: 17,
+      lineHeight: 24,
+    },
+    labelLarge: {
+      ...MD3LightTheme.fonts.labelLarge,
+      fontSize: 16,
+      lineHeight: 22,
+    },
+  },
   spacing: espacamento,
   colors: {
     ...MD3LightTheme.colors,
 
-    primary: gray[900],
+    primary: palette.blue,
     onPrimary: BRANCO,
-    primaryContainer: gray[900],
-    onPrimaryContainer: BRANCO,
+    primaryContainer: palette.pale,
+    onPrimaryContainer: palette.blue,
     inversePrimary: gray[900],
 
-    secondary: gray[600],
+    secondary: '#087F71',
     onSecondary: BRANCO,
-    secondaryContainer: gray[600],
-    onSecondaryContainer: BRANCO,
+    secondaryContainer: '#E8F6F1',
+    onSecondaryContainer: '#086458',
 
     tertiary: gray[400],
     onTertiary: BRANCO,
     tertiaryContainer: gray[50],
     onTertiaryContainer: gray[800],
 
-    background: gray[50],
-    onBackground: gray[700],
+    background: palette.background,
+    onBackground: palette.navy,
     surface: BRANCO,
-    onSurface: gray[700],
+    onSurface: palette.navy,
     surfaceVariant: gray[50],
-    onSurfaceVariant: gray[700],
+    onSurfaceVariant: palette.muted,
     surfaceDisabled: gray[300],
     onSurfaceDisabled: gray[500],
     inverseSurface: gray[50],
     inverseOnSurface: gray[700],
 
     outline: gray[300],
-    outlineVariant: gray[500],
+    outlineVariant: palette.line,
 
     error: error[600],
     onError: BRANCO,

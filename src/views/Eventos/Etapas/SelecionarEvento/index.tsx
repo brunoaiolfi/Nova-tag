@@ -1,9 +1,13 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {Icon, Text, TouchableRipple} from 'react-native-paper';
 
 import Tela from '../../../../components/Base/Tela';
-import Card from '../../../../components/Base/Card';
+import {
+  FlowSteps,
+  PageHero,
+  trackingColors as colors,
+} from '../../../../components/Tracking';
 import Botao from '../../../../components/Base/Botao';
 import VStack from '../../../../components/Base/VStack';
 import HStack from '../../../../components/Base/HStack';
@@ -76,14 +80,19 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
       style={styles.toque}
       onPress={() => onSelecionar(tipo)}
       accessibilityRole="radio"
-      accessibilityState={{selected: selecionada}}>
-      <Card
-        style={selecionada ? {borderColor: theme.colors.primary} : undefined}>
+      accessibilityState={{checked: selecionada}}>
+      <View
+        style={[
+          styles.option,
+          selecionada ? styles.selected : styles.unselected,
+        ]}>
         <HStack gap={12} align="center">
-          <Icon source={icone} size={24} color={cor} />
+          <Icon source={icone} size={32} color={cor} />
 
           <VStack flex={1} gap={2}>
-            <Text variant="titleSmall">{descricaoEnumTipoEvento[tipo]}</Text>
+            <Text variant="titleMedium" style={styles.optionTitle}>
+              {descricaoEnumTipoEvento[tipo]}
+            </Text>
             <Text
               variant="bodySmall"
               style={{color: theme.colors.onSurfaceVariant}}>
@@ -99,7 +108,7 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
             />
           )}
         </HStack>
-      </Card>
+      </View>
     </TouchableRipple>
   );
 };
@@ -113,25 +122,34 @@ const SelecionarEvento = ({
   onSelecionarEvento,
   tipoInicial,
 }: SelecionarEventoProps) => {
-  const theme = useAppTheme();
   const [tipoSelecionado, setTipoSelecionado] = React.useState<
     EnumTipoEvento | undefined
   >(tipoInicial);
 
   return (
-    <Tela scroll>
+    <Tela
+      scroll
+      insetTop={false}
+      header={
+        <PageHero
+          fullBleed
+          title="O que aconteceu com o pedido?"
+          description="Escolha a etapa antes de aproximar a etiqueta."
+          icon="timeline-plus-outline"
+          eyebrow="PASSO 1 · ESCOLHER ETAPA"
+        />
+      }
+      footer={
+        <Botao
+          onPress={() => tipoSelecionado && onSelecionarEvento(tipoSelecionado)}
+          disabled={!tipoSelecionado}>
+          Continuar
+        </Botao>
+      }>
       <VStack flex={1} gap={24}>
-        <VStack gap={4}>
-          <Text variant="titleLarge">Selecionar o tipo de evento</Text>
-          <Text
-            variant="bodyMedium"
-            style={{color: theme.colors.onSurfaceVariant}}>
-            Escolha o que está acontecendo com o pedido antes de aproximar a
-            etiqueta.
-          </Text>
-        </VStack>
+        <FlowSteps labels={['Escolher', 'Ler', 'Confirmar']} current={1} />
 
-        <VStack gap={12}>
+        <VStack gap={12} style={layoutStyles.options}>
           {TIPOS_SELECIONAVEIS.map(tipo => (
             <ItemOpcao
               key={tipo}
@@ -141,12 +159,6 @@ const SelecionarEvento = ({
             />
           ))}
         </VStack>
-
-        <Botao
-          onPress={() => tipoSelecionado && onSelecionarEvento(tipoSelecionado)}
-          disabled={!tipoSelecionado}>
-          Continuar
-        </Botao>
       </VStack>
     </Tela>
   );
@@ -154,8 +166,19 @@ const SelecionarEvento = ({
 
 const styles = StyleSheet.create({
   toque: {
-    borderRadius: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.line,
   },
+  option: {padding: 18, minHeight: 100},
+  optionTitle: {fontWeight: '700'},
+  selected: {backgroundColor: colors.pale},
+  unselected: {backgroundColor: 'white'},
 });
 
 export default SelecionarEvento;
+
+const layoutStyles = StyleSheet.create({
+  options: {},
+});

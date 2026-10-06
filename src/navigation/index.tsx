@@ -3,6 +3,7 @@ import {
   DefaultTheme as NavigationDefaultTheme,
   NavigationContainer,
   getFocusedRouteNameFromRoute,
+  NavigatorScreenParams,
 } from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Icon} from 'react-native-paper';
@@ -10,13 +11,18 @@ import {Icon} from 'react-native-paper';
 import TabBar from './TabBar';
 import {useAppTheme} from '../theme';
 import ProvisionarNavigator from './ProvisionarNavigator';
+import type {RotasProvisionar} from './ProvisionarNavigator';
 import Home from '../views/Home';
 import EventosNavigator from './EventosNavigator';
+import {useSession} from '../components/Auth/SessionProvider';
+import Historico from '../views/Historico';
+import type {Reading} from '../appplication/traceability/workflow';
 
 export type RotasTab = {
-  Provisionar: undefined;
+  Provisionar: NavigatorScreenParams<RotasProvisionar> | undefined;
   Home: undefined;
   Eventos: undefined;
+  Historico: {reading?: Reading} | undefined;
 };
 
 type IconeTabProps = {
@@ -32,10 +38,13 @@ const criarIconeTab =
 const IconeProvisionar = criarIconeTab('nfc-tap');
 const IconeHome = criarIconeTab('home-variant');
 const IconeEventos = criarIconeTab('timeline-text-outline');
+const IconeHistorico = criarIconeTab('map-marker-path');
 
 const Tab = createBottomTabNavigator<RotasTab>();
 
 const Navigator = () => {
+  const {state} = useSession();
+  const role = state.session?.user.perfil;
   const theme = useAppTheme();
 
   const navigationTheme = {
@@ -58,34 +67,46 @@ const Navigator = () => {
         screenOptions={{headerShown: false}}
         tabBar={TabBar}>
         <Tab.Screen
-          name="Provisionar"
-          component={ProvisionarNavigator}
-          options={({route}) => ({
-            title: 'Provisionar',
-            tabBarIcon: IconeProvisionar,
-            tabBarStyle:
-              getFocusedRouteNameFromRoute(route) === 'EtapasProvisionamento'
-                ? {display: 'none'}
-                : undefined,
-          })}
-        />
-        <Tab.Screen
           name="Home"
           component={Home}
-          options={{title: 'Home', tabBarIcon: IconeHome}}
+          options={{title: 'Início', tabBarIcon: IconeHome}}
         />
         <Tab.Screen
-          name="Eventos"
-          component={EventosNavigator}
-          options={({route}) => ({
-            title: 'Eventos',
-            tabBarIcon: IconeEventos,
-            tabBarStyle:
-              getFocusedRouteNameFromRoute(route) === 'EtapasEvento'
+          name="Historico"
+          component={Historico}
+          options={{title: 'Rastreio', tabBarIcon: IconeHistorico}}
+        />
+        {role !== 'CONSULTA' && (
+          <Tab.Screen
+            name="Eventos"
+            component={EventosNavigator}
+            options={({route}) => ({
+              title: 'Registrar',
+              tabBarIcon: IconeEventos,
+              tabBarStyle:
+                getFocusedRouteNameFromRoute(route) === 'EtapasEvento'
+                  ? {display: 'none'}
+                  : undefined,
+            })}
+          />
+        )}
+        {role === 'ADMINISTRADOR' && (
+          <Tab.Screen
+            name="Provisionar"
+            component={ProvisionarNavigator}
+            options={({route}) => ({
+              title: 'Vincular',
+              tabBarIcon: IconeProvisionar,
+              tabBarStyle: [
+                'EtapasProvisionamento',
+                'Diagnostico',
+                'Gerenciar',
+              ].includes(getFocusedRouteNameFromRoute(route) ?? '')
                 ? {display: 'none'}
                 : undefined,
-          })}
-        />
+            })}
+          />
+        )}
       </Tab.Navigator>
     </NavigationContainer>
   );

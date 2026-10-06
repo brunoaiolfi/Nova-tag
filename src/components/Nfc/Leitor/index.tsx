@@ -1,119 +1,242 @@
-import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
-import { Icon, Text } from 'react-native-paper';
-import NfcManager, { Ndef, NfcTech, TagEvent } from 'react-native-nfc-manager';
-
+import {StyleSheet} from 'react-native';
+import {ActionButton as Button} from '../../Tracking';
+import React, {useEffect, useRef, useState} from 'react';
+import {Icon, Text} from 'react-native-paper';
 import Tela from '../../Base/Tela';
 import VStack from '../../Base/VStack';
-import { useAppTheme } from '../../../theme';
+import {
+  cancelPhysicalRead,
+  physicalNfcAvailable,
+  readPhysicalTag,
+} from '../../../infra/nfc/reader';
+import type {Reading} from '../../../appplication/traceability/workflow';
+import TagDetails from '../TagDetails';
+import {View} from 'react-native';
+import {
+  FlowSteps,
+  PageHero,
+  StatusPanel,
+  trackingColors as colors,
+} from '../../Tracking';
 
-const TEMPO_LIMITE_MS = 40000;
-
-const MENSAGEM_TEMPO_ESGOTADO =
-  'Nenhuma etiqueta foi detectada. Verifique se o NFC está ligado e tente novamente.';
-
-type LeitorProps = {
-  textoParaGravar?: string;
-  onLeituraRealizada: (uid: string, textoNdef?: string) => void;
-  onErroLeitura: (mensagem: string) => void;
+type Props = {
+  write?: {uid: string; reference: string};
+  onLeituraRealizada: (reading: Reading, capturedAt: string) => void;
+  onErroLeitura: (message: string) => void;
+  onVoltar?: () => void;
+  continueLabel?: string;
+  context?: string;
+  onVerHistorico?: (reading: Reading, capturedAt: string) => void;
+  insetTop?: boolean;
 };
-
-NfcManager.start();
-
-const lerTextoNdef = (tag: TagEvent) => {
-  const registro = tag.ndefMessage?.find(r =>
-    Ndef.isType(r, Ndef.TNF_WELL_KNOWN, Ndef.RTD_TEXT),
-  );
-
-  return registro
-    ? Ndef.text.decodePayload(Uint8Array.from(registro.payload))
-    : undefined;
-};
-
-const Leitor = ({
-  textoParaGravar,
+export default function Leitor({
+  write,
   onLeituraRealizada,
   onErroLeitura,
-}: LeitorProps) => {
-  const theme = useAppTheme();
-
-  const ler = async () => {
-    try {
-      const gravar = !!textoParaGravar;
-
-      await NfcManager.requestTechnology(
-        gravar ? NfcTech.Ndef : [NfcTech.IsoDep, NfcTech.NfcA, NfcTech.NfcB],
-        {
-          readerModeDelay: TEMPO_LIMITE_MS,
-        },
-      );
-
-      const tag = await NfcManager.getTag();
-      const uid = tag?.id;
-
-      if (!uid) {
-        throw new Error('Não foi possível ler o UID da etiqueta.');
-      }
-
-      if (gravar) {
-        const bytes = Ndef.encodeMessage([Ndef.textRecord(textoParaGravar)]);
-        await NfcManager.ndefHandler.writeNdefMessage(bytes);
-      }
-
-      onLeituraRealizada(uid, textoParaGravar ?? lerTextoNdef(tag));
-    } catch (ex: any) {
-      console.log(ex);
-      onErroLeitura('Falha ao ler a etiqueta. Tente novamente.');
-    } finally {
-      encerrar();
-    }
-  };
-
-  const encerrar = () => {
-    NfcManager.cancelTechnologyRequest().catch(() => { });
-  };
-
+  onVoltar,
+  continueLabel = 'Continuar com esta etiqueta',
+  context,
+  onVerHistorico,
+  insetTop = true,
+}: Props) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [result, setResult] = useState<{
+    reading: Reading;
+    capturedAt: string;
+  }>();
+  const mounted = useRef(true);
+  const running = useRef(false);
+  const cancelled = useRef(false);
   useEffect(() => {
-    const tempoLimite = setTimeout(() => {
-      encerrar();
-      onErroLeitura(MENSAGEM_TEMPO_ESGOTADO);
-    }, TEMPO_LIMITE_MS);
-
-    ler();
-
+    mounted.current = true;
     return () => {
-      clearTimeout(tempoLimite);
-      encerrar();
+      mounted.current = false;
+      void cancelPhysicalRead();
     };
   }, []);
-
+  async function read() {
+    if (running.current) {
+      return;
+    }
+    running.current = true;
+    cancelled.current = false;
+    setBusy(true);
+    setResult(undefined);
+    setMessage('');
+    try {
+      const reading = await readPhysicalTag(write);
+      if (mounted.current && !cancelled.current) {
+        setResult({reading, capturedAt: new Date().toISOString()});
+      }
+    } catch (error) {
+      if (mounted.current && !cancelled.current) {
+        const detail =
+          error instanceof Error
+            ? error.message
+            : 'Leitura cancelada ou etiqueta não compatível. Tente novamente.';
+        setMessage(detail);
+        onErroLeitura(detail);
+      }
+    } finally {
+      running.current = false;
+      if (mounted.current) {
+        setBusy(false);
+      }
+    }
+  }
   return (
-    <Tela>
-      <VStack flex={1} align="center" justify="center" gap={16}>
-        <Icon source="nfc" size={96} color={theme.colors.primary} />
-
-        <VStack align="center" gap={4}>
-          <Text variant="titleLarge" style={styles.centralizado}>
-            Aproxime a etiqueta
+    <Tela
+      scroll
+      insetTop={insetTop}
+      header={
+        <PageHero
+          fullBleed
+          title={
+            result
+              ? write
+                ? 'Gravação conferida'
+                : 'Leitura concluída'
+              : write
+              ? 'Gravar referência NDEF'
+              : 'Vamos ler a etiqueta.'
+          }
+          description={
+            result
+              ? 'Você já pode afastar a etiqueta. O resultado fica aqui até você continuar.'
+              : 'Use a parte superior do iPhone, perto da câmera.'
+          }
+          icon={result ? 'check-circle-outline' : 'nfc-tap'}
+          eyebrow="LEITURA DA ETIQUETA"
+        />
+      }
+      footer={
+        result ? (
+          <Button
+            mode="contained"
+            onPress={() =>
+              onVerHistorico
+                ? onVerHistorico(result.reading, result.capturedAt)
+                : onLeituraRealizada(result.reading, result.capturedAt)
+            }>
+            {onVerHistorico ? 'Ver histórico desta etiqueta' : continueLabel}
+          </Button>
+        ) : (
+          <Button
+            mode="contained"
+            disabled={busy || !physicalNfcAvailable}
+            loading={busy}
+            onPress={() => {
+              void read();
+            }}>
+            {write ? 'Gravar e conferir etiqueta' : 'Ler etiqueta'}
+          </Button>
+        )
+      }>
+      <VStack gap={16}>
+        {!!context && <Text variant="labelLarge">{context}</Text>}
+        <FlowSteps
+          labels={['Iniciar', 'Aproximar', 'Conferir']}
+          current={result ? 3 : busy ? 2 : 1}
+          complete={!!result}
+        />
+        {!result && (
+          <View style={layoutStyles.scanInstructions}>
+            <View style={layoutStyles.scanTarget}>
+              <Icon source="cellphone-nfc" size={64} color={colors.blue} />
+            </View>
+            <Text variant="titleMedium" style={layoutStyles.instructionTitle}>
+              {busy
+                ? 'Mantenha a etiqueta parada'
+                : 'Toque no botão e aproxime a etiqueta'}
+            </Text>
+            <Text style={layoutStyles.instructionText}>
+              {write
+                ? 'O conteúdo NDEF atual será substituído. Use a mesma etiqueta e aguarde a gravação e a releitura.'
+                : 'Aguarde a confirmação do iPhone antes de afastar a etiqueta.'}
+            </Text>
+          </View>
+        )}
+        {!write && !result && (
+          <Text>
+            A leitura apenas consulta os dados. Nada será gravado na etiqueta ou
+            enviado ao pedido.
           </Text>
-          <Text
-            variant="bodyMedium"
-            style={[
-              styles.centralizado,
-              { color: theme.colors.onSurfaceVariant },
-            ]}>
-            Encoste o celular na etiqueta NFC para realizar a leitura.
+        )}
+        {!physicalNfcAvailable && (
+          <Text>
+            Instale o aplicativo de desenvolvimento Nova-tag com NFC. Esta
+            função não está disponível no Expo Go ou no navegador.
           </Text>
-        </VStack>
+        )}
+        {result ? (
+          <>
+            <TagDetails
+              reading={result.reading}
+              capturedAt={result.capturedAt}
+            />
+            {onVerHistorico && (
+              <Button
+                mode="outlined"
+                onPress={() =>
+                  onLeituraRealizada(result.reading, result.capturedAt)
+                }>
+                {continueLabel}
+              </Button>
+            )}
+            <Button
+              onPress={() => {
+                void read();
+              }}>
+              {write ? 'Gravar e conferir novamente' : 'Ler outra etiqueta'}
+            </Button>
+          </>
+        ) : null}
+        {busy && (
+          <Text accessibilityRole="alert">
+            Aguardando a etiqueta… Se não reconhecer, afaste a tag e aproxime
+            novamente.
+          </Text>
+        )}
+        {busy && (
+          <Button
+            onPress={() => {
+              cancelled.current = true;
+              setMessage(
+                'Leitura cancelada. Toque em Ler etiqueta para tentar novamente.',
+              );
+              void cancelPhysicalRead();
+            }}>
+            Cancelar leitura
+          </Button>
+        )}
+        {!!message && (
+          <StatusPanel tone="warning">
+            <Text accessibilityRole="alert">{message}</Text>
+          </StatusPanel>
+        )}
+        {onVoltar && (
+          <Button disabled={busy} onPress={onVoltar}>
+            Voltar
+          </Button>
+        )}
       </VStack>
     </Tela>
   );
-};
+}
 
-const styles = StyleSheet.create({
-  centralizado: {
-    textAlign: 'center',
+const layoutStyles = StyleSheet.create({
+  scanInstructions: {alignItems: 'center', paddingVertical: 18, gap: 14},
+  scanTarget: {
+    height: 136,
+    width: 136,
+    borderRadius: 40,
+    borderWidth: 8,
+    borderColor: '#F8F0E4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.pale,
   },
+  instructionTitle: {textAlign: 'center', fontWeight: '700'},
+  instructionText: {textAlign: 'center', color: colors.muted, lineHeight: 24},
 });
-
-export default Leitor;

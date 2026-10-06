@@ -1,6 +1,5 @@
-import { IBaseService } from '../../infra/services/base/interfaces';
-import { IBaseApplication } from './interface';
+import type {IBaseApplication, IBaseService} from './interface';
 
 export class BaseApplication implements IBaseApplication {
-    constructor(private readonly _baseService: IBaseService) { }
+  constructor(private readonly _baseService: IBaseService) {}
 }

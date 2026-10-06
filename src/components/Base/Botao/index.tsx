@@ -1,6 +1,6 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
-import {Button} from 'react-native-paper';
+import {ActionButton as Button} from '../../Tracking';
 
 type BotaoProps = Omit<React.ComponentProps<typeof Button>, 'mode'>;
 
@@ -23,13 +23,13 @@ const Botao = ({
 
 const styles = StyleSheet.create({
   botao: {
-    borderRadius: 8,
+    borderRadius: 18,
   },
   conteudo: {
-    height: 48,
+    minHeight: 60,
   },
   label: {
-    fontSize: 16,
+    fontSize: 17,
   },
 });
 

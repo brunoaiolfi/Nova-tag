@@ -5,7 +5,7 @@ import {Icon, Text} from 'react-native-paper';
 import Card from '../Base/Card';
 import VStack from '../Base/VStack';
 import HStack from '../Base/HStack';
-import {useAppTheme} from '../../theme';
+import {trackingColors as colors} from '../Tracking';
 
 type AvisoProps = {
   icone?: string;
@@ -13,21 +13,12 @@ type AvisoProps = {
 };
 
 const Aviso = ({icone = 'alert-outline', children}: AvisoProps) => {
-  const theme = useAppTheme();
-
   return (
-    <Card
-      style={[styles.aviso, {backgroundColor: theme.colors.warningContainer}]}>
+    <Card style={[styles.aviso, {backgroundColor: colors.amberBackground}]}>
       <HStack gap={12} align="flex-start">
-        <Icon
-          source={icone}
-          size={20}
-          color={theme.colors.onWarningContainer}
-        />
+        <Icon source={icone} size={20} color={colors.amber} />
         <VStack flex={1}>
-          <Text
-            variant="bodySmall"
-            style={{color: theme.colors.onWarningContainer}}>
+          <Text variant="bodySmall" style={{color: colors.amber}}>
             {children}
           </Text>
         </VStack>
@@ -38,7 +29,7 @@ const Aviso = ({icone = 'alert-outline', children}: AvisoProps) => {
 
 const styles = StyleSheet.create({
   aviso: {
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 0,
   },
 });

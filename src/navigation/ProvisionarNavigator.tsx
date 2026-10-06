@@ -3,12 +3,20 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import InformativoEtapas from '../views/Provisionar/InformativoEtapas';
 import EtapasProvisionamento from '../views/Provisionar/Etapas';
+import Diagnostico from '../views/Provisionar/Diagnostico';
+import Gerenciar from '../views/Provisionar/Gerenciar';
 import {useAppTheme} from '../theme';
 import {EnumEstrategiasNFC} from '../domain/enums/estrategiasNFC';
 
 export type RotasProvisionar = {
   InformativoEtapas: undefined;
-  EtapasProvisionamento: {estrategia: EnumEstrategiasNFC};
+  EtapasProvisionamento: {
+    estrategia: EnumEstrategiasNFC;
+    expectedUid?: string;
+    registeredModel?: string;
+  };
+  Diagnostico: undefined;
+  Gerenciar: {provisioningId?: string} | undefined;
 };
 
 const Stack = createNativeStackNavigator<RotasProvisionar>();
@@ -32,7 +40,17 @@ const ProvisionarNavigator = () => {
       <Stack.Screen
         name="EtapasProvisionamento"
         component={EtapasProvisionamento}
-        options={{title: 'Provisionamento'}}
+        options={{title: 'Vincular etiqueta'}}
+      />
+      <Stack.Screen
+        name="Diagnostico"
+        component={Diagnostico}
+        options={{title: 'Diagnóstico da etiqueta'}}
+      />
+      <Stack.Screen
+        name="Gerenciar"
+        component={Gerenciar}
+        options={{title: 'Gerenciar etiqueta'}}
       />
     </Stack.Navigator>
   );

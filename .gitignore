@@ -38,6 +38,11 @@ local.properties
 # node.js
 #
 node_modules/
+.expo/
+dist/
+/ios/
+/android/
+/.tmp/
 npm-debug.log
 yarn-error.log
 
