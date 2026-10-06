@@ -1,11 +1,11 @@
 # Nova-tag NFC — Expo Development Build
 
-Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/issue-1-sdm-bench-profile`, no
+Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/issue-4-durable-offline`, no
 worktree `C:\src\Nova-tag-expo`, dentro do mesmo repositório. O checkout original
 em `C:\src\Nova-tag` permanece separado. Não foi feito merge na main.
 
-Software #1/#2/#3 aprovado pelo mantenedor. Personalização/proteção e aceite físico
-ficaram na #12; SDM, offline, reconciliação e experimentos continuam pendentes.
+Software #1/#2/#3 e fila durável #4 implementados. Personalização/proteção e aceite físico
+ficaram na #12; SDM, reconciliação e experimentos continuam pendentes.
 Veja [entregas atuais e próximas etapas](docs/10-estado-do-projeto.md).
 
 ## Instalar no iPhone usando Windows
@@ -56,8 +56,11 @@ O Administrador também pode usar **Novo pedido**, cadastrar código/descrição
 confirmar **Usar este pedido** antes de ler a etiqueta. O modelo vem
 como **Desconhecido**; use as opções apenas se souber o chip. Leia e confira a tag,
 vincule ao pedido e conclua a configuração/ativação. Na aba Registrar, escolha a
-operação, leia, confira e confirme o envio. O comprovante permanece na tela e
+operação, leia, confira e confirme a captura. Ela é salva em SQLite antes do envio.
+O comprovante permanece na tela e
 distingue captura salva, operação autorizada/rejeitada e leitura suspeita.
+Na aba **Envios**, disponibilize etiquetas com conexão antes da coleta offline
+e acompanhe tentativas/decisões. Veja [captura offline e sincronização](docs/11-captura-offline.md).
 
 Na aba **Rastreio**, leia a etiqueta ou busque o pedido na lista. Também há o
 botão **Ver histórico desta etiqueta** no resultado da leitura e após enviar um
@@ -83,7 +86,8 @@ nem registra outro evento e está disponível também para o perfil Consulta.
 
 Mudanças apenas de interface/JavaScript são carregadas pelo Metro no development
 build já instalado, sem iniciar outra compilação EAS. Dependências ou configurações
-nativas novas exigiriam outro build.
+nativas novas exigem outro build. A #4 adiciona SQLite e monitoramento de rede;
+atualize o development build iOS para usar a fila. Nenhum build EAS é iniciado automaticamente.
 
 ## Interface de rastreio
 
@@ -118,7 +122,8 @@ NFC nativo nesta revisão visual.
 - Capturas físicas e decisões logísticas da API, inclusive rejeições armazenadas.
 - NDEF copiado identifica o vínculo pela referência; UID divergente é avaliado
   pelo servidor sem validação conjunta inventada pelo mobile.
-- Reenvio na mesma tela mantém UUID, horário, leitura e operador originais.
+- Fila SQLite mantém UUID, horário, leitura, operador e época após fechar/reiniciar.
+- Sincronização recuperável, manual e em primeiro plano, com resultados por item.
 - Leituras Type 4/IsoDep preservam o NDEF original em Base64; a URI vem dos
   mesmos bytes, sem reconstrução pelo SDK. A captura é congelada antes da consulta
   ao vínculo. Veja [bytes da captura e limites físicos](docs/08-evidencia-operacional.md).
@@ -140,9 +145,12 @@ fica pendente. O modelo da tag e seu procedimento físico ainda precisam ser
 validados. MIFARE Classic não é compatível com iPhone; tags protegidas ou sem NDEF
 podem não permitir essas operações.
 
-Capturas pendentes ficam em memória enquanto a tela estiver aberta; não há fila
-offline persistente. Fechar/reiniciar perde a captura ainda não confirmada.
-Offline, SDM e reconciliação continuam nas respectivas issues.
+Capturas confirmadas localmente persistem no aparelho. Etiquetas precisam de
+vínculo ativo consultado online por esse operador nas últimas 24 horas; não há
+associação offline de etiqueta desconhecida. Login verificado e ainda válido
+permite coleta local quando a API está inacessível. Envio exige revalidar a sessão.
+Não há serviço de background; a próxima abertura retoma os registros. SDM e
+reconciliação continuam nas respectivas issues. Desinstalar/limpar dados remove a fila.
 
 ## Verificação local
 
@@ -159,9 +167,11 @@ decodificação URI/texto, gravação/releitura, divergência, retomada, reenvio
 resultado persistente até confirmação, cancelamento, seleção paginada de pedidos,
 buscas concorrentes e preservação do horário da leitura durante o reenvio.
 O contrato UID/NDEF também foi exercitado contra API/PostgreSQL locais com fixtures
-sintéticas. Plugin e schema Codegen foram verificados. O development build iOS
+sintéticas. Testes da fila usam SQLite real. Plugin e schema Codegen foram verificados.
+O development build iOS anterior,
 `7ca41977-dee3-48b9-8d98-acb74368a285` foi concluído no EAS e instalado pelo usuário.
-Os testes automatizados não substituem o ensaio físico de leitura e escrita.
+Ele precisa ser atualizado para os módulos da #4. Os testes automatizados não substituem
+o ensaio físico de leitura e escrita.
 
 `react-native-nfc-manager@4.0.0-beta.10` suporta a nova arquitetura segundo o
 mantenedor, mas é beta. Expo Doctor mantém aviso de metadados da React Native
@@ -182,7 +192,7 @@ o resultado permanece visível, inclusive se uma nova tentativa falhar. Leitura,
 gravação e diagnóstico compartilham uma sessão exclusiva com timeout de 45 segundos.
 Veja [hardware NFC: progresso e roteiro](docs/06-hardware-nfc.md) para os limites,
 testes e aceite físico ainda necessário. A branch atual é
-`codex/issue-1-sdm-bench-profile`; as alterações continuam locais.
+`codex/issue-4-durable-offline`; a integração na main permanece separada.
 
 O [perfil SDM candidato e roteiro de bancada](docs/09-perfil-sdm-bancada.md)
 inclui geração offline de NDEF/offsets e comparação estrutural com o relatório v2.

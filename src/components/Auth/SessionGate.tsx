@@ -11,6 +11,7 @@ export function SessionGate({children}: PropsWithChildren) {
     return <Login />;
   }
   const authenticated = state.status === 'authenticated';
+  const usable = authenticated || state.status === 'offline';
   const preserve = authenticated || state.previouslyVerified === true;
   // Retain local work under an opaque, blocking overlay during revalidation.
   // A saved token alone never mounts the protected content on cold startup.
@@ -20,14 +21,12 @@ export function SessionGate({children}: PropsWithChildren) {
         <View
           key={state.session.user.id}
           style={styles.root}
-          pointerEvents={authenticated ? 'auto' : 'none'}
-          accessibilityElementsHidden={!authenticated}
-          importantForAccessibility={
-            authenticated ? 'auto' : 'no-hide-descendants'
-          }>
+          pointerEvents={usable ? 'auto' : 'none'}
+          accessibilityElementsHidden={!usable}
+          importantForAccessibility={usable ? 'auto' : 'no-hide-descendants'}>
           {children}
         </View>
-        {!authenticated && (
+        {!usable && (
           <View style={[StyleSheet.absoluteFill, styles.overlay]}>
             {state.status === 'checking' ? (
               <ActivityIndicator accessibilityLabel="Verificando sessão" />

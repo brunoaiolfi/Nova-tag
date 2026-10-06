@@ -1,11 +1,17 @@
-export type Strategy = 'UID' | 'NDEF_ESTATICO';
-export interface Reading {
-  uid: string;
-  ndef?: string;
-  tecnologias?: string[];
-  bytesBase64?: string;
-  modelo?: string;
-}
+import type {
+  Strategy,
+  Reading,
+  Provisioning,
+  Observation,
+  Decision,
+} from '../../domain/traceability/types';
+export type {
+  Strategy,
+  Reading,
+  Provisioning,
+  Observation,
+  Decision,
+} from '../../domain/traceability/types';
 export interface OrderSummary {
   id: string;
   codigo: string;
@@ -71,38 +77,15 @@ export interface HistoryPage {
   proximaPagina: number | null;
   totalDoPedido: number;
 }
-export interface Provisioning {
-  id: string;
-  pedidoId: string;
-  uid: string;
-  estrategia: Strategy;
-  status: 'REGISTRADA' | 'ATIVA' | 'DESPROVISIONADA';
-  referenciaNdef: string | null;
-  epoca?: number;
-  modelo?: string;
-}
-export interface Observation {
-  id: string;
-  versaoContrato: 1;
-  provisionamentoId: string;
-  tipo: string;
-  ocorridoEm: string;
-  dispositivoId: string;
-  leituraBruta: Reading;
-}
-export interface Decision {
-  armazenada: boolean;
-  decisao: {
-    autorizada: boolean;
-    motivo: string;
-    classificacao: string;
-    avisos: string[];
-  };
-}
 export interface Api {
   request<T>(
     path: string,
-    options?: {method?: string; body?: unknown; expectedUserId?: string},
+    options?: {
+      method?: string;
+      body?: unknown;
+      expectedUserId?: string;
+      expectedBaseUrl?: string;
+    },
   ): Promise<T>;
 }
 const referencePattern =
@@ -314,7 +297,8 @@ export class TraceabilityWorkflow {
     }
     if (
       provisioning.estrategia === 'UID' &&
-      reading.ndef?.startsWith('urn:nfc-trace:provisioning:')
+      typeof reading.ndef === 'string' &&
+      reading.ndef.startsWith('urn:nfc-trace:provisioning:')
     ) {
       throw new Error(
         'A etiqueta ainda contém uma referência NDEF do projeto. Remova-a com a ferramenta de configuração e faça uma nova leitura antes de ativar por UID.',
@@ -342,7 +326,10 @@ export class TraceabilityWorkflow {
 
   async resolveProvisioning(reading: Reading): Promise<Provisioning> {
     let provisioning: Provisioning | null;
-    if (reading.ndef?.startsWith('urn:nfc-trace:provisioning:')) {
+    if (
+      typeof reading.ndef === 'string' &&
+      reading.ndef.startsWith('urn:nfc-trace:provisioning:')
+    ) {
       const match = referencePattern.exec(reading.ndef);
       if (!match) {
         throw new Error(

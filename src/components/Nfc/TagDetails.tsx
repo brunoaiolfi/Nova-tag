@@ -21,7 +21,9 @@ export default function TagDetails({
   reading: Reading;
   capturedAt?: string;
 }) {
-  const reference = reading.ndef?.startsWith('urn:nfc-trace:provisioning:');
+  const reference =
+    typeof reading.ndef === 'string' &&
+    reading.ndef.startsWith('urn:nfc-trace:provisioning:');
   return (
     <StatusPanel tone="success">
       <View style={layoutStyles.heading}>

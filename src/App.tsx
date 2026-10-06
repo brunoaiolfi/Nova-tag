@@ -9,6 +9,7 @@ import {tema} from './theme';
 import Toasts from './components/Base/Toast';
 import {SessionProvider} from './components/Auth/SessionProvider';
 import {SessionGate} from './components/Auth/SessionGate';
+import {OfflineProvider} from './components/Offline/OfflineProvider';
 
 const settings = {
   icon: (props: {name: string; size: number; color?: string}) => (
@@ -32,9 +33,11 @@ const App = () => (
       <View style={styles.root}>
         <View style={styles.content}>
           <SessionProvider>
-            <SessionGate>
-              <Navigator />
-            </SessionGate>
+            <OfflineProvider>
+              <SessionGate>
+                <Navigator />
+              </SessionGate>
+            </OfflineProvider>
           </SessionProvider>
         </View>
       </View>

@@ -1,12 +1,16 @@
-import {ActionButton as Button} from '../../../components/Tracking';
 import React, {useRef, useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import type {RotasTab} from '../../../navigation';
 import type {RotasEventos} from '../../../navigation/EventosNavigator';
-import {List, Text} from 'react-native-paper';
-import {FlowSteps, PageHero, StatusPanel} from '../../../components/Tracking';
+import {Text} from 'react-native-paper';
+import {
+  ActionButton as Button,
+  FlowSteps,
+  PageHero,
+  StatusPanel,
+} from '../../../components/Tracking';
 import * as Crypto from 'expo-crypto';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
@@ -17,90 +21,75 @@ import {
   descricaoEnumTipoEvento,
 } from '../../../domain/enums/tipoEvento';
 import TagDetails from '../../../components/Nfc/TagDetails';
-import type {
-  Decision,
-  Observation,
-  Reading,
-} from '../../../appplication/traceability/workflow';
-import {
-  traceability,
-  installationId,
-} from '../../../infra/traceability/runtime';
+import type {Reading} from '../../../domain/traceability/types';
+import {installationId} from '../../../infra/traceability/runtime';
 import {sessionManager} from '../../../infra/auth/runtime';
+import {useOffline} from '../../../components/Offline/OfflineProvider';
 import {reasonLabel} from '../../traceability-labels';
+import {captureStatus} from '../../Envios';
+import type {CaptureOwner} from '../../../domain/offline/types';
 
 export default function EtapasEvento() {
   const navigation = useNavigation<NativeStackNavigationProp<RotasEventos>>();
+  const queue = useOffline();
   const [type, setType] = useState<EnumTipoEvento>();
   const [reading, setReading] = useState<Reading>();
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<Decision>();
+  const [savedId, setSavedId] = useState<string>();
   const [message, setMessage] = useState('');
-  const [attempted, setAttempted] = useState(false);
   const running = useRef(false);
   const pending = useRef<
-    | {
-        id: string;
-        occurredAt: string;
-        userId: string;
-        observation?: Observation;
-      }
-    | undefined
+    {id: string; occurredAt: string; owner: CaptureOwner} | undefined
   >(undefined);
+  const saved = queue.items.find(item => item.id === savedId);
   function captured(value: Reading, capturedAt: string) {
-    const user = sessionManager.getSnapshot().session?.user;
-    if (!user) {
+    const session = sessionManager.getSnapshot().session;
+    if (!session) {
       setMessage('Entre novamente para registrar a captura.');
       return;
     }
     pending.current = {
       id: Crypto.randomUUID(),
       occurredAt: capturedAt,
-      userId: user.id,
+      owner: {userId: session.user.id, baseUrl: session.baseUrl},
     };
-    setReading(value);
+    setReading(JSON.parse(JSON.stringify(value)));
+    setSavedId(undefined);
   }
-  async function send() {
+  async function save() {
     const intent = pending.current;
-    if (!reading || !type || !intent || running.current) {
-      return;
-    }
+    if (!reading || !type || !intent || running.current) return;
     running.current = true;
     setBusy(true);
     setMessage('');
     try {
-      intent.observation ??= await traceability.prepare(
+      const device = await installationId();
+      const capture = await queue.manager.capture(
         reading,
         type,
         intent.id,
         intent.occurredAt,
-        await installationId(),
+        device,
+        intent.owner,
       );
-      setAttempted(true);
-      const decision = await traceability.send(
-        intent.observation,
-        intent.userId,
-      );
-      setResult(decision);
+      setSavedId(capture.id);
+      void queue.manager.synchronize();
     } catch (error) {
       setMessage(
-        `${
-          (error as Error).message
-        } Ao tentar novamente nesta tela, a captura mantém o mesmo identificador.`,
+        (error as Error).message +
+          ' A captura só estará confirmada depois de ser salva neste aparelho.',
       );
     } finally {
       running.current = false;
       setBusy(false);
     }
   }
-  if (!type) {
-    return <SelecionarEvento onSelecionarEvento={setType} />;
-  }
-  if (!reading) {
+  if (!type) return <SelecionarEvento onSelecionarEvento={setType} />;
+  if (!reading)
     return (
       <Leitor
         insetTop={false}
-        context={`2. Ler etiqueta · ${descricaoEnumTipoEvento[type]}`}
+        context={'2. Ler etiqueta · ' + descricaoEnumTipoEvento[type]}
         onVoltar={() => {
           setType(undefined);
           setMessage('');
@@ -109,7 +98,7 @@ export default function EtapasEvento() {
         onErroLeitura={setMessage}
       />
     );
-  }
+  const stored = saved?.state === 'STORED';
   return (
     <Tela
       scroll
@@ -117,38 +106,32 @@ export default function EtapasEvento() {
       header={
         <PageHero
           fullBleed
+          eyebrow="REGISTRAR ETAPA"
           title={
-            result
-              ? 'Resultado do registro'
-              : `3. Confirmar ${descricaoEnumTipoEvento[type]}`
+            savedId
+              ? 'Captura salva'
+              : '3. Confirmar ' + descricaoEnumTipoEvento[type]
           }
           description={
-            result
-              ? 'Confira a decisão antes de seguir com o pedido.'
-              : 'Confira a etiqueta e envie a etapa escolhida.'
+            savedId
+              ? 'Acompanhe o envio e a decisão da operação.'
+              : 'Confira a leitura. Ela será salva antes de tentar o envio.'
           }
           icon={
-            result
-              ? result.decisao.autorizada
-                ? 'check-circle-outline'
-                : 'alert-circle-outline'
-              : 'clipboard-check-outline'
+            savedId ? 'content-save-check-outline' : 'clipboard-check-outline'
           }
-          eyebrow="REGISTRAR ETAPA"
         />
       }
       footer={
-        !result ? (
+        !savedId ? (
           <Button
             mode="contained"
-            disabled={busy}
             loading={busy}
+            disabled={busy || queue.loading || !!queue.error}
             onPress={() => {
-              void send();
+              void save();
             }}>
-            {attempted
-              ? 'Tentar envio novamente'
-              : `Confirmar ${descricaoEnumTipoEvento[type].toLowerCase()}`}
+            {'Confirmar ' + descricaoEnumTipoEvento[type].toLowerCase()}
           </Button>
         ) : (
           <Button
@@ -156,9 +139,9 @@ export default function EtapasEvento() {
             onPress={() =>
               navigation
                 .getParent<BottomTabNavigationProp<RotasTab>>()
-                ?.navigate('Historico', {reading})
+                ?.navigate('Envios')
             }>
-            Ver histórico desta etiqueta
+            Acompanhar em Envios
           </Button>
         )
       }>
@@ -166,29 +149,62 @@ export default function EtapasEvento() {
         <FlowSteps
           labels={['Escolher', 'Ler', 'Confirmar']}
           current={3}
-          complete={!!result}
+          complete={!!savedId}
         />
-        {!result && (
+        {!savedId && (
           <Text>
-            A leitura foi concluída. O evento só será enviado quando você
-            confirmar abaixo. Operador e dispositivo são preenchidos
-            automaticamente.
+            Ao confirmar, o registro ficará salvo neste aparelho mesmo sem
+            conexão. Operador, horário e dispositivo serão preservados.
           </Text>
         )}
-        {!result && (
-          <TagDetails
-            reading={reading}
-            capturedAt={pending.current?.occurredAt}
-          />
-        )}
-        {!result && (
-          <Text>
-            Se perder a conexão, mantenha esta tela aberta e tente o envio
-            novamente. O mesmo registro será reenviado, sem duplicar a operação.
-          </Text>
-        )}
+        {!!queue.error && <Text accessibilityRole="alert">{queue.error}</Text>}
         {!!message && <Text accessibilityRole="alert">{message}</Text>}
-        {!result && !attempted && (
+        {savedId && (
+          <StatusPanel
+            tone={
+              stored
+                ? saved?.businessState === 'ACCEPTED'
+                  ? 'success'
+                  : 'error'
+                : 'info'
+            }>
+            <VStack gap={10}>
+              <Text variant="titleLarge" accessibilityRole="alert">
+                {stored
+                  ? 'Captura salva no histórico'
+                  : 'Captura salva neste aparelho'}
+              </Text>
+              <Text variant="titleMedium">
+                {saved
+                  ? captureStatus(saved)
+                  : 'Aguardando confirmação do servidor'}
+              </Text>
+              {!stored && (
+                <Text>
+                  Você já pode sair desta tela. O registro permanece salvo após
+                  fechar e reabrir o app. A movimentação só será autorizada pela
+                  decisão do servidor.
+                </Text>
+              )}
+              {saved?.metadata.cacheUsed && (
+                <Text>
+                  Foi usado o vínculo confirmado anteriormente. A API conferirá
+                  novamente sua validade no envio.
+                </Text>
+              )}
+              {saved?.currentDecision && (
+                <Text>{reasonLabel(saved.currentDecision.decisao.motivo)}</Text>
+              )}
+              {!!saved?.message && <Text>{saved.message}</Text>}
+              <Text selectable>Identificador: {savedId}</Text>
+            </VStack>
+          </StatusPanel>
+        )}
+        <TagDetails
+          reading={reading}
+          capturedAt={pending.current?.occurredAt}
+        />
+        {!savedId && (
           <Button
             disabled={busy}
             onPress={() => {
@@ -196,60 +212,32 @@ export default function EtapasEvento() {
               pending.current = undefined;
               setMessage('');
             }}>
-            Ler outra etiqueta antes de enviar
+            Ler outra etiqueta antes de confirmar
           </Button>
         )}
-        {result && (
-          <>
-            <StatusPanel tone={result.decisao.autorizada ? 'success' : 'error'}>
-              <VStack gap={12}>
-                <Text variant="titleLarge" accessibilityRole="alert">
-                  {result.armazenada
-                    ? 'Captura salva no histórico'
-                    : 'Captura não armazenada'}
-                </Text>
-                <Text variant="titleMedium">
-                  {result.decisao.autorizada
-                    ? `Operação autorizada · ${descricaoEnumTipoEvento[type]}`
-                    : 'Operação rejeitada · pedido não alterado'}
-                </Text>
-                <Text>{reasonLabel(result.decisao.motivo)}</Text>
-                <Text>
-                  {result.decisao.classificacao === 'SUSPEITO'
-                    ? 'Leitura suspeita: confira os dados da etiqueta antes de prosseguir.'
-                    : 'Leitura sem divergências identificadas.'}
-                </Text>
-                {result.decisao.avisos.map((warning, index) => (
-                  <Text key={`${warning}-${index}`}>
-                    {reasonLabel(warning)}
-                  </Text>
-                ))}
-                <List.Accordion
-                  title="Comprovante do registro"
-                  titleNumberOfLines={2}>
-                  <Text selectable>Identificador: {pending.current?.id}</Text>
-                  <Text>Evento: {descricaoEnumTipoEvento[type]}</Text>
-                  <Text>Motivo: {result.decisao.motivo}</Text>
-                </List.Accordion>
-              </VStack>
-            </StatusPanel>
-            <TagDetails
-              reading={reading}
-              capturedAt={pending.current?.occurredAt}
-            />
-            <Button
-              mode="outlined"
-              onPress={() => {
-                setType(undefined);
-                setReading(undefined);
-                setResult(undefined);
-                setMessage('');
-                setAttempted(false);
-                pending.current = undefined;
-              }}>
-              Nova captura
-            </Button>
-          </>
+        {stored && (
+          <Button
+            mode="outlined"
+            onPress={() =>
+              navigation
+                .getParent<BottomTabNavigationProp<RotasTab>>()
+                ?.navigate('Historico', {reading})
+            }>
+            Ver histórico desta etiqueta
+          </Button>
+        )}
+        {savedId && (
+          <Button
+            mode="outlined"
+            onPress={() => {
+              setType(undefined);
+              setReading(undefined);
+              setSavedId(undefined);
+              setMessage('');
+              pending.current = undefined;
+            }}>
+            Nova captura
+          </Button>
         )}
       </VStack>
     </Tela>

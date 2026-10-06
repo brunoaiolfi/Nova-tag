@@ -1,28 +1,43 @@
-import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {PaperProvider} from 'react-native-paper';
+import {ActionButton as Button} from '../src/components/Tracking';
 import EtapasEvento from '../src/views/Eventos/Etapas';
 import SelecionarEvento from '../src/views/Eventos/Etapas/SelecionarEvento';
 import Leitor from '../src/components/Nfc/Leitor';
 import {EnumTipoEvento} from '../src/domain/enums/tipoEvento';
-import {traceability} from '../src/infra/traceability/runtime';
-
+import type {QueuedCapture} from '../src/domain/offline/types';
 const mockNavigate = jest.fn();
+const mockCapture = jest.fn();
+const mockSynchronize = jest.fn().mockResolvedValue(undefined);
+let mockItems: QueuedCapture[] = [];
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({getParent: () => ({navigate: mockNavigate})}),
 }));
-
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
-
 jest.mock('../src/infra/traceability/runtime', () => ({
-  traceability: {prepare: jest.fn(), send: jest.fn()},
   installationId: jest.fn().mockResolvedValue('ios-device'),
 }));
+jest.mock('../src/components/Offline/OfflineProvider', () => ({
+  useOffline: () => ({
+    items: mockItems,
+    loading: false,
+    error: null,
+    manager: {capture: mockCapture, synchronize: mockSynchronize},
+  }),
+}));
 jest.mock('../src/infra/auth/runtime', () => ({
-  sessionManager: {getSnapshot: () => ({session: {user: {id: 'operator'}}})},
+  sessionManager: {
+    getSnapshot: () => ({
+      status: 'authenticated',
+      session: {
+        user: {id: 'operator'},
+        baseUrl: 'http://localhost:3000/api/v1',
+      },
+    }),
+  },
 }));
 jest.mock('../src/infra/nfc/reader', () => ({
   physicalNfcAvailable: true,
@@ -34,9 +49,9 @@ const button = (label: string) =>
 afterEach(async () => {
   await act(async () => tree?.unmount());
   jest.clearAllMocks();
+  mockItems = [];
 });
-
-test('confirmation uses the physical scan time and retries the exact observation after lost response', async () => {
+test('confirms only after durable storage and retains scan time/UUID when a local save fails', async () => {
   await act(async () => {
     tree = TestRenderer.create(
       <PaperProvider>
@@ -54,59 +69,79 @@ test('confirmation uses the physical scan time and retries the exact observation
   await act(async () => {
     tree.root.findByType(Leitor).props.onLeituraRealizada(reading, scanTime);
   });
-  const observation = {
-    id: 'capture',
-    versaoContrato: 1 as const,
-    provisionamentoId: 'link',
-    tipo: 'COLETA',
-    ocorridoEm: scanTime,
-    dispositivoId: 'ios-device',
-    leituraBruta: reading,
-  };
-  jest.mocked(traceability.prepare).mockResolvedValueOnce(observation);
-  jest
-    .mocked(traceability.send)
-    .mockRejectedValueOnce(new Error('Resposta perdida'))
-    .mockResolvedValueOnce({
-      armazenada: true,
-      decisao: {
-        autorizada: false,
-        motivo: 'SEQUENCIA_INVALIDA',
-        classificacao: 'REGULAR',
-        avisos: [],
-      },
-    });
-  expect(traceability.send).not.toHaveBeenCalled();
+  mockCapture.mockRejectedValueOnce(new Error('storage unavailable'));
+  expect(mockCapture).not.toHaveBeenCalled();
   await act(async () => {
     button('Confirmar coleta').props.onPress();
   });
-  expect(traceability.prepare).toHaveBeenCalledWith(
+  expect(mockSynchronize).not.toHaveBeenCalled();
+  expect(JSON.stringify(tree.toJSON())).not.toContain(
+    'Captura salva neste aparelho',
+  );
+  mockCapture.mockImplementationOnce(
+    async (raw, type, id, time, device, owner) => {
+      const saved: QueuedCapture = {
+        id,
+        sequence: 1,
+        owner,
+        payload: {
+          id,
+          versaoContrato: 1,
+          provisionamentoId: 'link',
+          tipo: type,
+          ocorridoEm: time,
+          dispositivoId: device,
+          leituraBruta: raw,
+        },
+        metadata: {
+          cacheUsed: true,
+          provisioning: {
+            id: 'link',
+            pedidoId: 'order',
+            uid: raw.uid,
+            estrategia: 'UID',
+            status: 'ATIVA',
+            referenciaNdef: null,
+            epoca: 1,
+          },
+        },
+        createdAt: Date.now(),
+        state: 'QUEUED',
+        businessState: 'NONE',
+        attempts: 0,
+        nextAttemptAt: 0,
+        claim: null,
+        leaseUntil: null,
+        receipt: null,
+        currentDecision: null,
+        errorCode: null,
+        message: null,
+      };
+      mockItems = [saved];
+      return saved;
+    },
+  );
+  await act(async () => {
+    button('Confirmar coleta').props.onPress();
+  });
+  expect(mockCapture.mock.calls[0]).toEqual(mockCapture.mock.calls[1]);
+  expect(mockCapture).toHaveBeenCalledWith(
     reading,
     'COLETA',
     expect.any(String),
     scanTime,
     'ios-device',
+    {userId: 'operator', baseUrl: 'http://localhost:3000/api/v1'},
   );
-  expect(
-    tree.root
-      .findAllByType(Button)
-      .some(
-        item => item.props.children === 'Ler outra etiqueta antes de enviar',
-      ),
-  ).toBe(false);
-  await act(async () => {
-    button('Tentar envio novamente').props.onPress();
-  });
-  expect(traceability.prepare).toHaveBeenCalledTimes(1);
-  expect(jest.mocked(traceability.send).mock.calls[0]).toEqual(
-    jest.mocked(traceability.send).mock.calls[1],
+  expect(mockSynchronize).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(tree.toJSON())).toContain(
+    'Captura salva neste aparelho',
   );
-  const text = JSON.stringify(tree.toJSON());
-  expect(text).toContain('Captura salva no histórico');
-  expect(text).toContain('Operação rejeitada · pedido não alterado');
-  expect(text).toContain('etapas anteriores');
+  expect(JSON.stringify(tree.toJSON())).toContain(
+    'Você já pode sair desta tela',
+  );
   await act(async () => {
-    button('Ver histórico desta etiqueta').props.onPress();
+    button('Acompanhar em Envios').props.onPress();
   });
-  expect(mockNavigate).toHaveBeenCalledWith('Historico', {reading});
+  expect(mockNavigate).toHaveBeenCalledWith('Envios');
 });

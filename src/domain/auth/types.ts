@@ -10,6 +10,7 @@ export interface Session {
   expiresAt: string;
   user: User;
   baseUrl: string;
+  verifiedAt?: string;
 }
 export interface SessionStorage {
   load(): Promise<Session | null>;
@@ -66,6 +67,9 @@ export function isSession(value: unknown): value is Session {
     typeof s.expiresAt === 'string' &&
     Number.isFinite(Date.parse(s.expiresAt)) &&
     typeof s.baseUrl === 'string' &&
+    (s.verifiedAt === undefined ||
+      (typeof s.verifiedAt === 'string' &&
+        Number.isFinite(Date.parse(s.verifiedAt)))) &&
     !!s.user &&
     typeof s.user.id === 'string' &&
     typeof s.user.login === 'string' &&
