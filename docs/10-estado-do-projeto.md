@@ -15,9 +15,40 @@ três tratamentos foram concentrados na
 inclui código administrativo que precisa ser implementado, além de hardware real.
 O perfil SDM é candidato de bancada; a API continua rejeitando SDM.
 
-Restam #12 → #5 (verificação SDM/épocas/chaves/políticas) → #4 (fila offline e
-sincronização) → #6 (reconciliação) → #7 (instrumentação/exportação) → #8
-(experimentos/análise) → #9 (integração/reprodução/entrega final).
+## Trabalho possível antes da NTAG 424 DNA
+
+- #4 (fila offline/sincronização) e #5 (verificador SDM/épocas/chaves/políticas)
+  podem começar em paralelo. O transporte preserva bytes e não precisa
+  autenticar SDM; o verificador pode ser testado com vetores oficiais da NXP.
+- #6 (reconciliação) depende de #4 e #5 para concluir a integração. #7
+  (instrumentação/exportação) depende de #6. Nenhuma delas precisa aguardar
+  a etiqueta física; planejamento e partes independentes podem avançar antes.
+- #12 concentra personalização/proteção, mensagens físicas e aceite dos três
+  tratamentos online/offline. Seu aceite integrado depende de #4 e #5 e de
+  hardware real; código administrativo e procedimento podem começar agora.
+- #8 depende de #7 e #12 para piloto/coleta real. Preparação do protocolo e
+  scripts de análise pode começar antes; dados sintéticos não viram resultados
+  experimentais. #9 pode adiantar instalação/documentação, mas seu aceite final
+  depende de #8.
+
+```mermaid
+flowchart LR
+  O["#4 Offline"] --> R["#6 Reconciliação"]
+  S["#5 SDM na API"] --> R
+  R --> I["#7 Instrumentação"]
+  I --> E["#8 Experimentos"]
+  O --> H["#12 Aceite NTAG 424 DNA"]
+  S --> H
+  H --> E
+  E --> F["#9 Entrega final"]
+```
+
+`Blocked by` significa dependência para concluir o escopo integrado, não uma
+proibição de iniciar partes independentes. Vetores oficiais e fixtures declaradas
+validam software; aceite físico continua separado na #12. O perfil SDM candidato
+é versionado e pode exigir revisão explícita após a bancada, preservando épocas
+anteriores. Fila, verificador e decisões serão integrados em #6; leitura real,
+proteção e fluxo SDM completo serão comprovados em #12.
 
 O [plano #10](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/10) é o mapa
 atual de dependências. Os guias 05 a 09 preservam evidências históricas; seus
