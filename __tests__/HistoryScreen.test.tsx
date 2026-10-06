@@ -16,7 +16,8 @@ import type {
 import {traceability} from '../src/infra/traceability/runtime';
 
 let mockParams: {reading?: Reading} | undefined;
-const mockNavigation = {setParams: jest.fn()};
+const mockNavigation = {setParams: jest.fn(), navigate: jest.fn()};
+let mockRole = 'ADMINISTRADOR';
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({params: mockParams}),
   useNavigation: () => mockNavigation,
@@ -24,7 +25,9 @@ jest.mock('@react-navigation/native', () => ({
     require('react').useEffect(callback, [callback]),
 }));
 jest.mock('../src/components/Auth/SessionProvider', () => ({
-  useSession: () => ({state: {status: 'authenticated'}}),
+  useSession: () => ({
+    state: {status: 'authenticated', session: {user: {perfil: mockRole}}},
+  }),
 }));
 jest.mock('../src/infra/traceability/runtime', () => ({
   traceability: {
@@ -83,6 +86,7 @@ async function render() {
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams = undefined;
+  mockRole = 'ADMINISTRADOR';
   jest
     .mocked(traceability.listOrders)
     .mockResolvedValue({itens: [order], total: 1});
@@ -210,23 +214,21 @@ test('a rejected delivery does not advance the journey and delivery does not req
   jest
     .mocked(traceability.order)
     .mockResolvedValue({...order, estado: 'CADASTRADO', expedido: false});
-  jest
-    .mocked(traceability.history)
-    .mockResolvedValue({
-      itens: [
-        {
-          ...entry,
-          tipo: 'ENTREGA',
-          decisao: {
-            ...entry.decisao,
-            estadoAnterior: 'CADASTRADO',
-            estadoResultante: 'CADASTRADO',
-          },
+  jest.mocked(traceability.history).mockResolvedValue({
+    itens: [
+      {
+        ...entry,
+        tipo: 'ENTREGA',
+        decisao: {
+          ...entry.decisao,
+          estadoAnterior: 'CADASTRADO',
+          estadoResultante: 'CADASTRADO',
         },
-      ],
-      proximaPagina: null,
-      totalDoPedido: 1,
-    });
+      },
+    ],
+    proximaPagina: null,
+    totalDoPedido: 1,
+  });
   await render();
   await act(async () =>
     tree.root.findByType(OrderSelect).props.onSelect(order),
@@ -244,4 +246,62 @@ test('a rejected delivery does not advance the journey and delivery does not req
   const text = JSON.stringify(tree.toJSON());
   expect(text).toContain('Entrega: etapa atual');
   expect(text).not.toContain('Saída para entrega registrada');
+});
+
+async function expandTag() {
+  await act(async () =>
+    tree.root
+      .findAllByType(List.Accordion)
+      .find(item => item.props.title === 'Sobre a etiqueta deste pedido')!
+      .findByType(TouchableRipple)
+      .props.onPress(),
+  );
+}
+test('the selected order exposes its current link for administrative management', async () => {
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({...order, provisionamentoVigente: link});
+  await render();
+  await act(async () =>
+    tree.root.findByType(OrderSelect).props.onSelect(order),
+  );
+  await expandTag();
+  await act(async () => button('Gerenciar este vínculo').props.onPress());
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('Provisionar', {
+    screen: 'Gerenciar',
+    params: {provisioningId: link.id},
+  });
+});
+test('management stays unavailable to operators even when order details expose the link', async () => {
+  mockRole = 'OPERADOR';
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({...order, provisionamentoVigente: link});
+  await render();
+  await act(async () =>
+    tree.root.findByType(OrderSelect).props.onSelect(order),
+  );
+  await expandTag();
+  expect(button('Gerenciar este vínculo')).toBeUndefined();
+});
+test('a scanned old NDEF epoch stays selected when the order has a newer current link', async () => {
+  mockParams = {
+    reading: {
+      uid: link.uid,
+      ndef: 'urn:nfc-trace:provisioning:00000000-0000-4000-8000-000000000001',
+    },
+  };
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({
+      ...order,
+      provisionamentoVigente: {...link, id: 'new-id', epoca: 2},
+    });
+  await render();
+  await expandTag();
+  await act(async () => button('Gerenciar este vínculo').props.onPress());
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('Provisionar', {
+    screen: 'Gerenciar',
+    params: {provisioningId: link.id},
+  });
 });

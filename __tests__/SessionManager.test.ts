@@ -204,6 +204,32 @@ describe('Session lifecycle and operator isolation', () => {
       token: session.token,
     });
   });
+  it('does not restore a locally closed session when secure deletion and remote logout both fail', async () => {
+    const {manager, storage, send} = setup(session);
+    send.mockResolvedValueOnce(result());
+    await manager.login(baseUrl, 'operador.a', 'password');
+    storage.clear.mockRejectedValueOnce(new Error('keystore unavailable'));
+    send.mockRejectedValueOnce(new SessionError('API_INDISPONIVEL', 'offline'));
+    await manager.logout();
+    const calls = send.mock.calls.length;
+    await manager.restore();
+    expect(manager.getSnapshot().status).toBe('anonymous');
+    expect(storage.load).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(calls);
+
+    send.mockResolvedValueOnce(result(nextSession));
+    await manager.login(baseUrl, 'operador.b', 'password');
+    storage.load.mockResolvedValueOnce(nextSession);
+    send.mockResolvedValueOnce({
+      usuario: nextSession.user,
+      expiraEm: nextSession.expiresAt,
+    });
+    await manager.restore();
+    expect(manager.getSnapshot()).toMatchObject({
+      status: 'authenticated',
+      session: nextSession,
+    });
+  });
   it('rejects insecure production URLs and never persists a session when secure storage fails', async () => {
     const {manager, storage, send} = setup();
     storage.save.mockRejectedValueOnce(new Error('unavailable'));
@@ -222,6 +248,37 @@ describe('Session lifecycle and operator isolation', () => {
 });
 
 describe('HTTP transport', () => {
+  it.each([
+    [401, 'SESSAO_INVALIDA'],
+    [403, 'ACESSO_NEGADO'],
+  ])(
+    'preserves HTTP %s when a proxy returns a non-JSON response',
+    async (status, code) => {
+      const fetcher = jest.fn().mockResolvedValue({
+        ok: false,
+        status,
+        json: async () => {
+          throw new SyntaxError('HTML response');
+        },
+      });
+      await expect(
+        new HttpTransport(fetcher).send(baseUrl, '/autenticacao/sessao'),
+      ).rejects.toMatchObject({status, code});
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([null, [], 'unexpected', {sucesso: true}])(
+    'rejects a successful HTTP response without a valid API envelope: %p',
+    async payload => {
+      const fetcher = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => payload,
+      });
+      await expect(
+        new HttpTransport(fetcher).send(baseUrl, '/autenticacao/sessao'),
+      ).rejects.toMatchObject({code: 'RESPOSTA_INVALIDA'});
+    },
+  );
   it('uses the opaque token, sends the frozen payload once and forbids redirects', async () => {
     const fetcher = jest.fn().mockResolvedValue({
       ok: true,

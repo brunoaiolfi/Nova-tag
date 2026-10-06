@@ -1,8 +1,12 @@
 # Nova-tag NFC — Expo Development Build
 
-Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/nfc-onboarding`, no
+Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/issue-1-sdm-bench-profile`, no
 worktree `C:\src\Nova-tag-expo`, dentro do mesmo repositório. O checkout original
 em `C:\src\Nova-tag` permanece separado. Não foi feito merge na main.
+
+Software #1/#2/#3 aprovado pelo mantenedor. Personalização/proteção e aceite físico
+ficaram na #12; SDM, offline, reconciliação e experimentos continuam pendentes.
+Veja [entregas atuais e próximas etapas](docs/10-estado-do-projeto.md).
 
 ## Instalar no iPhone usando Windows
 
@@ -47,7 +51,9 @@ aberto até **Concluir consulta**, com UID, conteúdo NDEF e detalhes técnicos.
 Você pode afastar a etiqueta assim que a leitura terminar. Essa consulta não grava
 dados nem cadastra vínculo.
 
-Para vincular, selecione um pedido da lista com busca e paginação. O modelo vem
+Para vincular, selecione um pedido da lista com busca por código/descrição e paginação.
+O Administrador também pode usar **Novo pedido**, cadastrar código/descrição e
+confirmar **Usar este pedido** antes de ler a etiqueta. O modelo vem
 como **Desconhecido**; use as opções apenas se souber o chip. Leia e confira a tag,
 vincule ao pedido e conclua a configuração/ativação. Na aba Registrar, escolha a
 operação, leia, confira e confirme o envio. O comprovante permanece na tela e
@@ -59,6 +65,15 @@ evento. A consulta mostra provisionamento, operações autorizadas e tentativas
 rejeitadas, estado atual do pedido e horários do servidor/aparelho. **Carregar mais
 registros** continua a paginação; **Atualizar histórico** consulta novamente a API.
 O histórico é atualizado ao retornar à aba depois de registrar uma operação.
+
+O Administrador pode abrir **Sobre a etiqueta deste pedido → Gerenciar este vínculo**
+no histórico ou **Vincular → Gerenciar etiqueta** para consultar pela leitura física.
+A tela mostra pedido, UID, época e situação. **Encerrar vínculo** exige conferir o
+pedido e confirmar: libera a etiqueta, preserva o histórico e mantém o estado
+logístico do pedido. **Vincular a outro pedido** inicia uma nova etapa com o modelo
+já cadastrado e exige reler a mesma etiqueta; a API atribui a próxima época.
+O [guia da integração online](docs/07-pedidos-e-vinculos.md) descreve recuperação
+de respostas perdidas, reutilização e limites do aceite físico.
 
 Ao consultar uma tag, **Esta etiqueta** mostra somente o provisionamento identificado;
 **Pedido completo** inclui seus demais vínculos. UID consulta o último vínculo da tag,
@@ -79,9 +94,14 @@ preserva a ordem do servidor e inclui tentativas rejeitadas, sem avançar o traj
 O horário declarado pelo aparelho, autoria e identificadores ficam nos detalhes
 de cada registro. Divergências e rejeições permanecem visíveis.
 
-As ações principais têm altura mínima de 58 px e texto que pode ocupar mais de
+As ações principais têm altura mínima de 60 px e texto que pode ocupar mais de
 uma linha. Leitura, vínculo e registro mostram seu progresso e exigem confirmação
-explícita. A tela inicial agrupa as ações em uma lista, com a leitura em destaque.
+explícita. A tela inicial destaca a leitura em um painel branco sobre o cabeçalho
+azul e agrupa os atalhos em blocos grandes. Em telas estreitas ou com fonte ampliada,
+os atalhos passam para uma coluna. O laranja destaca a ação inicial e o registro;
+verde, amarelo e vermelho identificam decisões e alertas. O histórico conecta a
+situação atual à sequência de registros, com dados técnicos expansíveis. Os fluxos
+de leitura e registro mantêm a confirmação acessível no rodapé.
 O login utiliza a conexão configurada no ambiente; o endereço pode ser alterado
 em **Configuração de conexão**. Não houve alteração do contrato HTTP ou do leitor
 NFC nativo nesta revisão visual.
@@ -89,7 +109,9 @@ NFC nativo nesta revisão visual.
 ## Operações reais
 
 - Login, sessão, expiração e logout com API e Expo SecureStore.
-- Provisionamento de pedido existente por UID ou NDEF; modelo declarado.
+- Cadastro e busca de pedidos por código/descrição; código único no servidor.
+- Provisionamento por UID ou NDEF; modelo declarado.
+- Encerramento confirmado e reutilização em nova época, preservando históricos.
 - Registro antes da escrita; NDEF usa a URI opaca emitida pela API.
 - Conferência do UID antes de escrever e releitura após a escrita.
 - Ativação somente após confirmação explícita da configuração física.
@@ -97,9 +119,16 @@ NFC nativo nesta revisão visual.
 - NDEF copiado identifica o vínculo pela referência; UID divergente é avaliado
   pelo servidor sem validação conjunta inventada pelo mobile.
 - Reenvio na mesma tela mantém UUID, horário, leitura e operador originais.
+- Leituras Type 4/IsoDep preservam o NDEF original em Base64; a URI vem dos
+  mesmos bytes, sem reconstrução pelo SDK. A captura é congelada antes da consulta
+  ao vínculo. Veja [bytes da captura e limites físicos](docs/08-evidencia-operacional.md).
 
 Esta branch não simula operações. Expo Go e web informam que NFC está indisponível.
 A prévia simulada permanece na branch anterior `feat/expo-go-iphone`.
+
+O [guia de login](docs/02-autenticacao.md) documenta configuração, restauração,
+restrições dos três perfis e compilação Android local. SecureStore substitui a
+biblioteca Keychain da implementação nativa anterior.
 
 ## Limites
 
@@ -140,3 +169,21 @@ Directory (20/21 verificações). Não foi ocultado esse aviso.
 
 GitHub Actions continua manual e desabilitado remotamente. Veja
 [decisões e aceite físico](docs/04-expo-nfc-real.md).
+
+A compilação Android e o login/SecureStore foram validados localmente em emulador,
+incluindo reinício, falha de rede, logout, revogação e os três perfis. O
+[registro de aceite da autenticação](docs/05-aceite-autenticacao.md) separa esses
+resultados dos ensaios físicos NFC ainda pendentes.
+
+O diagnóstico administrativo está em **Vincular → Diagnosticar etiqueta**. Ele
+consulta GET_VERSION, permissões GetFileSettings de chips compatíveis e o NDEF
+Type 4 original e permite compartilhar um relatório;
+o resultado permanece visível, inclusive se uma nova tentativa falhar. Leitura,
+gravação e diagnóstico compartilham uma sessão exclusiva com timeout de 45 segundos.
+Veja [hardware NFC: progresso e roteiro](docs/06-hardware-nfc.md) para os limites,
+testes e aceite físico ainda necessário. A branch atual é
+`codex/issue-1-sdm-bench-profile`; as alterações continuam locais.
+
+O [perfil SDM candidato e roteiro de bancada](docs/09-perfil-sdm-bancada.md)
+inclui geração offline de NDEF/offsets e comparação estrutural com o relatório v2.
+Ele funciona sem configurar etiquetas, armazenar chaves ou habilitar SDM na API.

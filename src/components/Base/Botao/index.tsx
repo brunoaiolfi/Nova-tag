@@ -23,13 +23,13 @@ const Botao = ({
 
 const styles = StyleSheet.create({
   botao: {
-    borderRadius: 12,
+    borderRadius: 18,
   },
   conteudo: {
-    minHeight: 58,
+    minHeight: 60,
   },
   label: {
-    fontSize: 16,
+    fontSize: 17,
   },
 });
 

@@ -10,20 +10,9 @@ import {
 import {useAppTheme} from '../../theme';
 import type {OrderDetails} from '../../appplication/traceability/workflow';
 import {stateLabel} from '../../views/traceability-labels';
+import {palette} from '../../theme/tokens';
 
-export const trackingColors = {
-  navy: '#102D46',
-  blue: '#155EEF',
-  teal: '#087F71',
-  muted: '#526779',
-  line: '#D6E1EB',
-  pale: '#EAF1FA',
-  green: '#E8F6F1',
-  red: '#B42318',
-  redBackground: '#FFF0ED',
-  amber: '#8A4B08',
-  amberBackground: '#FFF5DF',
-};
+export const trackingColors = palette;
 
 export function ActionButton({
   contentStyle,
@@ -94,22 +83,83 @@ export function PageHero({
   description,
   icon = 'package-variant-closed',
   eyebrow = 'NFC TRACE · RASTREAMENTO',
+  fullBleed = false,
 }: {
   title: string;
   description: string;
   icon?: string;
   eyebrow?: string;
+  fullBleed?: boolean;
 }) {
   return (
-    <View style={styles.hero}>
+    <View style={[styles.hero, fullBleed && styles.fullBleed]}>
       <View style={styles.heroBrand}>
-        <Icon source={icon} size={28} color="#9BDAD3" />
+        <Icon source={icon} size={26} color={trackingColors.yellow} />
         <Text style={styles.eyebrow}>{eyebrow}</Text>
       </View>
       <Text variant="headlineMedium" style={styles.heroTitle}>
         {title}
       </Text>
       <Text style={styles.heroDescription}>{description}</Text>
+    </View>
+  );
+}
+
+export function ActionTile({
+  title,
+  description,
+  icon,
+  onPress,
+  accent = false,
+}: {
+  title: string;
+  description: string;
+  icon: string;
+  onPress: () => void;
+  accent?: boolean;
+}) {
+  return (
+    <TouchableRipple
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={description}
+      onPress={onPress}
+      style={[styles.tile, accent && styles.accentTile]}>
+      <View style={styles.tileContent}>
+        <View style={styles.tileTop}>
+          <Icon source={icon} size={32} color={trackingColors.blue} />
+          <Icon
+            source="arrow-top-right"
+            size={20}
+            color={trackingColors.muted}
+          />
+        </View>
+        <Text style={styles.tileTitle}>{title}</Text>
+        <Text style={styles.tileDescription}>{description}</Text>
+      </View>
+    </TouchableRipple>
+  );
+}
+
+/** Decorative route motif, without implying GPS data or a live map. */
+export function RouteMotif() {
+  return (
+    <View
+      style={styles.motif}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      <View style={styles.routeCurve} />
+      <View style={styles.routeOrigin}>
+        <Icon
+          source="package-variant-closed"
+          size={24}
+          color={trackingColors.blue}
+        />
+      </View>
+      <View style={styles.routeDestination}>
+        <Icon source="map-marker" size={58} color={trackingColors.orange} />
+      </View>
     </View>
   );
 }
@@ -217,10 +267,16 @@ const milestones = [
 ];
 
 /** Only the persisted order state advances this journey; rejected captures do not. */
-export function OrderJourney({order}: {order: OrderDetails}) {
+export function OrderJourney({
+  order,
+  fullBleed = false,
+}: {
+  order: OrderDetails;
+  fullBleed?: boolean;
+}) {
   const current = milestones.findIndex(item => item.state === order.estado);
   return (
-    <View style={styles.journey}>
+    <View style={[styles.journey, fullBleed && styles.fullBleed]}>
       <Text style={styles.orderEyebrow}>PEDIDO</Text>
       <Text selectable variant="titleLarge" style={styles.orderCode}>
         {order.codigo}
@@ -232,7 +288,7 @@ export function OrderJourney({order}: {order: OrderDetails}) {
         <Icon
           source={current === 3 ? 'check-circle' : 'truck-fast-outline'}
           size={26}
-          color="#9BDAD3"
+          color={trackingColors.yellow}
         />
         <View style={styles.actionText}>
           <Text style={styles.statusCaption}>Situação atual</Text>
@@ -281,7 +337,7 @@ export function OrderJourney({order}: {order: OrderDetails}) {
                   <Icon
                     source={reached && index < current ? 'check' : item.icon}
                     size={20}
-                    color={reached ? trackingColors.navy : '#A7BBCD'}
+                    color={reached ? trackingColors.blue : '#D4DBFF'}
                   />
                 </View>
               </View>
@@ -331,11 +387,11 @@ export function StatusPanel({
 }
 
 const styles = StyleSheet.create({
-  button: {borderRadius: 12},
+  button: {borderRadius: 18, overflow: 'hidden'},
   outlinedButton: {borderWidth: 1},
   buttonContent: {
-    minHeight: 58,
-    paddingVertical: 16,
+    minHeight: 60,
+    paddingVertical: 18,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -343,28 +399,74 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   buttonLabel: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: '700',
     flexShrink: 1,
     textAlign: 'center',
   },
   hero: {
-    backgroundColor: trackingColors.navy,
-    borderRadius: 20,
+    backgroundColor: trackingColors.blue,
+    borderRadius: 26,
     padding: 24,
-    gap: 14,
+    gap: 12,
   },
+  fullBleed: {borderRadius: 0, paddingBottom: 42},
   heroBrand: {flexDirection: 'row', alignItems: 'center', gap: 10},
   eyebrow: {
-    color: '#BED0DF',
-    fontSize: 11,
+    color: '#E2E7FF',
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
     flexShrink: 1,
   },
-  heroTitle: {color: 'white', fontWeight: '700', lineHeight: 36},
-  heroDescription: {color: '#D5E1EC', fontSize: 16, lineHeight: 24},
+  heroTitle: {color: 'white', fontWeight: '700', fontSize: 28, lineHeight: 35},
+  heroDescription: {color: '#E2E7FF', fontSize: 16, lineHeight: 24},
+  tile: {
+    flex: 1,
+    borderRadius: 22,
+    backgroundColor: trackingColors.pale,
+    overflow: 'hidden',
+  },
+  accentTile: {backgroundColor: '#FFF0D0'},
+  tileContent: {padding: 18, minHeight: 170, gap: 10},
+  tileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tileTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '700',
+    color: trackingColors.navy,
+  },
+  tileDescription: {fontSize: 14, lineHeight: 21, color: trackingColors.muted},
+  motif: {height: 108, width: 210, alignSelf: 'center', marginVertical: 6},
+  routeCurve: {
+    position: 'absolute',
+    left: 25,
+    top: 35,
+    width: 150,
+    height: 52,
+    borderWidth: 2,
+    borderColor: '#C4CEFF',
+    borderTopWidth: 0,
+    borderRadius: 40,
+    transform: [{rotate: '-12deg'}],
+  },
+  routeOrigin: {
+    position: 'absolute',
+    left: 0,
+    top: 24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeDestination: {position: 'absolute', right: 0, top: 0},
   action: {
     backgroundColor: 'white',
     borderBottomWidth: 1,
@@ -411,10 +513,10 @@ const styles = StyleSheet.create({
   rightLine: {right: 0},
   doneLine: {backgroundColor: trackingColors.blue},
   stepDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#E2EAF2',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: trackingColors.pale,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -431,47 +533,47 @@ const styles = StyleSheet.create({
   },
   activeLabel: {color: trackingColors.blue, fontWeight: '700'},
   journey: {
-    backgroundColor: trackingColors.navy,
-    padding: 20,
-    borderRadius: 20,
+    backgroundColor: trackingColors.blue,
+    padding: 24,
+    borderRadius: 26,
     gap: 8,
   },
   orderEyebrow: {
-    color: '#BED0DF',
+    color: '#E2E7FF',
     fontSize: 12,
     letterSpacing: 1.5,
     fontWeight: '700',
   },
-  orderCode: {color: 'white', fontWeight: '700', fontSize: 23, lineHeight: 30},
-  orderDescription: {color: '#BED0DF', fontSize: 14, lineHeight: 21},
+  orderCode: {color: 'white', fontWeight: '700', fontSize: 28, lineHeight: 35},
+  orderDescription: {color: '#E2E7FF', fontSize: 15, lineHeight: 23},
   status: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 16,
   },
-  statusCaption: {color: '#BED0DF', fontSize: 14},
+  statusCaption: {color: '#E2E7FF', fontSize: 14},
   statusText: {color: 'white', fontWeight: '700'},
   journeyDot: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1E405D',
+    backgroundColor: '#4962E3',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  reachedDot: {backgroundColor: '#9BDAD3'},
-  journeyLine: {backgroundColor: '#34536C'},
-  journeyDoneLine: {backgroundColor: '#9BDAD3'},
+  reachedDot: {backgroundColor: 'white'},
+  journeyLine: {backgroundColor: '#6F82E9'},
+  journeyDoneLine: {backgroundColor: 'white'},
   journeyLabel: {
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
-    color: '#A7BBCD',
+    color: '#D4DBFF',
     marginTop: 8,
     paddingHorizontal: 1,
   },
   reachedLabel: {color: 'white', fontWeight: '700'},
-  expedition: {color: '#9BDAD3', fontSize: 14, lineHeight: 21},
-  panel: {padding: 18, borderRadius: 12, borderLeftWidth: 4, gap: 12},
+  expedition: {color: trackingColors.yellow, fontSize: 14, lineHeight: 21},
+  panel: {padding: 20, borderRadius: 20, borderLeftWidth: 3, gap: 12},
 });

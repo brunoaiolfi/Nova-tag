@@ -29,6 +29,7 @@ export class SessionManager {
   private snapshot: AuthSnapshot = {status: 'checking'};
   private listeners = new Set<() => void>();
   private generation = 0;
+  private restorationBlocked = false;
   private writes: Promise<void> = Promise.resolve();
   constructor(
     private readonly storage: SessionStorage,
@@ -53,6 +54,9 @@ export class SessionManager {
     return result;
   }
   async restore() {
+    if (this.restorationBlocked) {
+      return;
+    }
     const previous = this.snapshot;
     const verifiedSession =
       previous.status === 'authenticated' ||
@@ -189,6 +193,7 @@ export class SessionManager {
       );
     }
     if (generation === this.generation) {
+      this.restorationBlocked = false;
       this.publish({status: 'authenticated', session});
     } else {
       await this.revoke(session);
@@ -259,6 +264,7 @@ export class SessionManager {
       return;
     }
     const next = ++this.generation;
+    this.restorationBlocked = true;
     this.publish({status: 'anonymous', message});
     try {
       await this.write(async () => {
@@ -290,6 +296,8 @@ export class SessionManager {
   async logout() {
     const session = this.snapshot.session;
     const generation = ++this.generation;
+    // A failed native deletion must not restore the previous login in this app run.
+    this.restorationBlocked = true;
     this.publish({status: 'anonymous', message: 'Encerrando sessão…'});
     try {
       await this.write(() => this.storage.clear());

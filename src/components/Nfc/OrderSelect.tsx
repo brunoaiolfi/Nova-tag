@@ -3,26 +3,80 @@ import {ActionButton as Button} from '../Tracking';
 import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  RadioButton,
+  Icon,
   Searchbar,
   Text,
+  TouchableRipple,
 } from 'react-native-paper';
 import type {OrderSummary} from '../../appplication/traceability/workflow';
 import {traceability} from '../../infra/traceability/runtime';
 import VStack from '../Base/VStack';
 import {View} from 'react-native';
 import {stateLabel} from '../../views/traceability-labels';
+import {trackingColors as colors} from '../Tracking';
+
+export function OrderOption({
+  order,
+  disabled,
+  onPress,
+}: {
+  order: OrderSummary;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableRipple
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="radio"
+      accessibilityState={{checked: false, disabled}}
+      accessibilityLabel={`${order.codigo}${
+        order.descricao ? ` · ${order.descricao}` : ''
+      } · ${stateLabel(order.estado)}`}
+      style={layoutStyles.orderRow}>
+      <View style={layoutStyles.orderContent}>
+        <View style={layoutStyles.orderIcon}>
+          <Icon
+            source="package-variant-closed"
+            size={26}
+            color={disabled ? colors.muted : colors.blue}
+          />
+        </View>
+        <View style={layoutStyles.orderText}>
+          <Text style={layoutStyles.orderCode}>{order.codigo}</Text>
+          {!!order.descricao && (
+            <Text style={layoutStyles.description}>{order.descricao}</Text>
+          )}
+          <Text
+            style={[
+              layoutStyles.state,
+              {color: disabled ? colors.muted : colors.blue},
+            ]}>
+            {stateLabel(order.estado)}
+          </Text>
+        </View>
+        <Icon
+          source={disabled ? 'lock-outline' : 'chevron-right'}
+          size={22}
+          color={colors.muted}
+        />
+      </View>
+    </TouchableRipple>
+  );
+}
 
 export default function OrderSelect({
   selected,
   disabled,
   onSelect,
   purpose = 'provisioning',
+  onCreate,
 }: {
   selected?: OrderSummary;
   disabled: boolean;
   onSelect: (order?: OrderSummary) => void;
   purpose?: 'provisioning' | 'history';
+  onCreate?: () => void;
 }) {
   const [search, setSearch] = useState('');
   const [orders, setOrders] = useState<OrderSummary[]>([]);
@@ -120,7 +174,9 @@ export default function OrderSelect({
         </Text>
         {selected ? (
           <>
-            <Text variant="titleLarge">{selected.codigo}</Text>
+            <Text variant="titleLarge" style={layoutStyles.orderCode}>
+              {selected.codigo}
+            </Text>
             {!!selected.descricao && <Text>{selected.descricao}</Text>}
             <Text>
               {purpose === 'history'
@@ -143,22 +199,26 @@ export default function OrderSelect({
               value={search}
               onChangeText={setSearch}
               editable={!disabled}
+              style={layoutStyles.search}
             />
+            {purpose === 'provisioning' && onCreate && (
+              <Button
+                mode="outlined"
+                icon="plus"
+                disabled={disabled}
+                onPress={onCreate}>
+                Novo pedido
+              </Button>
+            )}
+            {!busy && total > 0 && (
+              <Text variant="bodySmall" style={layoutStyles.description}>
+                {total} pedido(s) encontrado(s)
+              </Text>
+            )}
             {orders.map(order => (
-              <RadioButton.Item
-                style={layoutStyles.orderRow}
-                labelStyle={layoutStyles.orderLabel}
+              <OrderOption
                 key={order.id}
-                label={`${order.codigo}${
-                  order.descricao ? ` · ${order.descricao}` : ''
-                }${
-                  order.estado !== 'CADASTRADO'
-                    ? ` (${stateLabel(order.estado)})`
-                    : ''
-                }`}
-                value={order.id}
-                status="unchecked"
-                position="leading"
+                order={order}
                 disabled={
                   disabled ||
                   (purpose === 'provisioning' && order.estado !== 'CADASTRADO')
@@ -171,8 +231,8 @@ export default function OrderSelect({
             )}
             {!busy && !error && orders.length === 0 && (
               <Text>
-                Nenhum pedido encontrado. Ajuste a busca ou cadastre um pedido
-                no servidor.
+                Nenhum pedido encontrado. Ajuste a busca
+                {onCreate ? ' ou toque em Novo pedido.' : '.'}
               </Text>
             )}
             {!!error && (
@@ -209,11 +269,33 @@ export default function OrderSelect({
 
 const layoutStyles = StyleSheet.create({
   orderRow: {
-    minHeight: 76,
+    minHeight: 96,
     borderBottomWidth: 1,
-    borderBottomColor: '#D6E1EB',
+    borderBottomColor: colors.line,
     backgroundColor: 'white',
-    paddingVertical: 16,
   },
-  orderLabel: {textAlign: 'left', fontSize: 16, lineHeight: 24},
+  orderContent: {
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  orderIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: colors.pale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderText: {flex: 1, minWidth: 0, gap: 4},
+  orderCode: {
+    fontSize: 18,
+    lineHeight: 25,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  description: {fontSize: 14, lineHeight: 21, color: colors.muted},
+  state: {fontSize: 13, lineHeight: 20, fontWeight: '600'},
+  search: {backgroundColor: colors.background, borderRadius: 18},
 });

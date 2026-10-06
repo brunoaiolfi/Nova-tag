@@ -3,7 +3,11 @@ import {StyleSheet, View} from 'react-native';
 import {Icon, Text, TouchableRipple} from 'react-native-paper';
 
 import Tela from '../../../../components/Base/Tela';
-import {FlowSteps} from '../../../../components/Tracking';
+import {
+  FlowSteps,
+  PageHero,
+  trackingColors as colors,
+} from '../../../../components/Tracking';
 import Botao from '../../../../components/Base/Botao';
 import VStack from '../../../../components/Base/VStack';
 import HStack from '../../../../components/Base/HStack';
@@ -118,7 +122,6 @@ const SelecionarEvento = ({
   onSelecionarEvento,
   tipoInicial,
 }: SelecionarEventoProps) => {
-  const theme = useAppTheme();
   const [tipoSelecionado, setTipoSelecionado] = React.useState<
     EnumTipoEvento | undefined
   >(tipoInicial);
@@ -126,6 +129,16 @@ const SelecionarEvento = ({
   return (
     <Tela
       scroll
+      insetTop={false}
+      header={
+        <PageHero
+          fullBleed
+          title="O que aconteceu com o pedido?"
+          description="Escolha a etapa antes de aproximar a etiqueta."
+          icon="timeline-plus-outline"
+          eyebrow="PASSO 1 · ESCOLHER ETAPA"
+        />
+      }
       footer={
         <Botao
           onPress={() => tipoSelecionado && onSelecionarEvento(tipoSelecionado)}
@@ -134,20 +147,9 @@ const SelecionarEvento = ({
         </Botao>
       }>
       <VStack flex={1} gap={24}>
-        <VStack gap={4}>
-          <Text variant="headlineSmall" style={layoutStyles.title}>
-            O que aconteceu com o pedido?
-          </Text>
-          <Text
-            variant="bodyMedium"
-            style={{color: theme.colors.onSurfaceVariant}}>
-            Escolha o que está acontecendo com o pedido antes de aproximar a
-            etiqueta.
-          </Text>
-        </VStack>
         <FlowSteps labels={['Escolher', 'Ler', 'Confirmar']} current={1} />
 
-        <VStack gap={0} style={layoutStyles.options}>
+        <VStack gap={12} style={layoutStyles.options}>
           {TIPOS_SELECIONAVEIS.map(tipo => (
             <ItemOpcao
               key={tipo}
@@ -164,18 +166,19 @@ const SelecionarEvento = ({
 
 const styles = StyleSheet.create({
   toque: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#D6E1EB',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   option: {padding: 18, minHeight: 100},
   optionTitle: {fontWeight: '700'},
-  selected: {backgroundColor: '#EAF1FA'},
+  selected: {backgroundColor: colors.pale},
   unselected: {backgroundColor: 'white'},
 });
 
 export default SelecionarEvento;
 
 const layoutStyles = StyleSheet.create({
-  title: {fontWeight: '700'},
-  options: {borderRadius: 16, overflow: 'hidden'},
+  options: {},
 });

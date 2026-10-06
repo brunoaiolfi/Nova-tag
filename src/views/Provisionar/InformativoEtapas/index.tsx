@@ -3,7 +3,11 @@ import {StyleSheet} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RadioButton, Text} from 'react-native-paper';
-import {PageHero} from '../../../components/Tracking';
+import {
+  ActionButton,
+  PageHero,
+  trackingColors as colors,
+} from '../../../components/Tracking';
 
 import Tela from '../../../components/Base/Tela';
 import Botao from '../../../components/Base/Botao';
@@ -55,16 +59,49 @@ const InformativoEtapas = () => {
     navigation.navigate('EtapasProvisionamento', {estrategia});
 
   return (
-    <Tela scroll>
-      <VStack gap={24}>
+    <Tela
+      scroll
+      header={
         <PageHero
+          fullBleed
           title="Dê uma identidade ao pedido."
           description="Vincule uma etiqueta NFC a um volume para começar a acompanhar seu trajeto."
           icon="nfc-tap"
           eyebrow="VINCULAR ETIQUETA"
         />
-
+      }
+      footer={<Botao onPress={iniciar}>Escolher pedido</Botao>}>
+      <VStack gap={24}>
         <ListaPassos passos={PASSOS} />
+        <VStack gap={8}>
+          <Text variant="titleMedium">
+            Já existe um vínculo nesta etiqueta?
+          </Text>
+          <Text variant="bodyMedium">
+            Consulte o pedido e encerre o vínculo quando precisar reutilizar a
+            etiqueta. O histórico será preservado.
+          </Text>
+          <ActionButton
+            mode="outlined"
+            icon="tag-outline"
+            onPress={() => navigation.navigate('Gerenciar')}>
+            Gerenciar etiqueta
+          </ActionButton>
+        </VStack>
+
+        <VStack gap={8}>
+          <Text variant="titleMedium">Não sabe qual é a sua etiqueta?</Text>
+          <Text>
+            Consulte o chip, a capacidade NDEF e os dados técnicos antes de
+            vincular. Nenhum pedido será alterado.
+          </Text>
+          <ActionButton
+            mode="outlined"
+            icon="nfc-search-variant"
+            onPress={() => navigation.navigate('Diagnostico')}>
+            Diagnosticar etiqueta
+          </ActionButton>
+        </VStack>
 
         <VStack gap={4}>
           <Text variant="titleMedium">Como identificar a etiqueta?</Text>
@@ -78,7 +115,10 @@ const InformativoEtapas = () => {
                 value={String(valor)}
                 position="leading"
                 labelStyle={styles.labelRadio}
-                style={layoutStyles.strategyOption}
+                style={[
+                  layoutStyles.strategyOption,
+                  estrategia === valor && layoutStyles.selectedStrategy,
+                ]}
               />
             ))}
           </RadioButton.Group>
@@ -89,8 +129,6 @@ const InformativoEtapas = () => {
           chaves nem bloqueia a escrita. A ativação exige conferir externamente
           a configuração física e o bloqueio definidos para o ensaio.
         </Aviso>
-
-        <Botao onPress={iniciar}>Escolher pedido</Botao>
       </VStack>
     </Tela>
   );
@@ -110,7 +148,10 @@ const layoutStyles = StyleSheet.create({
   strategyOption: {
     minHeight: 76,
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#D6E1EB',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 18,
+    marginTop: 10,
   },
+  selectedStrategy: {backgroundColor: colors.pale, borderColor: colors.blue},
 });

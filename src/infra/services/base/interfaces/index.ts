@@ -1,1 +1,1 @@
-export interface IBaseService {}
+export type {IBaseService} from '../../../../appplication/base/interface';

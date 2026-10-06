@@ -12,7 +12,12 @@ import {
 import type {Reading} from '../../../appplication/traceability/workflow';
 import TagDetails from '../TagDetails';
 import {View} from 'react-native';
-import {FlowSteps, PageHero, StatusPanel} from '../../Tracking';
+import {
+  FlowSteps,
+  PageHero,
+  StatusPanel,
+  trackingColors as colors,
+} from '../../Tracking';
 
 type Props = {
   write?: {uid: string; reference: string};
@@ -22,6 +27,7 @@ type Props = {
   continueLabel?: string;
   context?: string;
   onVerHistorico?: (reading: Reading, capturedAt: string) => void;
+  insetTop?: boolean;
 };
 export default function Leitor({
   write,
@@ -31,6 +37,7 @@ export default function Leitor({
   continueLabel = 'Continuar com esta etiqueta',
   context,
   onVerHistorico,
+  insetTop = true,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -81,6 +88,28 @@ export default function Leitor({
   return (
     <Tela
       scroll
+      insetTop={insetTop}
+      header={
+        <PageHero
+          fullBleed
+          title={
+            result
+              ? write
+                ? 'Gravação conferida'
+                : 'Leitura concluída'
+              : write
+              ? 'Gravar referência NDEF'
+              : 'Vamos ler a etiqueta.'
+          }
+          description={
+            result
+              ? 'Você já pode afastar a etiqueta. O resultado fica aqui até você continuar.'
+              : 'Use a parte superior do iPhone, perto da câmera.'
+          }
+          icon={result ? 'check-circle-outline' : 'nfc-tap'}
+          eyebrow="LEITURA DA ETIQUETA"
+        />
+      }
       footer={
         result ? (
           <Button
@@ -106,24 +135,6 @@ export default function Leitor({
       }>
       <VStack gap={16}>
         {!!context && <Text variant="labelLarge">{context}</Text>}
-        <PageHero
-          title={
-            result
-              ? write
-                ? 'Gravação conferida'
-                : 'Leitura concluída'
-              : write
-              ? 'Gravar referência NDEF'
-              : 'Vamos ler a etiqueta.'
-          }
-          description={
-            result
-              ? 'Você já pode afastar a etiqueta. O resultado fica aqui até você continuar.'
-              : 'Use a parte superior do iPhone, perto da câmera.'
-          }
-          icon={result ? 'check-circle-outline' : 'nfc-tap'}
-          eyebrow="LEITURA DA ETIQUETA"
-        />
         <FlowSteps
           labels={['Iniciar', 'Aproximar', 'Conferir']}
           current={result ? 3 : busy ? 2 : 1}
@@ -132,7 +143,7 @@ export default function Leitor({
         {!result && (
           <View style={layoutStyles.scanInstructions}>
             <View style={layoutStyles.scanTarget}>
-              <Icon source="cellphone-nfc" size={64} color="#155EEF" />
+              <Icon source="cellphone-nfc" size={64} color={colors.blue} />
             </View>
             <Text variant="titleMedium" style={layoutStyles.instructionTitle}>
               {busy
@@ -217,16 +228,15 @@ export default function Leitor({
 const layoutStyles = StyleSheet.create({
   scanInstructions: {alignItems: 'center', paddingVertical: 18, gap: 14},
   scanTarget: {
-    height: 120,
-    width: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#155EEF',
+    height: 136,
+    width: 136,
+    borderRadius: 40,
+    borderWidth: 8,
+    borderColor: '#F8F0E4',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF1FA',
+    backgroundColor: colors.pale,
   },
   instructionTitle: {textAlign: 'center', fontWeight: '700'},
-  instructionText: {textAlign: 'center'},
+  instructionText: {textAlign: 'center', color: colors.muted, lineHeight: 24},
 });

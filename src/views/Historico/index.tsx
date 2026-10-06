@@ -99,6 +99,9 @@ export default function Historico() {
             return;
           }
           const order = await traceability.order(orderId);
+          if (selection.kind === 'order') {
+            provisioning = order.provisionamentoVigente ?? undefined;
+          }
           if (generation.current !== token) {
             return;
           }
@@ -190,15 +193,24 @@ export default function Historico() {
     );
   }
   return (
-    <Tela scroll>
+    <Tela
+      scroll
+      header={
+        context ? (
+          <OrderJourney order={context.order} fullBleed />
+        ) : (
+          <PageHero
+            fullBleed
+            title="Onde está o pedido no trajeto?"
+            description="Consulte a situação atual e acompanhe cada etapa registrada."
+            icon="map-marker-path"
+            eyebrow="RASTREAR PEDIDO"
+          />
+        )
+      }>
       <VStack gap={16}>
         {!target && (
           <>
-            <PageHero
-              title="Onde está o pedido no trajeto?"
-              description="Consulte a situação atual e acompanhe cada etapa registrada."
-              icon="map-marker-path"
-            />
             <Button
               mode="contained"
               icon="nfc-search-variant"
@@ -212,7 +224,6 @@ export default function Historico() {
             />
           </>
         )}
-        {context && <OrderJourney order={context.order} />}
         {context?.provisioning && (
           <Text variant="bodySmall">
             {context.provisioning.status === 'ATIVA'
@@ -260,6 +271,7 @@ export default function Historico() {
             {context.provisioning && (
               <List.Accordion
                 title="Sobre a etiqueta deste pedido"
+                titleNumberOfLines={2}
                 titleStyle={layoutStyles.detailsTitle}>
                 <View style={layoutStyles.details}>
                   <Text selectable>
@@ -284,6 +296,19 @@ export default function Historico() {
                       : 'referência NDEF'}
                     .
                   </Text>
+                  {state.session?.user.perfil === 'ADMINISTRADOR' && (
+                    <Button
+                      mode="outlined"
+                      disabled={busy}
+                      onPress={() =>
+                        navigation.navigate('Provisionar', {
+                          screen: 'Gerenciar',
+                          params: {provisioningId: context.provisioning?.id},
+                        })
+                      }>
+                      Gerenciar este vínculo
+                    </Button>
+                  )}
                 </View>
               </List.Accordion>
             )}
@@ -360,6 +385,6 @@ export default function Historico() {
 
 const layoutStyles = StyleSheet.create({
   sectionTitle: {fontWeight: '700'},
-  detailsTitle: {fontSize: 15},
+  detailsTitle: {fontSize: 15, fontWeight: '600'},
   details: {gap: 10, padding: 12},
 });

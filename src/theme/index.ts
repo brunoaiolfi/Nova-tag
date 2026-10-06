@@ -1,4 +1,5 @@
 import {MD3LightTheme, useTheme} from 'react-native-paper';
+import {palette} from './tokens';
 import {
   arredondamento,
   error,
@@ -44,10 +45,10 @@ export const tema = {
   colors: {
     ...MD3LightTheme.colors,
 
-    primary: '#155EEF',
+    primary: palette.blue,
     onPrimary: BRANCO,
-    primaryContainer: '#EAF1FA',
-    onPrimaryContainer: '#1649A9',
+    primaryContainer: palette.pale,
+    onPrimaryContainer: palette.blue,
     inversePrimary: gray[900],
 
     secondary: '#087F71',
@@ -60,19 +61,19 @@ export const tema = {
     tertiaryContainer: gray[50],
     onTertiaryContainer: gray[800],
 
-    background: '#F3F6FA',
-    onBackground: '#152B42',
+    background: palette.background,
+    onBackground: palette.navy,
     surface: BRANCO,
-    onSurface: '#152B42',
+    onSurface: palette.navy,
     surfaceVariant: gray[50],
-    onSurfaceVariant: '#526779',
+    onSurfaceVariant: palette.muted,
     surfaceDisabled: gray[300],
     onSurfaceDisabled: gray[500],
     inverseSurface: gray[50],
     inverseOnSurface: gray[700],
 
     outline: gray[300],
-    outlineVariant: '#D6E1EB',
+    outlineVariant: palette.line,
 
     error: error[600],
     onError: BRANCO,

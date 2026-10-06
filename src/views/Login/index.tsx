@@ -1,10 +1,17 @@
 import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
-import {KeyboardAvoidingView, ScrollView, StyleSheet} from 'react-native';
-import {HelperText, Text, TextInput} from 'react-native-paper';
+import {
+  KeyboardAvoidingView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  View,
+} from 'react-native';
+import {HelperText, Icon, Text, TextInput} from 'react-native-paper';
 import {useSession} from '../../components/Auth/SessionProvider';
 import {defaultApiUrl} from '../../infra/auth/default-api-url';
-import {PageHero} from '../../components/Tracking';
+import {SessionError} from '../../domain/auth/types';
+import {RouteMotif, trackingColors as colors} from '../../components/Tracking';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export default function Login() {
@@ -14,7 +21,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [connectionSettings, setConnectionSettings] = useState(!defaultApiUrl);
+  const [connectionSettings, setConnectionSettings] = useState(!server.trim());
+  const [showPassword, setShowPassword] = useState(false);
   const insets = useSafeAreaInsets();
   const submit = async () => {
     if (busy) {
@@ -25,6 +33,9 @@ export default function Login() {
     try {
       await manager.login(server, login, password);
     } catch (failure) {
+      if (failure instanceof SessionError && failure.code === 'URL_INVALIDA') {
+        setConnectionSettings(true);
+      }
       setError(
         failure instanceof Error ? failure.message : 'Não foi possível entrar.',
       );
@@ -35,77 +46,123 @@ export default function Login() {
   };
   return (
     <KeyboardAvoidingView style={styles.root} behavior="height">
+      <StatusBar barStyle="light-content" backgroundColor={colors.blue} />
       <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {paddingTop: 24 + insets.top, paddingBottom: 24 + insets.bottom},
-        ]}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
-        <PageHero
-          title="Do cadastro à entrega."
-          description="Acompanhe cada etapa com a etiqueta NFC do pedido."
-          icon="map-marker-path"
-        />
-        <Text variant="titleLarge">Entrar no Nova-tag</Text>
-        <Text>Use sua conta do laboratório.</Text>
-        <TextInput
-          mode="outlined"
-          label="Login"
-          value={login}
-          onChangeText={setLogin}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="username"
-          editable={!busy}
-        />
-        <TextInput
-          mode="outlined"
-          label="Senha"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="current-password"
-          editable={!busy}
-          onSubmitEditing={() => {
-            void submit();
-          }}
-        />
-        {!!(error || state.message) && (
-          <HelperText type={error ? 'error' : 'info'} accessibilityRole="alert">
-            {error || state.message}
-          </HelperText>
-        )}
-        <Button
-          mode="contained"
-          loading={busy}
-          disabled={busy || !login.trim() || !password}
-          onPress={() => {
-            void submit();
-          }}>
-          Entrar
-        </Button>
-        <Button
-          disabled={busy}
-          onPress={() => setConnectionSettings(value => !value)}>
-          Configuração de conexão
-        </Button>
-        {connectionSettings && (
+        <View style={[styles.welcome, {paddingTop: 24 + insets.top}]}>
+          <View style={styles.brand}>
+            <Icon source="nfc-variant" size={26} color="white" />
+            <Text style={styles.brandName}>Nova-tag</Text>
+          </View>
+          <RouteMotif />
+          <Text style={styles.headline}>Do cadastro à entrega.</Text>
+          <Text style={styles.description}>
+            Uma etiqueta. Todas as etapas conectadas.
+          </Text>
+        </View>
+        <View style={[styles.form, {paddingBottom: 24 + insets.bottom}]}>
+          <View style={styles.formHeading}>
+            <Text variant="headlineSmall" style={styles.formTitle}>
+              Entrar no Nova-tag
+            </Text>
+            <Text style={styles.formDescription}>
+              Use sua conta do laboratório para continuar.
+            </Text>
+          </View>
           <TextInput
             mode="outlined"
-            label="Endereço da API"
-            value={server}
-            onChangeText={setServer}
+            label="Login"
+            value={login}
+            onChangeText={setLogin}
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="username"
+            textContentType="username"
             editable={!busy}
-            keyboardType="url"
           />
-        )}
+          <TextInput
+            mode="outlined"
+            label="Senha"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                accessibilityLabel={
+                  showPassword ? 'Ocultar senha' : 'Mostrar senha'
+                }
+                disabled={busy}
+                onPress={() => setShowPassword(value => !value)}
+              />
+            }
+            autoComplete="current-password"
+            textContentType="password"
+            editable={!busy}
+            onSubmitEditing={() => {
+              void submit();
+            }}
+          />
+          {!!(error || state.message) && (
+            <HelperText
+              type={error ? 'error' : 'info'}
+              accessibilityRole="alert">
+              {error || state.message}
+            </HelperText>
+          )}
+          <Button
+            mode="contained"
+            buttonColor={colors.orange}
+            textColor={colors.navy}
+            icon="arrow-right"
+            loading={busy}
+            disabled={busy || !server.trim() || !login.trim() || !password}
+            onPress={() => {
+              void submit();
+            }}>
+            Entrar
+          </Button>
+          <Button
+            disabled={busy}
+            onPress={() => setConnectionSettings(value => !value)}>
+            Configuração de conexão
+          </Button>
+          {connectionSettings && (
+            <TextInput
+              mode="outlined"
+              label="Endereço da API"
+              value={server}
+              onChangeText={setServer}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!busy}
+              keyboardType="url"
+            />
+          )}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: '#F3F6FA'},
-  content: {flexGrow: 1, justifyContent: 'center', padding: 24, gap: 16},
+  root: {flex: 1, backgroundColor: colors.blue},
+  content: {flexGrow: 1},
+  welcome: {padding: 24, paddingBottom: 48, gap: 8},
+  brand: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  brandName: {fontSize: 22, lineHeight: 30, fontWeight: '700', color: 'white'},
+  headline: {fontSize: 29, lineHeight: 37, fontWeight: '700', color: 'white'},
+  description: {fontSize: 16, lineHeight: 24, color: '#E2E7FF'},
+  form: {
+    flexGrow: 1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -24,
+    padding: 24,
+    gap: 16,
+  },
+  formHeading: {gap: 6, marginBottom: 4},
+  formTitle: {fontWeight: '700', color: colors.navy},
+  formDescription: {fontSize: 15, lineHeight: 23, color: colors.muted},
 });

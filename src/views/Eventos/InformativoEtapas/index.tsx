@@ -37,23 +37,25 @@ const InformativoEtapas = () => {
   const iniciar = () => navigation.navigate('EtapasEvento');
 
   return (
-    <Tela scroll>
-      <VStack gap={24}>
+    <Tela
+      scroll
+      header={
         <PageHero
+          fullBleed
           title="Atualize o caminho do pedido."
           description="Registre o que aconteceu com o volume usando sua etiqueta NFC."
           icon="timeline-plus-outline"
           eyebrow="REGISTRAR ETAPA"
         />
-
+      }
+      footer={<Botao onPress={iniciar}>Iniciar</Botao>}>
+      <VStack gap={24}>
         <ListaPassos passos={PASSOS} />
 
         <Aviso icone="cloud-off-outline">
           Este fluxo exige conexão. Uma captura armazenada pode ter uma operação
           rejeitada. Confira a decisão antes de seguir com o pedido.
         </Aviso>
-
-        <Botao onPress={iniciar}>Iniciar</Botao>
       </VStack>
     </Tela>
   );

@@ -6,9 +6,17 @@ import {SessionProvider} from '../src/components/Auth/SessionProvider';
 import {SessionGate} from '../src/components/Auth/SessionGate';
 import {SessionManager} from '../src/appplication/auth/session-manager';
 import {SessionError, Transport} from '../src/domain/auth/types';
+import {defaultApiUrl} from '../src/infra/auth/default-api-url';
+
+jest.mock('../src/infra/auth/default-api-url', () => ({
+  defaultApiUrl: jest.fn(),
+}));
 
 describe('Login and session gate UI', () => {
   let tree: TestRenderer.ReactTestRenderer;
+  beforeEach(() => {
+    jest.mocked(defaultApiUrl).mockReturnValue('http://127.0.0.1:3000/api/v1');
+  });
   afterEach(async () => {
     if (tree) {
       await act(async () => tree.unmount());
@@ -39,6 +47,37 @@ describe('Login and session gate UI', () => {
     tree.root.findAllByType(TextInput).find(x => x.props.label === label)!;
   const enter = () =>
     tree.root.findAllByType(Button).find(x => x.props.children === 'Entrar')!;
+  it('shows connection settings and blocks login when no API address is configured', async () => {
+    jest.mocked(defaultApiUrl).mockReturnValue('');
+    await render();
+    expect(input('Endereço da API').props.value).toBe('');
+    await act(async () => {
+      input('Login').props.onChangeText('operador.lab');
+      input('Senha').props.onChangeText('laboratorio-password');
+    });
+    expect(enter().props.disabled).toBe(true);
+    await act(async () => {
+      input('Endereço da API').props.onChangeText(
+        'http://127.0.0.1:3000/api/v1',
+      );
+    });
+    expect(enter().props.disabled).toBe(false);
+  });
+  it('opens connection settings when the configured API URL is invalid without sending credentials', async () => {
+    jest.mocked(defaultApiUrl).mockReturnValue('invalid-server');
+    const {send} = await render();
+    await act(async () => {
+      input('Login').props.onChangeText('operador.lab');
+      input('Senha').props.onChangeText('laboratorio-password');
+    });
+    await act(async () => {
+      enter().props.onPress();
+    });
+    expect(input('Endereço da API').props.value).toBe('invalid-server');
+    expect(input('Senha').props.value).toBe('');
+    expect(send).not.toHaveBeenCalled();
+    expect(JSON.stringify(tree.toJSON())).not.toContain('Área autenticada');
+  });
   it('requires login before rendering protected content and clears the password after login', async () => {
     const {send, storage, manager} = await render();
     expect(JSON.stringify(tree.toJSON())).not.toContain('Área autenticada');

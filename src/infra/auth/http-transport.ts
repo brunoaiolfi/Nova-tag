@@ -30,15 +30,30 @@ export class HttpTransport implements Transport {
           ? {body: JSON.stringify(options.body)}
           : {}),
       });
-      const envelope = await response.json();
+      const payload: unknown = await response.json().catch(() => undefined);
+      const envelope =
+        payload && typeof payload === 'object' && !Array.isArray(payload)
+          ? (payload as Record<string, unknown>)
+          : undefined;
       if (!response.ok) {
+        const fallback =
+          response.status === 401
+            ? [
+                'SESSAO_INVALIDA',
+                'Sua sessão expirou ou foi revogada. Entre novamente.',
+              ]
+            : response.status === 403
+            ? ['ACESSO_NEGADO', 'Seu perfil não permite esta operação.']
+            : ['ERRO_API', 'A solicitação não foi aceita. Tente novamente.'];
         throw new SessionError(
-          envelope.codigo ?? 'ERRO_API',
-          envelope.mensagem ?? 'A solicitação não foi aceita.',
+          typeof envelope?.codigo === 'string' ? envelope.codigo : fallback[0],
+          typeof envelope?.mensagem === 'string'
+            ? envelope.mensagem
+            : fallback[1],
           response.status,
         );
       }
-      if (envelope.sucesso !== true || !('dados' in envelope)) {
+      if (!envelope || envelope.sucesso !== true || !('dados' in envelope)) {
         throw new SessionError(
           'RESPOSTA_INVALIDA',
           'Resposta inesperada da API.',

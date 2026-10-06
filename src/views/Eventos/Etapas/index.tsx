@@ -6,7 +6,7 @@ import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import type {RotasTab} from '../../../navigation';
 import type {RotasEventos} from '../../../navigation/EventosNavigator';
 import {List, Text} from 'react-native-paper';
-import {FlowSteps, StatusPanel} from '../../../components/Tracking';
+import {FlowSteps, PageHero, StatusPanel} from '../../../components/Tracking';
 import * as Crypto from 'expo-crypto';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
@@ -99,6 +99,7 @@ export default function EtapasEvento() {
   if (!reading) {
     return (
       <Leitor
+        insetTop={false}
         context={`2. Ler etiqueta · ${descricaoEnumTipoEvento[type]}`}
         onVoltar={() => {
           setType(undefined);
@@ -110,13 +111,58 @@ export default function EtapasEvento() {
     );
   }
   return (
-    <Tela scroll>
+    <Tela
+      scroll
+      insetTop={false}
+      header={
+        <PageHero
+          fullBleed
+          title={
+            result
+              ? 'Resultado do registro'
+              : `3. Confirmar ${descricaoEnumTipoEvento[type]}`
+          }
+          description={
+            result
+              ? 'Confira a decisão antes de seguir com o pedido.'
+              : 'Confira a etiqueta e envie a etapa escolhida.'
+          }
+          icon={
+            result
+              ? result.decisao.autorizada
+                ? 'check-circle-outline'
+                : 'alert-circle-outline'
+              : 'clipboard-check-outline'
+          }
+          eyebrow="REGISTRAR ETAPA"
+        />
+      }
+      footer={
+        !result ? (
+          <Button
+            mode="contained"
+            disabled={busy}
+            loading={busy}
+            onPress={() => {
+              void send();
+            }}>
+            {attempted
+              ? 'Tentar envio novamente'
+              : `Confirmar ${descricaoEnumTipoEvento[type].toLowerCase()}`}
+          </Button>
+        ) : (
+          <Button
+            mode="contained"
+            onPress={() =>
+              navigation
+                .getParent<BottomTabNavigationProp<RotasTab>>()
+                ?.navigate('Historico', {reading})
+            }>
+            Ver histórico desta etiqueta
+          </Button>
+        )
+      }>
       <VStack gap={16}>
-        <Text variant="headlineSmall">
-          {result
-            ? 'Resultado do registro'
-            : `3. Confirmar ${descricaoEnumTipoEvento[type]}`}
-        </Text>
         <FlowSteps
           labels={['Escolher', 'Ler', 'Confirmar']}
           current={3}
@@ -134,19 +180,6 @@ export default function EtapasEvento() {
             reading={reading}
             capturedAt={pending.current?.occurredAt}
           />
-        )}
-        {!result && (
-          <Button
-            mode="contained"
-            disabled={busy}
-            loading={busy}
-            onPress={() => {
-              void send();
-            }}>
-            {attempted
-              ? 'Tentar envio novamente'
-              : `Confirmar ${descricaoEnumTipoEvento[type].toLowerCase()}`}
-          </Button>
         )}
         {!result && (
           <Text>
@@ -191,7 +224,9 @@ export default function EtapasEvento() {
                     {reasonLabel(warning)}
                   </Text>
                 ))}
-                <List.Accordion title="Comprovante do registro">
+                <List.Accordion
+                  title="Comprovante do registro"
+                  titleNumberOfLines={2}>
                   <Text selectable>Identificador: {pending.current?.id}</Text>
                   <Text>Evento: {descricaoEnumTipoEvento[type]}</Text>
                   <Text>Motivo: {result.decisao.motivo}</Text>
@@ -213,15 +248,6 @@ export default function EtapasEvento() {
                 pending.current = undefined;
               }}>
               Nova captura
-            </Button>
-            <Button
-              mode="contained"
-              onPress={() =>
-                navigation
-                  .getParent<BottomTabNavigationProp<RotasTab>>()
-                  ?.navigate('Historico', {reading})
-              }>
-              Ver histórico desta etiqueta
             </Button>
           </>
         )}

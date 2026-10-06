@@ -1,8 +1,9 @@
 import {ActionButton as Button} from '../../../components/Tracking';
 import React, {useState} from 'react';
-import {RouteProp, useRoute} from '@react-navigation/native';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {Checkbox, List, Text} from 'react-native-paper';
-import {FlowSteps, StatusPanel} from '../../../components/Tracking';
+import {FlowSteps, PageHero, StatusPanel} from '../../../components/Tracking';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
 import Leitor from '../../../components/Nfc/Leitor';
@@ -17,18 +18,23 @@ import {traceability} from '../../../infra/traceability/runtime';
 import OrderSelect from '../../../components/Nfc/OrderSelect';
 import ModelSelect from '../../../components/Nfc/ModelSelect';
 import TagDetails from '../../../components/Nfc/TagDetails';
+import CreateOrderForm from '../../../components/Nfc/CreateOrderForm';
 
 export default function EtapasProvisionamento() {
-  const {estrategia} =
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
+  const {estrategia, expectedUid, registeredModel} =
     useRoute<RouteProp<RotasProvisionar, 'EtapasProvisionamento'>>().params;
   const [order, setOrder] = useState<OrderSummary>();
-  const [model, setModel] = useState('DESCONHECIDO');
+  const [model, setModel] = useState(registeredModel ?? 'DESCONHECIDO');
   const [reading, setReading] = useState<Reading>();
   const [capturedAt, setCapturedAt] = useState<string>();
   const [provisioning, setProvisioning] = useState<Provisioning>();
   const [verified, setVerified] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-  const [mode, setMode] = useState<'form' | 'read' | 'write'>('form');
+  const [mode, setMode] = useState<'form' | 'read' | 'write' | 'create'>(
+    'form',
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const strategy =
@@ -46,7 +52,11 @@ export default function EtapasProvisionamento() {
         model,
       );
       setProvisioning(result);
-      setVerified(strategy === 'UID' || reading.ndef === result.referenciaNdef);
+      setVerified(
+        strategy === 'UID'
+          ? !reading.ndef?.startsWith('urn:nfc-trace:provisioning:')
+          : reading.ndef === result.referenciaNdef,
+      );
       setMessage(
         result.status === 'ATIVA'
           ? 'Vínculo já ativo.'
@@ -76,9 +86,26 @@ export default function EtapasProvisionamento() {
       setBusy(false);
     }
   }
+  if (mode === 'create') {
+    return (
+      <CreateOrderForm
+        onCancel={() => setMode('form')}
+        onCreated={created => {
+          setOrder(created);
+          setReading(undefined);
+          setCapturedAt(undefined);
+          setMode('form');
+          setMessage(
+            `Pedido ${created.codigo} selecionado. Leia a etiqueta para continuar.`,
+          );
+        }}
+      />
+    );
+  }
   if (mode !== 'form') {
     return (
       <Leitor
+        insetTop={false}
         context={`${order?.codigo} · ${
           mode === 'write' ? '3. Gravar referência' : '2. Ler etiqueta'
         }`}
@@ -89,10 +116,23 @@ export default function EtapasProvisionamento() {
             : undefined
         }
         onLeituraRealizada={(value, time) => {
+          const targetUid = expectedUid ?? provisioning?.uid;
+          if (targetUid && value.uid !== targetUid) {
+            setMode('form');
+            setMessage(
+              `Etiqueta ${value.uid} diferente. Leia a etiqueta ${targetUid}.`,
+            );
+            return;
+          }
           setReading(value);
           setCapturedAt(time);
-          if (mode === 'write') {
-            setVerified(true);
+          if (provisioning) {
+            setVerified(
+              strategy === 'UID'
+                ? !value.ndef?.startsWith('urn:nfc-trace:provisioning:')
+                : value.ndef === provisioning.referenciaNdef,
+            );
+            setConfirmed(false);
           }
           setMode('form');
           setMessage('Etiqueta lida fisicamente.');
@@ -102,9 +142,29 @@ export default function EtapasProvisionamento() {
     );
   }
   return (
-    <Tela scroll>
+    <Tela
+      scroll
+      insetTop={false}
+      header={
+        <PageHero
+          fullBleed
+          title="Vincular etiqueta ao pedido"
+          description={
+            provisioning?.status === 'ATIVA'
+              ? 'Etiqueta ativa. O pedido já pode receber etapas.'
+              : !order
+              ? 'Escolha o pedido que receberá esta etiqueta.'
+              : !reading
+              ? 'Leia a etiqueta que identificará este volume.'
+              : !provisioning
+              ? 'Confira os dados antes de salvar o vínculo.'
+              : 'Conclua a configuração e confirme a ativação.'
+          }
+          icon="nfc-tap"
+          eyebrow="PREPARAR ETIQUETA"
+        />
+      }>
       <VStack gap={16}>
-        <Text variant="headlineSmall">Vincular etiqueta ao pedido</Text>
         <FlowSteps
           labels={['Pedido', 'Leitura', 'Vínculo', 'Ativação']}
           current={!order ? 1 : !reading ? 2 : !provisioning ? 3 : 4}
@@ -115,16 +175,23 @@ export default function EtapasProvisionamento() {
             ? 'Por número da etiqueta (UID) · não grava NDEF'
             : 'Por referência NDEF · grava um identificador na etiqueta'}
         </Text>
+        {!!expectedUid && (
+          <Text variant="bodyMedium">
+            Reutilização da etiqueta {expectedUid}. A API atribuirá uma nova
+            época ao novo vínculo.
+          </Text>
+        )}
         <OrderSelect
           selected={order}
           onSelect={setOrder}
           disabled={!!provisioning || busy}
+          onCreate={() => setMode('create')}
         />
         {order && !provisioning && (
           <ModelSelect
             value={model}
             onChange={setModel}
-            disabled={!!provisioning || busy}
+            disabled={!!provisioning || !!registeredModel || busy}
           />
         )}
         {order && !provisioning && (
@@ -181,7 +248,9 @@ export default function EtapasProvisionamento() {
                     )}
                     <Text>
                       {strategy === 'UID'
-                        ? 'UID conferido. '
+                        ? verified
+                          ? 'UID conferido. '
+                          : 'A etiqueta contém uma referência NDEF do projeto. Remova-a com a ferramenta de configuração e leia novamente antes de usar UID. '
                         : verified
                         ? 'Referência NDEF gravada e conferida. '
                         : 'Primeiro grave e confira o NDEF. '}
@@ -190,6 +259,14 @@ export default function EtapasProvisionamento() {
                       para configurar a tag. Este aplicativo não bloqueia a
                       escrita.
                     </Text>
+                    {strategy === 'UID' && !verified && (
+                      <Button
+                        mode="outlined"
+                        disabled={busy}
+                        onPress={() => setMode('read')}>
+                        Reler etiqueta após configuração
+                      </Button>
+                    )}
                     <Checkbox.Item
                       label="Conferi a configuração física e o bloqueio do ensaio"
                       status={confirmed ? 'checked' : 'unchecked'}
@@ -207,16 +284,32 @@ export default function EtapasProvisionamento() {
                     </Button>
                   </>
                 )}
-                <List.Accordion title="Detalhes do vínculo">
+                <List.Accordion
+                  title="Detalhes do vínculo"
+                  titleNumberOfLines={2}>
                   <Text selectable>{provisioning.id}</Text>
                   <Text>Situação: {provisioning.status}</Text>
                 </List.Accordion>
+                <Button
+                  mode="outlined"
+                  disabled={busy}
+                  onPress={() =>
+                    navigation.navigate('Gerenciar', {
+                      provisioningId: provisioning.id,
+                    })
+                  }>
+                  Gerenciar este vínculo
+                </Button>
               </VStack>
             </StatusPanel>
             {provisioning.status === 'ATIVA' && (
               <Button
                 mode="contained"
                 onPress={() => {
+                  if (expectedUid) {
+                    navigation.popTo('InformativoEtapas');
+                    return;
+                  }
                   setOrder(undefined);
                   setReading(undefined);
                   setProvisioning(undefined);
@@ -226,7 +319,9 @@ export default function EtapasProvisionamento() {
                   setModel('DESCONHECIDO');
                   setMessage('');
                 }}>
-                Vincular outra etiqueta
+                {expectedUid
+                  ? 'Concluir reutilização'
+                  : 'Vincular outra etiqueta'}
               </Button>
             )}
           </>

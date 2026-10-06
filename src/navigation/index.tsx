@@ -3,6 +3,7 @@ import {
   DefaultTheme as NavigationDefaultTheme,
   NavigationContainer,
   getFocusedRouteNameFromRoute,
+  NavigatorScreenParams,
 } from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Icon} from 'react-native-paper';
@@ -10,6 +11,7 @@ import {Icon} from 'react-native-paper';
 import TabBar from './TabBar';
 import {useAppTheme} from '../theme';
 import ProvisionarNavigator from './ProvisionarNavigator';
+import type {RotasProvisionar} from './ProvisionarNavigator';
 import Home from '../views/Home';
 import EventosNavigator from './EventosNavigator';
 import {useSession} from '../components/Auth/SessionProvider';
@@ -17,7 +19,7 @@ import Historico from '../views/Historico';
 import type {Reading} from '../appplication/traceability/workflow';
 
 export type RotasTab = {
-  Provisionar: undefined;
+  Provisionar: NavigatorScreenParams<RotasProvisionar> | undefined;
   Home: undefined;
   Eventos: undefined;
   Historico: {reading?: Reading} | undefined;
@@ -95,10 +97,13 @@ const Navigator = () => {
             options={({route}) => ({
               title: 'Vincular',
               tabBarIcon: IconeProvisionar,
-              tabBarStyle:
-                getFocusedRouteNameFromRoute(route) === 'EtapasProvisionamento'
-                  ? {display: 'none'}
-                  : undefined,
+              tabBarStyle: [
+                'EtapasProvisionamento',
+                'Diagnostico',
+                'Gerenciar',
+              ].includes(getFocusedRouteNameFromRoute(route) ?? '')
+                ? {display: 'none'}
+                : undefined,
             })}
           />
         )}

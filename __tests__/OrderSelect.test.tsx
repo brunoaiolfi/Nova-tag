@@ -1,8 +1,8 @@
 import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {PaperProvider, RadioButton, Searchbar} from 'react-native-paper';
-import OrderSelect from '../src/components/Nfc/OrderSelect';
+import {PaperProvider, Searchbar} from 'react-native-paper';
+import OrderSelect, {OrderOption} from '../src/components/Nfc/OrderSelect';
 import {traceability} from '../src/infra/traceability/runtime';
 import type {OrderPage} from '../src/appplication/traceability/workflow';
 
@@ -49,7 +49,7 @@ test('selects real orders and disables those beyond CADASTRADO', async () => {
     total: 2,
   });
   const select = await render();
-  const items = tree.root.findAllByType(RadioButton.Item);
+  const items = tree.root.findAllByType(OrderOption);
   expect(items[1].props.disabled).toBe(true);
   await act(async () => {
     items[0].props.onPress();
@@ -69,7 +69,7 @@ test('offers additional pages even when the initial orders are ineligible', asyn
       .props.onPress();
   });
   expect(list).toHaveBeenLastCalledWith('', 2);
-  expect(tree.root.findAllByType(RadioButton.Item)).toHaveLength(2);
+  expect(tree.root.findAllByType(OrderOption)).toHaveLength(2);
 });
 
 test('a stale search response cannot replace the current search results', async () => {
@@ -92,7 +92,7 @@ test('a stale search response cannot replace the current search results', async 
   await act(async () => {
     finish({itens: [order], total: 1});
   });
-  expect(tree.root.findAllByType(RadioButton.Item)[0].props.label).toContain(
+  expect(tree.root.findAllByType(OrderOption)[0].props.order.codigo).toContain(
     'TCC-NEW',
   );
 });
@@ -101,7 +101,7 @@ test('history allows selecting delivered orders while provisioning does not', as
   const delivered = {...order, estado: 'ENTREGUE'};
   list.mockResolvedValueOnce({itens: [delivered], total: 1});
   const select = await render('history');
-  const option = tree.root.findByType(RadioButton.Item);
+  const option = tree.root.findByType(OrderOption);
   expect(option.props.disabled).toBe(false);
   await act(async () => {
     option.props.onPress();

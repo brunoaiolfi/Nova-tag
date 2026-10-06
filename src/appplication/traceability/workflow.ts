@@ -3,6 +3,8 @@ export interface Reading {
   uid: string;
   ndef?: string;
   tecnologias?: string[];
+  bytesBase64?: string;
+  modelo?: string;
 }
 export interface OrderSummary {
   id: string;
@@ -16,6 +18,35 @@ export interface OrderPage {
 }
 export interface OrderDetails extends OrderSummary {
   expedido: boolean;
+  provisionamentoVigente?: Provisioning | null;
+}
+export interface OrderInput {
+  codigo: string;
+  descricao?: string;
+}
+export function normalizeOrderInput(input: OrderInput): OrderInput {
+  const codigo = input.codigo.trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9._-]{0,63}$/.test(codigo)) {
+    throw new Error(
+      'Use até 64 letras sem acentos, números, pontos, traços ou sublinhados no código. Comece com uma letra ou número.',
+    );
+  }
+  const descricao = input.descricao?.trim();
+  if (descricao && descricao.length > 500) {
+    throw new Error('A descrição pode ter até 500 caracteres.');
+  }
+  return {codigo, ...(descricao ? {descricao} : {})};
+}
+
+function uncertainResponse(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const failure = error as {code?: string; status?: number};
+  return (
+    ['API_INDISPONIVEL', 'RESPOSTA_INVALIDA'].includes(failure.code ?? '') ||
+    (failure.status !== undefined && failure.status >= 500)
+  );
 }
 export interface HistoryEntry {
   id: string;
@@ -92,6 +123,93 @@ export class TraceabilityWorkflow {
     return this.api.request<OrderDetails>(`/pedidos/${encodeURIComponent(id)}`);
   }
 
+  async createOrder(
+    input: OrderInput,
+    userId: string,
+  ): Promise<{order: OrderSummary; recovered: boolean}> {
+    const normalized = normalizeOrderInput(input);
+    try {
+      const order = await this.api.request<OrderSummary>('/pedidos', {
+        method: 'POST',
+        body: normalized,
+        expectedUserId: userId,
+      });
+      return {order, recovered: false};
+    } catch (error) {
+      if (uncertainResponse(error)) {
+        try {
+          const order = await this.findOrderByCode(normalized.codigo, userId);
+          if (
+            order &&
+            (order.descricao ?? null) === (normalized.descricao ?? null)
+          ) {
+            return {order, recovered: true};
+          }
+        } catch {
+          /* The original failure remains actionable if recovery is unavailable. */
+        }
+      }
+      throw error;
+    }
+  }
+
+  provisioning(id: string): Promise<Provisioning> {
+    return this.api.request<Provisioning>(
+      `/provisionamentos/${encodeURIComponent(id)}`,
+    );
+  }
+
+  /** Administrative lookup targets the physical UID, independent of NDEF copies. */
+  tag(uid: string): Promise<Provisioning | null> {
+    return this.findByUid(uid);
+  }
+
+  async closeProvisioning(
+    provisioning: Provisioning,
+    userId: string,
+  ): Promise<Provisioning> {
+    const path = `/provisionamentos/${encodeURIComponent(provisioning.id)}`;
+    try {
+      return await this.api.request<Provisioning>(`${path}/encerramento`, {
+        method: 'POST',
+        expectedUserId: userId,
+      });
+    } catch (error) {
+      if (uncertainResponse(error)) {
+        try {
+          // The tag may already belong to a new epoch: never retry by latest UID.
+          const persisted = await this.api.request<Provisioning>(path, {
+            expectedUserId: userId,
+          });
+          if (persisted.status === 'DESPROVISIONADA') {
+            return persisted;
+          }
+        } catch {
+          /* Preserve the original failure. */
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async findOrderByCode(
+    code: string,
+    userId?: string,
+  ): Promise<OrderSummary | undefined> {
+    for (let page = 1; ; page++) {
+      const path = `/pedidos?busca=${encodeURIComponent(
+        code,
+      )}&pagina=${page}&limite=100`;
+      const result = userId
+        ? await this.api.request<OrderPage>(path, {expectedUserId: userId})
+        : await this.api.request<OrderPage>(path);
+      const order = result.itens.find(item => item.codigo === code);
+      if (order || page * 100 >= result.total || result.itens.length === 0) {
+        return order;
+      }
+    }
+  }
+
   async history(
     orderId: string,
     page = 1,
@@ -127,21 +245,7 @@ export class TraceabilityWorkflow {
     model: string,
   ): Promise<Provisioning> {
     const normalizedCode = code.trim().toUpperCase();
-    let order: {id: string; codigo: string; estado: string} | undefined;
-    for (let page = 1; ; page++) {
-      const result = await this.api.request<{
-        itens: {id: string; codigo: string; estado: string}[];
-        total: number;
-      }>(
-        `/pedidos?busca=${encodeURIComponent(
-          normalizedCode,
-        )}&pagina=${page}&limite=100`,
-      );
-      order = result.itens.find(item => item.codigo === normalizedCode);
-      if (order || page * 100 >= result.total) {
-        break;
-      }
-    }
+    const order = await this.findOrderByCode(normalizedCode);
     if (!order) {
       throw new Error(
         'Pedido não encontrado. Cadastre-o na API antes de provisionar.',
@@ -154,7 +258,7 @@ export class TraceabilityWorkflow {
     if (existing && existing.status !== 'DESPROVISIONADA') {
       if (existing.pedidoId !== order.id || existing.estrategia !== strategy) {
         throw new Error(
-          'Etiqueta já vinculada a outro pedido ou estratégia. Encerre o vínculo pela API antes de reutilizar.',
+          'Etiqueta já vinculada a outro pedido ou estratégia. Abra Gerenciar etiqueta e encerre o vínculo antes de reutilizar.',
         );
       }
       return existing;
@@ -165,7 +269,7 @@ export class TraceabilityWorkflow {
         body: {
           pedidoId: order.id,
           uid: reading.uid,
-          modelo: model.trim(),
+          modelo: existing?.modelo ?? model.trim(),
           estrategia: strategy,
         },
       });
@@ -207,6 +311,14 @@ export class TraceabilityWorkflow {
     }
     if (reading.uid !== provisioning.uid) {
       throw new Error('A etiqueta lida é diferente da etiqueta registrada.');
+    }
+    if (
+      provisioning.estrategia === 'UID' &&
+      reading.ndef?.startsWith('urn:nfc-trace:provisioning:')
+    ) {
+      throw new Error(
+        'A etiqueta ainda contém uma referência NDEF do projeto. Remova-a com a ferramenta de configuração e faça uma nova leitura antes de ativar por UID.',
+      );
     }
     if (
       provisioning.estrategia === 'NDEF_ESTATICO' &&
@@ -256,16 +368,31 @@ export class TraceabilityWorkflow {
     occurredAt: string,
     deviceId: string,
   ): Promise<Observation> {
-    const provisioning = await this.resolveProvisioning(reading);
-    return {
+    // Freeze the exact evidence before the first await, so retries/slow lookups
+    // cannot alter the captured bytes, URI or declared metadata.
+    const raw: Reading = {
+      uid: reading.uid,
+      ...(reading.ndef !== undefined ? {ndef: reading.ndef} : {}),
+      ...(reading.bytesBase64 !== undefined
+        ? {bytesBase64: reading.bytesBase64}
+        : {}),
+      ...(reading.modelo !== undefined ? {modelo: reading.modelo} : {}),
+      ...(reading.tecnologias !== undefined
+        ? {tecnologias: [...reading.tecnologias]}
+        : {}),
+    };
+    if (raw.tecnologias) Object.freeze(raw.tecnologias);
+    Object.freeze(raw);
+    const provisioning = await this.resolveProvisioning(raw);
+    return Object.freeze({
       id,
       versaoContrato: 1,
       provisionamentoId: provisioning.id,
       tipo: type,
       ocorridoEm: occurredAt,
       dispositivoId: deviceId,
-      leituraBruta: reading,
-    };
+      leituraBruta: raw,
+    });
   }
 
   send(observation: Observation, userId: string) {

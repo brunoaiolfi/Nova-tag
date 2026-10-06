@@ -133,3 +133,49 @@ test('retransmits exact UUID/body and keeps storage separate from authorization'
     expectedUserId: 'user',
   });
 });
+
+test('snapshot is taken before lookup and preserves original bytes/metadata on retries', async () => {
+  let resolve!: (value: Provisioning) => void;
+  request.mockImplementationOnce(
+    () =>
+      new Promise(finish => {
+        resolve = finish;
+      }),
+  );
+  const reading = {
+    uid: link.uid,
+    ndef: reference,
+    bytesBase64: 'wQEA',
+    tecnologias: ['IsoDep'],
+    modelo: 'DESCONHECIDO',
+  };
+  const preparation = workflow.prepare(
+    reading,
+    'COLETA',
+    'snapshot-id',
+    'scan-time',
+    'device',
+  );
+  reading.bytesBase64 = 'changed';
+  reading.ndef = 'urn:other';
+  reading.tecnologias.push('changed');
+  resolve(link);
+  const observation = await preparation;
+  expect(observation.leituraBruta).toEqual({
+    uid: link.uid,
+    ndef: reference,
+    bytesBase64: 'wQEA',
+    tecnologias: ['IsoDep'],
+    modelo: 'DESCONHECIDO',
+  });
+  expect(Object.isFrozen(observation)).toBe(true);
+  expect(Object.isFrozen(observation.leituraBruta.tecnologias)).toBe(true);
+  request
+    .mockRejectedValueOnce(new Error('response lost'))
+    .mockResolvedValueOnce({armazenada: true});
+  await expect(workflow.send(observation, 'user')).rejects.toThrow(
+    'response lost',
+  );
+  await workflow.send(observation, 'user');
+  expect(request.mock.calls[1]).toEqual(request.mock.calls[2]);
+});

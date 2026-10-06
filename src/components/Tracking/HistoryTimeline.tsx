@@ -95,6 +95,7 @@ export function HistoryItem({
         )}
         <List.Accordion
           title="Detalhes do registro"
+          titleNumberOfLines={2}
           style={styles.accordion}
           titleStyle={styles.accordionTitle}>
           <View style={styles.details}>
@@ -160,12 +161,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {flex: 1, minWidth: 0, paddingBottom: 24, gap: 6},
+  content: {flex: 1, minWidth: 0, paddingBottom: 28, gap: 8},
   title: {fontWeight: '700', color: colors.navy},
   decision: {fontSize: 14, lineHeight: 21, fontWeight: '700'},
   description: {fontSize: 16, lineHeight: 24, color: colors.navy},
   date: {fontSize: 13, lineHeight: 20, color: colors.muted},
-  change: {fontSize: 14, lineHeight: 21, color: colors.teal, fontWeight: '600'},
+  change: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.blue,
+    fontWeight: '600',
+    backgroundColor: colors.pale,
+    padding: 10,
+    borderRadius: 10,
+  },
   warning: {
     fontSize: 14,
     lineHeight: 21,
@@ -180,5 +189,10 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   accordionTitle: {fontSize: 14, color: colors.muted},
-  details: {gap: 10, paddingVertical: 12},
+  details: {
+    gap: 12,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
 });
