@@ -24,6 +24,12 @@ export interface PhysicalTagReport extends Type4Inspection {
     osVersion: string;
     appVersion: string;
     nativeBuild: string;
+    jsSource?: {
+      revision: string | null;
+      sourceSha256: string;
+      lockSha256: string;
+      trackedChanges: boolean | null;
+    };
   };
   reference?: string;
   ndefDecodeIssue?: string;
@@ -77,6 +83,9 @@ export function diagnosePhysicalTag(): Promise<PhysicalTagReport> {
             ? Constants.platform?.ios?.buildNumber
             : Constants.platform?.android?.versionCode
           )?.toString() ?? 'desconhecido',
+        ...(Constants.expoConfig?.extra?.reproducibility
+          ? {jsSource: Constants.expoConfig.extra.reproducibility}
+          : {}),
       },
       ...(reference ? {reference} : {}),
       ...(ndefDecodeIssue ? {ndefDecodeIssue} : {}),
