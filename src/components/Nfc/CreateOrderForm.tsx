@@ -73,6 +73,7 @@ export default function CreateOrderForm({
       header={
         <PageHero
           fullBleed
+          compact
           icon="package-variant-closed-plus"
           eyebrow="NOVO PEDIDO"
           title={

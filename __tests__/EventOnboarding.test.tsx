@@ -146,3 +146,24 @@ test('confirms only after durable storage and retains scan time/UUID when a loca
   });
   expect(mockNavigate).toHaveBeenCalledWith('Envios');
 });
+
+test('changing the selected stage returns to the choices without saving a capture', async () => {
+  await act(async () => {
+    tree = TestRenderer.create(
+      <PaperProvider>
+        <EtapasEvento />
+      </PaperProvider>,
+    );
+  });
+  await act(async () => {
+    tree.root
+      .findByType(SelecionarEvento)
+      .props.onSelecionarEvento(EnumTipoEvento.COLETA);
+  });
+  expect(tree.root.findByType(Leitor).props.backLabel).toBe('Trocar etapa');
+  await act(async () => button('Trocar etapa').props.onPress());
+  expect(tree.root.findAllByType(Leitor)).toHaveLength(0);
+  expect(tree.root.findAllByType(SelecionarEvento)).toHaveLength(1);
+  expect(mockCapture).not.toHaveBeenCalled();
+  expect(mockSynchronize).not.toHaveBeenCalled();
+});

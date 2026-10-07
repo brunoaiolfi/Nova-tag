@@ -64,13 +64,24 @@ export function ActionButton({
         mode === 'outlined' && styles.outlinedButton,
         style,
       ]}>
-      <View style={[styles.buttonContent, contentStyle]}>
+      <View
+        style={[
+          styles.buttonContent,
+          mode === 'text' && styles.textButtonContent,
+          contentStyle,
+        ]}>
         {loading ? (
           <ActivityIndicator size={20} color={color} />
         ) : icon ? (
           <Icon source={icon} size={22} color={color} />
         ) : null}
-        <Text style={[styles.buttonLabel, {color}, labelStyle]}>
+        <Text
+          style={[
+            styles.buttonLabel,
+            mode === 'text' && styles.textButtonLabel,
+            {color},
+            labelStyle,
+          ]}>
           {children}
         </Text>
       </View>
@@ -84,23 +95,41 @@ export function PageHero({
   icon = 'package-variant-closed',
   eyebrow = 'NFC TRACE · RASTREAMENTO',
   fullBleed = false,
+  compact = false,
 }: {
   title: string;
   description: string;
   icon?: string;
   eyebrow?: string;
   fullBleed?: boolean;
+  /** Inner screens already have a navigation header; avoid a second large banner. */
+  compact?: boolean;
 }) {
   return (
-    <View style={[styles.hero, fullBleed && styles.fullBleed]}>
-      <View style={styles.heroBrand}>
-        <Icon source={icon} size={26} color={trackingColors.yellow} />
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
-      </View>
-      <Text variant="headlineMedium" style={styles.heroTitle}>
+    <View
+      style={[
+        styles.hero,
+        compact && styles.compactHero,
+        fullBleed && styles.fullBleed,
+      ]}>
+      {!compact && (
+        <View style={styles.heroBrand}>
+          <Icon source={icon} size={26} color={trackingColors.yellow} />
+          <Text style={styles.eyebrow}>{eyebrow}</Text>
+        </View>
+      )}
+      <Text
+        variant="headlineMedium"
+        style={[styles.heroTitle, compact && styles.compactHeroTitle]}>
         {title}
       </Text>
-      <Text style={styles.heroDescription}>{description}</Text>
+      <Text
+        style={[
+          styles.heroDescription,
+          compact && styles.compactHeroDescription,
+        ]}>
+        {description}
+      </Text>
     </View>
   );
 }
@@ -149,7 +178,6 @@ export function RouteMotif() {
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <View style={styles.routeCurve} />
       <View style={styles.routeOrigin}>
         <Icon
           source="package-variant-closed"
@@ -157,8 +185,13 @@ export function RouteMotif() {
           color={trackingColors.blue}
         />
       </View>
+      <View style={styles.routeLine} />
+      <View style={styles.routeWaypoint}>
+        <Icon source="truck-outline" size={22} color="white" />
+      </View>
+      <View style={styles.routeLine} />
       <View style={styles.routeDestination}>
-        <Icon source="map-marker" size={58} color={trackingColors.orange} />
+        <Icon source="map-marker" size={28} color={trackingColors.navy} />
       </View>
     </View>
   );
@@ -405,13 +438,18 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'center',
   },
+  textButtonContent: {minHeight: 44, paddingVertical: 10},
+  textButtonLabel: {fontSize: 15, lineHeight: 22},
   hero: {
     backgroundColor: trackingColors.blue,
     borderRadius: 26,
-    padding: 24,
-    gap: 12,
+    padding: 20,
+    gap: 8,
   },
-  fullBleed: {borderRadius: 0, paddingBottom: 42},
+  fullBleed: {borderRadius: 0, paddingBottom: 32},
+  compactHero: {paddingHorizontal: 16, paddingTop: 12},
+  compactHeroTitle: {fontSize: 22, lineHeight: 28},
+  compactHeroDescription: {fontSize: 14, lineHeight: 21},
   heroBrand: {flexDirection: 'row', alignItems: 'center', gap: 10},
   eyebrow: {
     color: '#E2E7FF',
@@ -429,7 +467,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   accentTile: {backgroundColor: '#FFF0D0'},
-  tileContent: {padding: 18, minHeight: 170, gap: 10},
+  tileContent: {padding: 16, minHeight: 148, gap: 8},
   tileTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -442,38 +480,48 @@ const styles = StyleSheet.create({
     color: trackingColors.navy,
   },
   tileDescription: {fontSize: 14, lineHeight: 21, color: trackingColors.muted},
-  motif: {height: 108, width: 210, alignSelf: 'center', marginVertical: 6},
-  routeCurve: {
-    position: 'absolute',
-    left: 25,
-    top: 35,
-    width: 150,
-    height: 52,
-    borderWidth: 2,
-    borderColor: '#C4CEFF',
-    borderTopWidth: 0,
-    borderRadius: 40,
-    transform: [{rotate: '-12deg'}],
+  motif: {
+    height: 72,
+    width: 240,
+    maxWidth: '100%',
+    alignSelf: 'center',
+    marginVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+  routeLine: {flex: 1, height: 2, backgroundColor: '#C4CEFF'},
   routeOrigin: {
-    position: 'absolute',
-    left: 0,
-    top: 24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  routeDestination: {position: 'absolute', right: 0, top: 0},
+  routeWaypoint: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C4CEFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeDestination: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: trackingColors.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   action: {
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: trackingColors.line,
   },
   actionContent: {
-    minHeight: 100,
+    minHeight: 84,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -495,7 +543,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: trackingColors.muted,
   },
-  steps: {flexDirection: 'row', paddingVertical: 12},
+  steps: {flexDirection: 'row', paddingVertical: 8},
   step: {flex: 1, minWidth: 0, alignItems: 'center'},
   stepRail: {
     height: 36,
@@ -534,7 +582,7 @@ const styles = StyleSheet.create({
   activeLabel: {color: trackingColors.blue, fontWeight: '700'},
   journey: {
     backgroundColor: trackingColors.blue,
-    padding: 24,
+    padding: 20,
     borderRadius: 26,
     gap: 8,
   },
@@ -550,7 +598,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   statusCaption: {color: '#E2E7FF', fontSize: 14},
   statusText: {color: 'white', fontWeight: '700'},
@@ -575,5 +623,5 @@ const styles = StyleSheet.create({
   },
   reachedLabel: {color: 'white', fontWeight: '700'},
   expedition: {color: trackingColors.yellow, fontSize: 14, lineHeight: 21},
-  panel: {padding: 20, borderRadius: 20, borderLeftWidth: 3, gap: 12},
+  panel: {padding: 16, borderRadius: 16, borderLeftWidth: 3, gap: 10},
 });

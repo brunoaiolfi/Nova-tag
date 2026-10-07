@@ -16,6 +16,7 @@ import Aviso from '../../../components/Aviso';
 import ListaPassos, {Passo} from '../../../components/ListaPassos';
 import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 import {EnumEstrategiasNFC} from '../../../domain/enums/estrategiasNFC';
+import {useSession} from '../../../components/Auth/SessionProvider';
 
 const PASSOS: Passo[] = [
   {
@@ -50,6 +51,7 @@ const ESTRATEGIAS: {valor: EnumEstrategiasNFC; titulo: string}[] = [
 ];
 
 const InformativoEtapas = () => {
+  const {state} = useSession();
   const navigation =
     useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
 
@@ -71,8 +73,45 @@ const InformativoEtapas = () => {
         />
       }
       footer={<Botao onPress={iniciar}>Escolher pedido</Botao>}>
-      <VStack gap={24}>
+      <VStack gap={16}>
+        <VStack gap={4}>
+          <Text variant="titleMedium">Como identificar a etiqueta?</Text>
+          <RadioButton.Group
+            value={String(estrategia)}
+            onValueChange={valor => setEstrategia(Number(valor))}>
+            {ESTRATEGIAS.map(({valor, titulo}) => (
+              <RadioButton.Item
+                key={valor}
+                label={titulo}
+                value={String(valor)}
+                position="leading"
+                labelStyle={styles.labelRadio}
+                style={[
+                  layoutStyles.strategyOption,
+                  estrategia === valor && layoutStyles.selectedStrategy,
+                ]}
+              />
+            ))}
+          </RadioButton.Group>
+        </VStack>
         <ListaPassos passos={PASSOS} />
+        {state.session?.user.perfil === 'ADMINISTRADOR' && (
+          <VStack gap={8}>
+            <Text variant="titleMedium">
+              Configuração protegida · NTAG 424 DNA
+            </Text>
+            <Text>
+              Prepare o plano, configure a etiqueta e confira a ativação. Inclui
+              UID, NDEF estático e SDM; exige inventário de credenciais na API.
+            </Text>
+            <ActionButton
+              mode="outlined"
+              icon="shield-check-outline"
+              onPress={() => navigation.navigate('Administracao')}>
+              Configurar NTAG 424 DNA
+            </ActionButton>
+          </VStack>
+        )}
         <VStack gap={8}>
           <Text variant="titleMedium">
             Já existe um vínculo nesta etiqueta?
@@ -103,29 +142,8 @@ const InformativoEtapas = () => {
           </ActionButton>
         </VStack>
 
-        <VStack gap={4}>
-          <Text variant="titleMedium">Como identificar a etiqueta?</Text>
-          <RadioButton.Group
-            value={String(estrategia)}
-            onValueChange={valor => setEstrategia(Number(valor))}>
-            {ESTRATEGIAS.map(({valor, titulo}) => (
-              <RadioButton.Item
-                key={valor}
-                label={titulo}
-                value={String(valor)}
-                position="leading"
-                labelStyle={styles.labelRadio}
-                style={[
-                  layoutStyles.strategyOption,
-                  estrategia === valor && layoutStyles.selectedStrategy,
-                ]}
-              />
-            ))}
-          </RadioButton.Group>
-        </VStack>
-
         <Aviso>
-          A gravação NDEF substitui o conteúdo atual. Esta versão não altera
+          A gravação NDEF substitui o conteúdo atual. O fluxo simples não altera
           chaves nem bloqueia a escrita. A ativação exige conferir externamente
           a configuração física e o bloqueio definidos para o ensaio.
         </Aviso>

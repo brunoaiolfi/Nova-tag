@@ -49,12 +49,13 @@ const InformativoEtapas = () => {
         />
       }
       footer={<Botao onPress={iniciar}>Iniciar</Botao>}>
-      <VStack gap={24}>
+      <VStack gap={16}>
         <ListaPassos passos={PASSOS} />
 
         <Aviso icone="cloud-off-outline">
-          Este fluxo exige conexão. Uma captura armazenada pode ter uma operação
-          rejeitada. Confira a decisão antes de seguir com o pedido.
+          A captura fica salva neste aparelho, mesmo sem conexão. O envio e a
+          autorização acontecem quando a API estiver disponível. Confira a
+          decisão antes de seguir com o pedido.
         </Aviso>
       </VStack>
     </Tela>

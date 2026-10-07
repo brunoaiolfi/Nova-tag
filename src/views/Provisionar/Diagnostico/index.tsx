@@ -77,6 +77,7 @@ export default function Diagnostico() {
       header={
         <PageHero
           fullBleed
+          compact
           eyebrow="DIAGNÓSTICO NFC"
           icon="nfc-search-variant"
           title="Conheça sua etiqueta."
@@ -94,7 +95,7 @@ export default function Diagnostico() {
           {report ? 'Diagnosticar outra etiqueta' : 'Diagnosticar etiqueta'}
         </ActionButton>
       }>
-      <VStack gap={20}>
+      <VStack gap={16}>
         <Text variant="bodyMedium">
           Toque no botão e mantenha a etiqueta próxima à parte superior do
           iPhone até terminar. Esta consulta não grava referências, não muda

@@ -110,6 +110,7 @@ export default function EtapasEvento() {
           setType(undefined);
           setMessage('');
         }}
+        backLabel="Trocar etapa"
         onLeituraRealizada={captured}
         onErroLeitura={setMessage}
       />
@@ -122,6 +123,7 @@ export default function EtapasEvento() {
       header={
         <PageHero
           fullBleed
+          compact
           eyebrow="REGISTRAR ETAPA"
           title={
             savedId

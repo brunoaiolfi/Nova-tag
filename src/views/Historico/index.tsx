@@ -184,6 +184,7 @@ export default function Historico() {
         context="Consultar histórico · sem gravar na etiqueta"
         continueLabel="Ver histórico desta etiqueta"
         onVoltar={() => setScanning(false)}
+        backLabel="Voltar ao histórico"
         onErroLeitura={() => {}}
         onLeituraRealizada={reading => {
           choose({kind: 'tag', reading});

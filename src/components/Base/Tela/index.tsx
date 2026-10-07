@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {useContext} from 'react';
 import {ScrollView, StatusBar, StyleSheet, View} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {BottomTabBarHeightContext} from '@react-navigation/bottom-tabs';
 
 import {useAppTheme} from '../../../theme';
 
@@ -22,9 +23,12 @@ const Tela = ({
 }: TelaProps) => {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  // A visible tab bar already protects the home indicator area.
+  const bottomInset = tabBarHeight > 0 ? 0 : insets.bottom;
   const contentStyle = [
     styles.conteudo,
-    {paddingBottom: 16 + (footer ? 0 : insets.bottom)},
+    {paddingBottom: 16 + (footer ? 0 : bottomInset)},
   ];
   const body = (
     <View style={[contentStyle, !!header && styles.sheet]}>{children}</View>
@@ -62,7 +66,7 @@ const Tela = ({
         </View>
       )}
       {footer && (
-        <View style={[styles.footer, {paddingBottom: 16 + insets.bottom}]}>
+        <View style={[styles.footer, {paddingBottom: 12 + bottomInset}]}>
           {footer}
         </View>
       )}
@@ -79,17 +83,18 @@ const styles = StyleSheet.create({
   scrollContent: {flexGrow: 1},
   conteudo: {
     flexGrow: 1,
-    padding: 20,
+    padding: 16,
   },
   sheet: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -16,
   },
   footer: {
     flexShrink: 0,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#E3E7F2',

@@ -2,7 +2,7 @@ import type {SqlConnection} from './sqlite-store';
 import type {SQLiteDatabase} from 'expo-sqlite';
 let connection: Promise<SqlConnection> | undefined;
 let transactions: Promise<void> = Promise.resolve();
-function adapter(db: SQLiteDatabase): SqlConnection {
+export function sqliteConnection(db: SQLiteDatabase): SqlConnection {
   return {
     exec: sql => db.execAsync(sql),
     run: (sql, params = []) => db.runAsync(sql, params),
@@ -12,7 +12,7 @@ function adapter(db: SQLiteDatabase): SqlConnection {
       const pending = transactions.then(async () => {
         let value: Awaited<ReturnType<typeof work>>;
         await db.withExclusiveTransactionAsync(async tx => {
-          value = await work(adapter(tx));
+          value = await work(sqliteConnection(tx));
         });
         return value!;
       });
@@ -30,7 +30,7 @@ export function openCaptureDatabase() {
   connection ??= Promise.resolve()
     .then(() => require('expo-sqlite') as typeof import('expo-sqlite'))
     .then(SQLite => SQLite.openDatabaseAsync('nova-tag-captures.db'))
-    .then(adapter)
+    .then(sqliteConnection)
     .catch(error => {
       connection = undefined;
       throw error;

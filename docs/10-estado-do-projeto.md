@@ -1,18 +1,28 @@
 # Entregas atuais e pendências
 
-Atualização de 7 de outubro de 2026. Branch `codex/issue-9-reproducibility`,
-sobre `codex/issue-7-experiment-instrumentation`. Publicação autorizada; sem merge na main.
+Atualização de 7 de outubro de 2026. Branch `codex/issue-12-secure-messaging`,
+sobre `codex/issue-9-reproducibility`. Publicação autorizada; sem merge na main.
 Software #1–#7 implementado e validado localmente.
 
-| Entrega | Disponível |
-| --- | --- |
-| #1 | NFC exclusivo, timeout/cancelamento, Type 4/bytes, diagnóstico/perfil candidato |
-| #2 | Pedidos, vínculos/épocas, eventos e histórico |
-| #3 | Login/permissões, SecureStore, restauração/revogação/logout |
-| #4 | SQLite, cache por API/conta/época, fila, lote e Envios |
-| #5 | Captura/cache SDM sem fallback; prova/uso/política separados de autorização |
-| #6 | Pendências/prazo, recibo original e decisões versionadas/histórico |
-| #7 | Roteiro em Envios, tentativas/falhas duráveis, clocks/fronteiras, associação atômica e liberação controlada; exportação/cenários na API |
+Revisão atual da interface: navegação e retornos padronizados, banners internos
+compactos e margem inferior sem duplicação pelas abas. **286 testes/30 suítes**,
+lint/tipos e prévia de 15 telas em 320 × 568 e 390 × 844 passaram localmente.
+As prévias usam HTTP sintético; não substituem a conferência nativa no iPhone ou
+o aceite físico NFC. [Detalhes e limites](17-navegacao-e-espacamento.md).
+
+Build iOS **0.4.0 (5)** concluído no EAS em 7/10, por solicitação explícita do
+usuário. Inclui a revisão de interface e os módulos atuais. Instalação e testes
+no aparelho ainda não foram confirmados. [Link e fonte do build](15-reproducao-e-entrega.md#build-ios-de-7-de-outubro-de-2026).
+
+| Entrega | Disponível                                                                                                                              |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| #1      | NFC exclusivo, timeout/cancelamento, Type 4/bytes, diagnóstico/perfil candidato                                                         |
+| #2      | Pedidos, vínculos/épocas, eventos e histórico                                                                                           |
+| #3      | Login/permissões, SecureStore, restauração/revogação/logout                                                                             |
+| #4      | SQLite, cache por API/conta/época, fila, lote e Envios                                                                                  |
+| #5      | Captura/cache SDM sem fallback; prova/uso/política separados de autorização                                                             |
+| #6      | Pendências/prazo, recibo original e decisões versionadas/histórico                                                                      |
+| #7      | Roteiro em Envios, tentativas/falhas duráveis, clocks/fronteiras, associação atômica e liberação controlada; exportação/cenários na API |
 
 Verificação #7: **241 testes/24 suítes mobile; 122/11 API**, SQLite e PostgreSQL
 reais. Lint/tipos, build/OpenAPI e bundle iOS local. Arquivos desta entrega
@@ -38,11 +48,11 @@ backup/restauração de 24 tabelas, dez recibos originais após reenvio, imutabi
 e retomada do worker com 34 auditorias. Zero leituras físicas; cofre SDM externo
 não foi restaurado nesse ensaio.
 
-| Issue restante | Dependência para concluir |
-| --- | --- |
-| [#12](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/12) Administração/aceite NTAG | Hardware e código/procedimento de personalização/proteção/secure messaging restante |
-| [#8](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/8) Experimentos | #12; instrumentação #7 disponível |
-| [#9](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/9) Integração/entrega final | #8 e aceites físicos transitivos |
+| Issue restante                                                                             | Dependência para concluir                                                                            |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| [#12](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/12) Administração/aceite NTAG | API/mobile candidatos implementados; procedimento/perfil definitivo e aceite físico no hardware real |
+| [#8](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/8) Experimentos                | #12; instrumentação #7 disponível                                                                    |
+| [#9](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/9) Integração/entrega final    | #8 e aceites físicos transitivos                                                                     |
 
 Somente Feiju está disponível. Aprovação/publicação não substituem revisão do
 colega, integração/reprodução final ou aceite físico. Leituras sintéticas e
@@ -78,3 +88,25 @@ embutidas e hash das fontes conferidos contra o checkout. SHA-256 do APK:
 Log e manifestos em `.tmp/delivery`, fora do Git. Emulador verificou instalação/login;
 não houve NFC físico. PRs continuam abertos, sem merge/EAS/Actions; #9 continua
 pendente de integração, reprodução independente e #12/#8.
+
+## Integração administrativa candidata da #12
+
+Tela exclusiva para Administrador: pedido/modelo/UID preenchidos por seleção e leitura,
+tratamento/política por opções, confirmação do plano original, progresso preservado,
+diário de comandos e recuperação explícita dos cinco slots. SQLite separado salva
+intenção antes do NFC e resposta antes do HTTP; recibo/próximo comando são atômicos.
+Resposta HTTP perdida não retransmite APDU. Nova sessão para leitura/ativação,
+recibo recuperável, encerramento administrativo e retomada em Gerenciar.
+[Fluxo e limites](16-administracao-ntag.md).
+
+Validação local: **277 testes/28 suítes**, incluindo 36 casos administrativos novos
+com SQLite real/reabertura, concorrência de tentativa, rollback do checkpoint,
+falhas de escrita, perda de resposta HTTP, troca de login, resposta NFC tardia,
+recuperação, isolamento de API/conta, preflight/adaptador nativo e confirmação visual.
+Lint/tipos e `expo install --check` passaram. Bundle iOS foi exportado localmente;
+não equivale a build/instalação iOS. Expo 57.0.27/Constants 57.0.21 alinhados à matriz
+do SDK. Candidato Android 0.4.0/4; assinatura de desenvolvimento do laboratório.
+
+Somente Feiju disponível: nenhum comando administrativo em chip NTAG real,
+nenhum aceite físico/contador/SDK ou instalação iPhone neste incremento.
+#12/#8/#9 continuam abertas. Sem merge, EAS ou GitHub Actions.

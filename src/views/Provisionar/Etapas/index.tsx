@@ -113,6 +113,7 @@ export default function EtapasProvisionamento() {
           mode === 'write' ? '3. Gravar referência' : '2. Ler etiqueta'
         }`}
         onVoltar={() => setMode('form')}
+        backLabel={mode === 'write' ? 'Voltar ao vínculo' : 'Voltar ao pedido'}
         write={
           mode === 'write' && provisioning?.referenciaNdef
             ? {uid: provisioning.uid, reference: provisioning.referenciaNdef}
@@ -154,6 +155,7 @@ export default function EtapasProvisionamento() {
       header={
         <PageHero
           fullBleed
+          compact
           title="Vincular etiqueta ao pedido"
           description={
             provisioning?.status === 'ATIVA'

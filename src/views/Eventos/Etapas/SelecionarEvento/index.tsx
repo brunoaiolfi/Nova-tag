@@ -133,6 +133,7 @@ const SelecionarEvento = ({
       header={
         <PageHero
           fullBleed
+          compact
           title="O que aconteceu com o pedido?"
           description="Escolha a etapa antes de aproximar a etiqueta."
           icon="timeline-plus-outline"
@@ -146,10 +147,10 @@ const SelecionarEvento = ({
           Continuar
         </Botao>
       }>
-      <VStack flex={1} gap={24}>
+      <VStack gap={16}>
         <FlowSteps labels={['Escolher', 'Ler', 'Confirmar']} current={1} />
 
-        <VStack gap={12} style={layoutStyles.options}>
+        <VStack gap={8}>
           {TIPOS_SELECIONAVEIS.map(tipo => (
             <ItemOpcao
               key={tipo}
@@ -166,19 +167,15 @@ const SelecionarEvento = ({
 
 const styles = StyleSheet.create({
   toque: {
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.line,
   },
-  option: {padding: 18, minHeight: 100},
+  option: {padding: 14, minHeight: 84},
   optionTitle: {fontWeight: '700'},
   selected: {backgroundColor: colors.pale},
   unselected: {backgroundColor: 'white'},
 });
 
 export default SelecionarEvento;
-
-const layoutStyles = StyleSheet.create({
-  options: {},
-});

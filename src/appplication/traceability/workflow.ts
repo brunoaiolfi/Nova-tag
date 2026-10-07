@@ -293,7 +293,7 @@ export class TraceabilityWorkflow {
     }
   }
 
-  activate(
+  validateActivation(
     provisioning: Provisioning,
     reading: Reading,
     physicalConfirmed: boolean,
@@ -320,6 +320,14 @@ export class TraceabilityWorkflow {
       throw new Error('A referência NDEF lida diverge do vínculo registrado.');
     }
     assertSdmReading(provisioning, reading);
+  }
+
+  activate(
+    provisioning: Provisioning,
+    reading: Reading,
+    physicalConfirmed: boolean,
+  ) {
+    this.validateActivation(provisioning, reading, physicalConfirmed);
     return this.api.request<Provisioning>(
       `/provisionamentos/${provisioning.id}/ativacao`,
       {

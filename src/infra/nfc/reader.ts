@@ -146,6 +146,7 @@ export function withNativeSession<T>(
     scope: SessionScope,
     connectedTechnology: string | null,
   ) => Promise<T>,
+  options?: {timeoutMilliseconds?: number; alertMessage?: string},
 ): Promise<T> {
   return session.run(async scope => {
     const module = await scope.step(native);
@@ -180,9 +181,10 @@ export function withNativeSession<T>(
               ],
           {
             alertMessage:
-              technology === 'writing'
+              options?.alertMessage ??
+              (technology === 'writing'
                 ? 'Mantenha a etiqueta próxima para gravar e conferir.'
-                : 'Aproxime a etiqueta da parte superior do iPhone.',
+                : 'Aproxime a etiqueta da parte superior do iPhone.'),
           },
         ),
       );
@@ -190,7 +192,7 @@ export function withNativeSession<T>(
     } catch (error) {
       throw nativeFailure(error, module);
     }
-  });
+  }, options?.timeoutMilliseconds);
 }
 
 // Sessions start only on an explicit tap and always close, including failures.

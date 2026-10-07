@@ -6,6 +6,7 @@ import {
   NavigatorScreenParams,
 } from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {Icon} from 'react-native-paper';
 
 import TabBar from './TabBar';
@@ -44,6 +45,9 @@ const IconeHistorico = criarIconeTab('map-marker-path');
 const IconeEnvios = criarIconeTab('cloud-upload-outline');
 
 const Tab = createBottomTabNavigator<RotasTab>();
+// React Navigation calls this renderer as a callback, so the hook-using bar
+// must be mounted as a component instead of invoked directly.
+const renderTabBar = (props: BottomTabBarProps) => <TabBar {...props} />;
 
 const Navigator = () => {
   const {state} = useSession();
@@ -68,7 +72,7 @@ const Navigator = () => {
       <Tab.Navigator
         initialRouteName="Home"
         screenOptions={{headerShown: false}}
-        tabBar={TabBar}>
+        tabBar={renderTabBar}>
         <Tab.Screen
           name="Home"
           component={Home}
@@ -109,6 +113,7 @@ const Navigator = () => {
                 'EtapasProvisionamento',
                 'Diagnostico',
                 'Gerenciar',
+                'Administracao',
               ].includes(getFocusedRouteNameFromRoute(route) ?? '')
                 ? {display: 'none'}
                 : undefined,
