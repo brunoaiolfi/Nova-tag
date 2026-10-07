@@ -27,6 +27,7 @@ export function OfflineProvider({
       void manager
         .synchronize(true)
         .then(() => manager.refreshDecisions())
+        .then(() => manager.experiment?.flush())
         .catch(() => {});
   }, [auth, manager]);
   useEffect(() => {
@@ -41,6 +42,7 @@ export function OfflineProvider({
       if (!disposed) {
         await manager.synchronize(true);
         await manager.refreshDecisions().catch(() => {});
+        await manager.experiment?.flush().catch(() => {});
       }
     };
     void Promise.resolve()
@@ -61,6 +63,7 @@ export function OfflineProvider({
         void manager
           .synchronize()
           .then(() => manager.refreshDecisions())
+          .then(() => manager.experiment?.flush())
           .catch(() => {});
     }, 15000);
     return () => {

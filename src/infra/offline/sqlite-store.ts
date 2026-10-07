@@ -1,4 +1,8 @@
 import {businessOutcome} from '../../domain/traceability/decision-status';
+import {
+  experimentSchema,
+  insertExperimentalRecord,
+} from '../experimentation/sqlite-journal';
 import type {
   Observation,
   Provisioning,
@@ -107,12 +111,14 @@ export class SqliteCaptureStore implements CaptureStore {
       const version = await tx.first<{user_version: number}>(
         'PRAGMA user_version',
       );
-      if ((version?.user_version ?? 0) > 1)
+      if ((version?.user_version ?? 0) > 2)
         throw new OfflineError(
           'BANCO_INCOMPATIVEL',
           'Atualize o aplicativo para acessar as capturas salvas.',
         );
       if (!version?.user_version) await tx.exec(schema);
+      if ((version?.user_version ?? 0) < 2)
+        await tx.exec(experimentSchema + ';PRAGMA user_version=2');
     });
   }
   private async db() {
@@ -158,6 +164,8 @@ export class SqliteCaptureStore implements CaptureStore {
           now,
         ],
       );
+      if (metadata.experiment)
+        await insertExperimentalRecord(tx, owner, metadata.experiment.record);
       const row = await tx.first<Row>(
         'SELECT ' + columns + ' FROM captures WHERE id=?',
         [payload.id],

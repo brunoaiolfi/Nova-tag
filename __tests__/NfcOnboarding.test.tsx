@@ -5,6 +5,8 @@ import {PaperProvider} from 'react-native-paper';
 import Leitor from '../src/components/Nfc/Leitor';
 import TagDetails from '../src/components/Nfc/TagDetails';
 import {readPhysicalTag, cancelPhysicalRead} from '../src/infra/nfc/reader';
+import {experimentJournal} from '../src/infra/offline/runtime';
+import type {Attempt} from '../src/domain/experimentation/types';
 
 jest.mock('../src/infra/nfc/reader', () => ({
   physicalNfcAvailable: true,
@@ -15,19 +17,26 @@ let tree: TestRenderer.ReactTestRenderer;
 const read = jest.mocked(readPhysicalTag);
 const button = (label: string) =>
   tree.root.findAllByType(Button).find(item => item.props.children === label)!;
-async function render() {
+async function render(experimentType?: string) {
   const next = jest.fn();
   const error = jest.fn();
   await act(async () => {
     tree = TestRenderer.create(
       <PaperProvider>
-        <Leitor onLeituraRealizada={next} onErroLeitura={error} />
+        <Leitor
+          onLeituraRealizada={next}
+          onErroLeitura={error}
+          experimentType={experimentType}
+        />
       </PaperProvider>,
     );
   });
   return {next, error};
 }
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.restoreAllMocks();
+  jest.clearAllMocks();
+});
 afterEach(async () => {
   await act(async () => tree?.unmount());
 });
@@ -47,7 +56,7 @@ test('keeps the scanned tag visible until explicit continuation and retains scan
   await act(async () => {
     button('Continuar com esta etiqueta').props.onPress();
   });
-  expect(next).toHaveBeenCalledWith(reading, capturedAt);
+  expect(next).toHaveBeenCalledWith(reading, capturedAt, null);
 });
 
 test('a failed scan keeps the reader open and permits another attempt', async () => {
@@ -92,4 +101,59 @@ test('ignores a late NFC result after cancellation and blocks concurrent taps', 
   expect(next).not.toHaveBeenCalled();
   expect(tree.root.findAllByType(TagDetails)).toHaveLength(0);
   expect(button('Ler etiqueta').props.disabled).toBe(false);
+});
+test('does not start NFC until the experimental beginning has committed, and does not read after cancellation during that commit', async () => {
+  let resolve!: (value: Attempt | null) => void;
+  const attempt = {
+    id: 'attempt',
+    owner: {userId: 'operator', baseUrl: 'http://localhost'},
+    plan: {timeoutMs: 1000},
+  } as Attempt;
+  jest.spyOn(experimentJournal, 'start').mockImplementation(
+    () =>
+      new Promise(r => {
+        resolve = r;
+      }),
+  );
+  const finish = jest.spyOn(experimentJournal, 'finish').mockResolvedValue();
+  await render('COLETA');
+  await act(async () => {
+    button('Ler etiqueta').props.onPress();
+  });
+  expect(read).not.toHaveBeenCalled();
+  await act(async () => {
+    button('Cancelar leitura').props.onPress();
+    resolve(attempt);
+  });
+  expect(read).not.toHaveBeenCalled();
+  expect(finish).toHaveBeenCalledWith(
+    attempt,
+    expect.any(Number),
+    false,
+    'NFC_CANCELADO',
+  );
+});
+test('records native NFC timeout without exposing a successful result or dropping the experiment context', async () => {
+  const attempt = {
+    id: 'attempt',
+    owner: {userId: 'operator', baseUrl: 'http://localhost'},
+    plan: {timeoutMs: 1000},
+  } as Attempt;
+  jest.spyOn(experimentJournal, 'start').mockResolvedValue(attempt);
+  const finish = jest.spyOn(experimentJournal, 'finish').mockResolvedValue();
+  read.mockRejectedValue(
+    Object.assign(new Error('Tempo esgotado'), {code: 'NFC_TIMEOUT'}),
+  );
+  const {next} = await render('COLETA');
+  await act(async () => {
+    button('Ler etiqueta').props.onPress();
+  });
+  expect(finish).toHaveBeenCalledWith(
+    attempt,
+    expect.any(Number),
+    false,
+    'NFC_TIMEOUT',
+  );
+  expect(next).not.toHaveBeenCalled();
+  expect(tree.root.findAllByType(TagDetails)).toHaveLength(0);
 });

@@ -10,6 +10,8 @@ import {
   readPhysicalTag,
 } from '../../../infra/nfc/reader';
 import type {Reading} from '../../../appplication/traceability/workflow';
+import type {Attempt} from '../../../domain/experimentation/types';
+import {experimentJournal} from '../../../infra/offline/runtime';
 import TagDetails from '../TagDetails';
 import {View} from 'react-native';
 import {
@@ -21,7 +23,12 @@ import {
 
 type Props = {
   write?: {uid: string; reference: string};
-  onLeituraRealizada: (reading: Reading, capturedAt: string) => void;
+  onLeituraRealizada: (
+    reading: Reading,
+    capturedAt: string,
+    attempt?: Attempt | null,
+  ) => void;
+  experimentType?: string;
   onErroLeitura: (message: string) => void;
   onVoltar?: () => void;
   continueLabel?: string;
@@ -38,12 +45,14 @@ export default function Leitor({
   context,
   onVerHistorico,
   insetTop = true,
+  experimentType,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [result, setResult] = useState<{
     reading: Reading;
     capturedAt: string;
+    attempt?: Attempt | null;
   }>();
   const mounted = useRef(true);
   const running = useRef(false);
@@ -64,12 +73,61 @@ export default function Leitor({
     setBusy(true);
     setResult(undefined);
     setMessage('');
+    let attempt: Attempt | null = null;
+    let started = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
+    let terminalSaved = false;
     try {
+      if (experimentType)
+        attempt = await experimentJournal.start(experimentType);
+      // The journal commit precedes the SDK call and is excluded from the NFC session duration.
+      started = experimentJournal.clock.nowMs();
+      if (cancelled.current || !mounted.current) {
+        await experimentJournal.finish(
+          attempt,
+          started,
+          false,
+          'NFC_CANCELADO',
+        );
+        terminalSaved = true;
+        return;
+      }
+      if (attempt?.plan.timeoutMs)
+        timer = setTimeout(() => {
+          timedOut = true;
+          void cancelPhysicalRead();
+        }, attempt.plan.timeoutMs);
       const reading = await readPhysicalTag(write);
+      const capturedAt = new Date().toISOString();
+      if (timer) clearTimeout(timer);
+      await experimentJournal.finish(
+        attempt,
+        started,
+        !timedOut && !cancelled.current,
+        timedOut ? 'NFC_TIMEOUT' : cancelled.current ? 'NFC_CANCELADO' : 'OK',
+      );
+      terminalSaved = true;
+      if (timedOut)
+        throw new Error('Tempo de leitura esgotado. Tente novamente.');
       if (mounted.current && !cancelled.current) {
-        setResult({reading, capturedAt: new Date().toISOString()});
+        setResult({reading, capturedAt, attempt});
       }
     } catch (error) {
+      if (timer) clearTimeout(timer);
+      if (!terminalSaved)
+        await experimentJournal
+          .finish(
+            attempt,
+            started,
+            false,
+            timedOut || (error as {code?: string})?.code === 'NFC_TIMEOUT'
+              ? 'NFC_TIMEOUT'
+              : cancelled.current
+              ? 'NFC_CANCELADO'
+              : 'NFC_ERRO',
+          )
+          .catch(() => {});
       if (mounted.current && !cancelled.current) {
         const detail =
           error instanceof Error
@@ -117,7 +175,11 @@ export default function Leitor({
             onPress={() =>
               onVerHistorico
                 ? onVerHistorico(result.reading, result.capturedAt)
-                : onLeituraRealizada(result.reading, result.capturedAt)
+                : onLeituraRealizada(
+                    result.reading,
+                    result.capturedAt,
+                    result.attempt,
+                  )
             }>
             {onVerHistorico ? 'Ver histórico desta etiqueta' : continueLabel}
           </Button>
@@ -179,7 +241,11 @@ export default function Leitor({
               <Button
                 mode="outlined"
                 onPress={() =>
-                  onLeituraRealizada(result.reading, result.capturedAt)
+                  onLeituraRealizada(
+                    result.reading,
+                    result.capturedAt,
+                    result.attempt,
+                  )
                 }>
                 {continueLabel}
               </Button>

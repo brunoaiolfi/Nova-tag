@@ -30,6 +30,7 @@ import {SdmEvidence} from '../../../components/Tracking/SdmEvidence';
 import {DecisionDetails} from '../../../components/Tracking/DecisionDetails';
 import {captureStatus} from '../../Envios';
 import type {CaptureOwner} from '../../../domain/offline/types';
+import type {Attempt} from '../../../domain/experimentation/types';
 
 export default function EtapasEvento() {
   const navigation = useNavigation<NativeStackNavigationProp<RotasEventos>>();
@@ -41,10 +42,20 @@ export default function EtapasEvento() {
   const [message, setMessage] = useState('');
   const running = useRef(false);
   const pending = useRef<
-    {id: string; occurredAt: string; owner: CaptureOwner} | undefined
+    | {
+        id: string;
+        occurredAt: string;
+        owner: CaptureOwner;
+        attempt?: Attempt | null;
+      }
+    | undefined
   >(undefined);
   const saved = queue.items.find(item => item.id === savedId);
-  function captured(value: Reading, capturedAt: string) {
+  function captured(
+    value: Reading,
+    capturedAt: string,
+    attempt?: Attempt | null,
+  ) {
     const session = sessionManager.getSnapshot().session;
     if (!session) {
       setMessage('Entre novamente para registrar a captura.');
@@ -54,6 +65,7 @@ export default function EtapasEvento() {
       id: Crypto.randomUUID(),
       occurredAt: capturedAt,
       owner: {userId: session.user.id, baseUrl: session.baseUrl},
+      attempt,
     };
     setReading(JSON.parse(JSON.stringify(value)));
     setSavedId(undefined);
@@ -73,6 +85,7 @@ export default function EtapasEvento() {
         intent.occurredAt,
         device,
         intent.owner,
+        intent.attempt,
       );
       setSavedId(capture.id);
       void queue.manager.synchronize();
@@ -91,6 +104,7 @@ export default function EtapasEvento() {
     return (
       <Leitor
         insetTop={false}
+        experimentType={type}
         context={'2. Ler etiqueta · ' + descricaoEnumTipoEvento[type]}
         onVoltar={() => {
           setType(undefined);

@@ -1,4 +1,6 @@
 import {businessOutcome} from '../../domain/traceability/decision-status';
+import type {ExperimentJournal} from '../experimentation/journal';
+import type {Attempt} from '../../domain/experimentation/types';
 import type {Api} from '../traceability/workflow';
 import {assertSdmReading} from '../../domain/traceability/sdm-reading';
 import type {
@@ -125,6 +127,7 @@ export class OfflineCoordinator {
     private readonly resolve: (reading: Reading) => Promise<Provisioning>,
     private readonly identifier: () => string,
     private readonly now: () => number = Date.now,
+    readonly experiment?: ExperimentJournal,
   ) {}
   getSnapshot = () => {
     const owner = this.context();
@@ -204,6 +207,7 @@ export class OfflineCoordinator {
     occurredAt: string,
     deviceId: string,
     expectedOwner?: CaptureOwner,
+    experimentAttempt?: Attempt | null,
   ) {
     const owner = this.owner();
     if (expectedOwner && !sameOwner(owner, expectedOwner))
@@ -241,6 +245,7 @@ export class OfflineCoordinator {
         );
       }
       await this.refresh();
+      await this.experiment?.confirmedLocal(existing);
       return existing;
     }
     let p: Provisioning | null = null;
@@ -291,9 +296,21 @@ export class OfflineCoordinator {
     const saved = await this.store.enqueue(
       owner,
       payload,
-      {provisioning: p, cacheUsed},
+      {
+        provisioning: p,
+        cacheUsed,
+        ...(experimentAttempt
+          ? {
+              experiment: await this.experiment?.capture(
+                experimentAttempt,
+                payload,
+              ),
+            }
+          : {}),
+      },
       this.now(),
     );
+    await this.experiment?.confirmedLocal(saved);
     await this.refresh();
     return saved;
   }
@@ -307,7 +324,10 @@ export class OfflineCoordinator {
   }
   private async flush(force: boolean) {
     const owner = this.context();
-    if (!owner?.canSend) {
+    if (
+      !owner?.canSend ||
+      (this.experiment && !(await this.experiment.allowed()))
+    ) {
       await this.refresh();
       return;
     }
@@ -349,6 +369,8 @@ export class OfflineCoordinator {
             'CAPTURA_EXCEDIDA',
             'Há uma captura acima do limite. O registro original foi preservado.',
           );
+        for (const item of sent) await this.experiment?.sendStart(item);
+        const started = this.experiment?.clock.nowMs() ?? 0;
         try {
           const result = await this.api.request<{itens: BatchItem[]}>(
             '/eventos/lote',
@@ -359,6 +381,7 @@ export class OfflineCoordinator {
               expectedBaseUrl: owner.baseUrl,
             },
           );
+          const ended = this.experiment?.clock.nowMs() ?? 0;
           if (
             !Array.isArray(result?.itens) ||
             result.itens.length !== sent.length ||
@@ -382,6 +405,13 @@ export class OfflineCoordinator {
           }
           for (const [index, item] of sent.entries()) {
             const answer = result.itens[index];
+            await this.experiment?.sendEnd(
+              item,
+              started,
+              answer.sucesso,
+              answer.dados ?? undefined,
+              ended,
+            );
             if (answer.sucesso && answer.dados)
               await this.store.settle(item.id, claim, {
                 state: 'STORED',
@@ -396,6 +426,15 @@ export class OfflineCoordinator {
               });
           }
         } catch (error) {
+          const ended = this.experiment?.clock.nowMs() ?? 0;
+          for (const item of sent)
+            await this.experiment?.sendEnd(
+              item,
+              started,
+              false,
+              undefined,
+              ended,
+            );
           for (const item of sent)
             await this.fail(item, claim, errorInfo(error));
           break;
@@ -450,7 +489,11 @@ export class OfflineCoordinator {
   }
   private async fetchDecisions() {
     const owner = this.context();
-    if (!owner?.canSend) return;
+    if (
+      !owner?.canSend ||
+      (this.experiment && !(await this.experiment.allowed()))
+    )
+      return;
     const pending = (await this.store.list(owner)).filter(
       item => item.state === 'STORED' && item.businessState === 'PENDING',
     );
@@ -461,6 +504,7 @@ export class OfflineCoordinator {
       });
       if (!sameOwner(owner, this.context()) || !decision(result)) break;
       await this.store.updateDecision(owner, item.id, result);
+      await this.experiment?.decision(item, result);
     }
     await this.refresh();
   }
