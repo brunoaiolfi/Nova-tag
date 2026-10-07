@@ -3,6 +3,9 @@ import {OfflineCoordinator} from '../../appplication/offline/coordinator';
 import type {CaptureContext} from '../../domain/offline/types';
 import {sessionManager} from '../auth/runtime';
 import {traceability} from '../traceability/runtime';
+import {installationId} from '../traceability/runtime';
+import {ExperimentJournal} from '../../appplication/experimentation/journal';
+import {SqliteExperimentJournal} from '../experimentation/sqlite-journal';
 import {SqliteCaptureStore} from './sqlite-store';
 import {openCaptureDatabase} from './database';
 
@@ -22,10 +25,22 @@ export function captureContext(): CaptureContext | null {
   };
 }
 export const captureStore = new SqliteCaptureStore(openCaptureDatabase);
+export const experimentJournal = new ExperimentJournal(
+  new SqliteExperimentJournal(openCaptureDatabase, () =>
+    captureStore.initialize(),
+  ),
+  captureContext,
+  sessionManager,
+  () => Crypto.randomUUID(),
+  {originId: Crypto.randomUUID(), nowMs: () => performance.now()},
+  installationId,
+);
 export const offline = new OfflineCoordinator(
   captureStore,
   captureContext,
   sessionManager,
   reading => traceability.resolveProvisioning(reading),
   () => Crypto.randomUUID(),
+  Date.now,
+  experimentJournal,
 );

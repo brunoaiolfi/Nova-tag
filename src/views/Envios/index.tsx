@@ -19,6 +19,7 @@ import {reasonLabel} from '../traceability-labels';
 import {SdmEvidence} from '../../components/Tracking/SdmEvidence';
 import {decisionStatus} from '../../domain/traceability/decision-status';
 import {DecisionDetails} from '../../components/Tracking/DecisionDetails';
+import {ExperimentPanel} from '../../components/Offline/ExperimentPanel';
 
 export function captureStatus(item: QueuedCapture) {
   if (item.state === 'STORED')
@@ -58,6 +59,7 @@ export default function Envios() {
       if (state.status !== 'authenticated') await manager.restore();
       await queue.manager.synchronize(true);
       await queue.manager.refreshDecisions();
+      await queue.manager.experiment?.flush();
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
@@ -117,6 +119,7 @@ export default function Envios() {
         </Button>
       }>
       <VStack gap={18}>
+        <ExperimentPanel />
         <StatusPanel tone={state.status === 'offline' ? 'warning' : 'info'}>
           <Text variant="titleMedium">
             {state.status === 'offline'

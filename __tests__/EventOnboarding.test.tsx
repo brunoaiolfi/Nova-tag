@@ -132,6 +132,7 @@ test('confirms only after durable storage and retains scan time/UUID when a loca
     scanTime,
     'ios-device',
     {userId: 'operator', baseUrl: 'http://localhost:3000/api/v1'},
+    undefined,
   );
   expect(mockSynchronize).toHaveBeenCalledTimes(1);
   expect(JSON.stringify(tree.toJSON())).toContain(

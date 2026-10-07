@@ -25,6 +25,7 @@ export interface CaptureContext extends CaptureOwner {
 export interface CaptureMetadata {
   provisioning: Provisioning;
   cacheUsed: boolean;
+  experiment?: import('../experimentation/types').ExperimentalCapture;
 }
 export interface QueuedCapture {
   sequence: number;
