@@ -6,6 +6,7 @@ import {
   StatusBar,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import {HelperText, Icon, Text, TextInput} from 'react-native-paper';
 import {useSession} from '../../components/Auth/SessionProvider';
@@ -24,6 +25,8 @@ export default function Login() {
   const [connectionSettings, setConnectionSettings] = useState(!server.trim());
   const [showPassword, setShowPassword] = useState(false);
   const insets = useSafeAreaInsets();
+  const {height, width} = useWindowDimensions();
+  const compact = height < 700 || width < 360;
   const submit = async () => {
     if (busy) {
       return;
@@ -50,12 +53,12 @@ export default function Login() {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
-        <View style={[styles.welcome, {paddingTop: 24 + insets.top}]}>
+        <View style={[styles.welcome, {paddingTop: 16 + insets.top}]}>
           <View style={styles.brand}>
             <Icon source="nfc-variant" size={26} color="white" />
             <Text style={styles.brandName}>Nova-tag</Text>
           </View>
-          <RouteMotif />
+          {!compact && <RouteMotif />}
           <Text style={styles.headline}>Do cadastro à entrega.</Text>
           <Text style={styles.description}>
             Uma etiqueta. Todas as etapas conectadas.
@@ -148,7 +151,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: colors.blue},
   content: {flexGrow: 1},
-  welcome: {padding: 24, paddingBottom: 48, gap: 8},
+  welcome: {padding: 20, paddingBottom: 32, gap: 8},
   brand: {flexDirection: 'row', alignItems: 'center', gap: 10},
   brandName: {fontSize: 22, lineHeight: 30, fontWeight: '700', color: 'white'},
   headline: {fontSize: 29, lineHeight: 37, fontWeight: '700', color: 'white'},
@@ -156,11 +159,11 @@ const styles = StyleSheet.create({
   form: {
     flexGrow: 1,
     backgroundColor: 'white',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    marginTop: -24,
-    padding: 24,
-    gap: 16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -16,
+    padding: 20,
+    gap: 12,
   },
   formHeading: {gap: 6, marginBottom: 4},
   formTitle: {fontWeight: '700', color: colors.navy},

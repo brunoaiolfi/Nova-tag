@@ -38,6 +38,7 @@ const Home = () => {
         context="Consultar etiqueta · sem alterar o pedido"
         continueLabel="Concluir consulta"
         onVoltar={() => setScanning(false)}
+        backLabel="Voltar ao início"
         onLeituraRealizada={(value, time) => {
           setReading(value);
           setCapturedAt(time);
@@ -91,7 +92,7 @@ const Home = () => {
           </View>
         </View>
       }>
-      <VStack gap={20}>
+      <VStack gap={16}>
         {reading && (
           <>
             <TagDetails reading={reading} capturedAt={capturedAt} />
@@ -218,8 +219,8 @@ const layoutStyles = StyleSheet.create({
   header: {
     backgroundColor: colors.blue,
     padding: 20,
-    paddingBottom: 40,
-    gap: 14,
+    paddingBottom: 32,
+    gap: 12,
   },
   account: {flexDirection: 'row', alignItems: 'center', gap: 12},
   avatar: {
@@ -237,7 +238,7 @@ const layoutStyles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 24,
     padding: 18,
-    gap: 16,
+    gap: 12,
     marginTop: 4,
   },
   scanHeading: {flexDirection: 'row', alignItems: 'center', gap: 12},

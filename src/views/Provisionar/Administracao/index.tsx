@@ -321,6 +321,7 @@ export default function Administracao() {
       header={
         <PageHero
           fullBleed
+          compact
           icon="shield-check-outline"
           eyebrow="CONFIGURAÇÃO ADMINISTRATIVA"
           title={

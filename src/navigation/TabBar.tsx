@@ -1,8 +1,9 @@
-import React from 'react';
+import React, {useContext, useLayoutEffect} from 'react';
 import {StyleSheet, View, ViewStyle} from 'react-native';
 import {Icon, Text, TouchableRipple} from 'react-native-paper';
 import {CommonActions} from '@react-navigation/native';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {BottomTabBarHeightCallbackContext} from '@react-navigation/bottom-tabs';
 import {palette as colors} from '../theme/tokens';
 
 const TabBar = ({
@@ -16,12 +17,19 @@ const TabBar = ({
     descriptors[rotaFocada.key].options.tabBarStyle,
   ) as ViewStyle | undefined;
 
-  if (estilo?.display === 'none') {
+  const hidden = estilo?.display === 'none';
+  const reportHeight = useContext(BottomTabBarHeightCallbackContext);
+  useLayoutEffect(() => {
+    if (hidden) reportHeight?.(0);
+  }, [hidden, reportHeight]);
+
+  if (hidden) {
     return null;
   }
 
   return (
     <View
+      onLayout={event => reportHeight?.(event.nativeEvent.layout.height)}
       style={[
         layoutStyles.bar,
         {

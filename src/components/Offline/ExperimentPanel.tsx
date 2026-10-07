@@ -43,11 +43,21 @@ export function ExperimentPanel() {
     setRun(undefined);
     setMessage('');
     setChoice({plan: null, hold: false, pending: 0, sent: 0, failed: 0});
-    if (permitted) {
-      void installationId().then(setDevice);
+    let active = true;
+    if (permitted && journal) {
+      void installationId()
+        .then(value => {
+          if (active) setDevice(value);
+        })
+        .catch(error => {
+          if (active) setMessage((error as Error).message);
+        });
       void refresh().catch(() => {});
     }
-  }, [owner?.user.id, owner?.baseUrl, permitted]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      active = false;
+    };
+  }, [owner?.user.id, owner?.baseUrl, permitted, journal]); // eslint-disable-line react-hooks/exhaustive-deps
   async function action(work: () => Promise<void>) {
     setBusy(true);
     setMessage('');

@@ -154,6 +154,7 @@ export default function Gerenciar() {
         context="Consultar vínculo da etiqueta · sem gravar"
         continueLabel="Consultar vínculo desta etiqueta"
         onVoltar={() => setScanning(false)}
+        backLabel="Voltar à consulta"
         onErroLeitura={() => {}}
         onLeituraRealizada={reading => {
           setSelection({reading});
@@ -171,6 +172,7 @@ export default function Gerenciar() {
       header={
         <PageHero
           fullBleed
+          compact
           icon="tag-outline"
           eyebrow="GERENCIAR ETIQUETA"
           title={

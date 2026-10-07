@@ -13,6 +13,8 @@ reprodução final #9 permanecem. [Configuração e recuperação NTAG](docs/16-
 Veja [entregas atuais e próximas etapas](docs/10-estado-do-projeto.md).
 O [guia de reprodução e APK local](docs/15-reproducao-e-entrega.md) descreve o build
 Android candidato 0.4.0/4 com bundle embutido e identificação de fonte/artefato.
+Veja também a [revisão de navegação e espaçamento](docs/17-navegacao-e-espacamento.md):
+retornos padronizados, cabeçalhos compactos e área inferior sem margens duplicadas.
 
 ## Instalar no iPhone usando Windows
 

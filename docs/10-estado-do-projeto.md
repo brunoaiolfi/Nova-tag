@@ -4,15 +4,21 @@ Atualização de 7 de outubro de 2026. Branch `codex/issue-12-secure-messaging`,
 sobre `codex/issue-9-reproducibility`. Publicação autorizada; sem merge na main.
 Software #1–#7 implementado e validado localmente.
 
-| Entrega | Disponível |
-| --- | --- |
-| #1 | NFC exclusivo, timeout/cancelamento, Type 4/bytes, diagnóstico/perfil candidato |
-| #2 | Pedidos, vínculos/épocas, eventos e histórico |
-| #3 | Login/permissões, SecureStore, restauração/revogação/logout |
-| #4 | SQLite, cache por API/conta/época, fila, lote e Envios |
-| #5 | Captura/cache SDM sem fallback; prova/uso/política separados de autorização |
-| #6 | Pendências/prazo, recibo original e decisões versionadas/histórico |
-| #7 | Roteiro em Envios, tentativas/falhas duráveis, clocks/fronteiras, associação atômica e liberação controlada; exportação/cenários na API |
+Revisão atual da interface: navegação e retornos padronizados, banners internos
+compactos e margem inferior sem duplicação pelas abas. **286 testes/30 suítes**,
+lint/tipos e prévia de 15 telas em 320 × 568 e 390 × 844 passaram localmente.
+As prévias usam HTTP sintético; não substituem a conferência nativa no iPhone ou
+o aceite físico NFC. [Detalhes e limites](17-navegacao-e-espacamento.md).
+
+| Entrega | Disponível                                                                                                                              |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| #1      | NFC exclusivo, timeout/cancelamento, Type 4/bytes, diagnóstico/perfil candidato                                                         |
+| #2      | Pedidos, vínculos/épocas, eventos e histórico                                                                                           |
+| #3      | Login/permissões, SecureStore, restauração/revogação/logout                                                                             |
+| #4      | SQLite, cache por API/conta/época, fila, lote e Envios                                                                                  |
+| #5      | Captura/cache SDM sem fallback; prova/uso/política separados de autorização                                                             |
+| #6      | Pendências/prazo, recibo original e decisões versionadas/histórico                                                                      |
+| #7      | Roteiro em Envios, tentativas/falhas duráveis, clocks/fronteiras, associação atômica e liberação controlada; exportação/cenários na API |
 
 Verificação #7: **241 testes/24 suítes mobile; 122/11 API**, SQLite e PostgreSQL
 reais. Lint/tipos, build/OpenAPI e bundle iOS local. Arquivos desta entrega
@@ -38,11 +44,11 @@ backup/restauração de 24 tabelas, dez recibos originais após reenvio, imutabi
 e retomada do worker com 34 auditorias. Zero leituras físicas; cofre SDM externo
 não foi restaurado nesse ensaio.
 
-| Issue restante | Dependência para concluir |
-| --- | --- |
+| Issue restante                                                                             | Dependência para concluir                                                                            |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | [#12](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/12) Administração/aceite NTAG | API/mobile candidatos implementados; procedimento/perfil definitivo e aceite físico no hardware real |
-| [#8](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/8) Experimentos | #12; instrumentação #7 disponível |
-| [#9](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/9) Integração/entrega final | #8 e aceites físicos transitivos |
+| [#8](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/8) Experimentos                | #12; instrumentação #7 disponível                                                                    |
+| [#9](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/9) Integração/entrega final    | #8 e aceites físicos transitivos                                                                     |
 
 Somente Feiju está disponível. Aprovação/publicação não substituem revisão do
 colega, integração/reprodução final ou aceite físico. Leituras sintéticas e

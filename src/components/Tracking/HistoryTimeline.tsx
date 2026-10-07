@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {flex: 1, minWidth: 0, paddingBottom: 28, gap: 8},
+  content: {flex: 1, minWidth: 0, paddingBottom: 20, gap: 8},
   title: {fontWeight: '700', color: colors.navy},
   decision: {fontSize: 14, lineHeight: 21, fontWeight: '700'},
   description: {fontSize: 16, lineHeight: 24, color: colors.navy},

@@ -31,6 +31,7 @@ type Props = {
   experimentType?: string;
   onErroLeitura: (message: string) => void;
   onVoltar?: () => void;
+  backLabel?: string;
   continueLabel?: string;
   context?: string;
   onVerHistorico?: (reading: Reading, capturedAt: string) => void;
@@ -41,6 +42,7 @@ export default function Leitor({
   onLeituraRealizada,
   onErroLeitura,
   onVoltar,
+  backLabel = 'Voltar',
   continueLabel = 'Continuar com esta etiqueta',
   context,
   onVerHistorico,
@@ -150,6 +152,7 @@ export default function Leitor({
       header={
         <PageHero
           fullBleed
+          compact={!insetTop}
           title={
             result
               ? write
@@ -282,8 +285,8 @@ export default function Leitor({
           </StatusPanel>
         )}
         {onVoltar && (
-          <Button disabled={busy} onPress={onVoltar}>
-            Voltar
+          <Button icon="chevron-left" disabled={busy} onPress={onVoltar}>
+            {backLabel}
           </Button>
         )}
       </VStack>
@@ -292,12 +295,12 @@ export default function Leitor({
 }
 
 const layoutStyles = StyleSheet.create({
-  scanInstructions: {alignItems: 'center', paddingVertical: 18, gap: 14},
+  scanInstructions: {alignItems: 'center', paddingVertical: 8, gap: 10},
   scanTarget: {
-    height: 136,
-    width: 136,
-    borderRadius: 40,
-    borderWidth: 8,
+    height: 104,
+    width: 104,
+    borderRadius: 32,
+    borderWidth: 6,
     borderColor: '#F8F0E4',
     alignItems: 'center',
     justifyContent: 'center',

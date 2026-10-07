@@ -4,6 +4,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import InformativoEtapas from '../views/Eventos/InformativoEtapas';
 import EtapasEvento from '../views/Eventos/Etapas';
 import {useAppTheme} from '../theme';
+import {stackScreenOptions} from './stack-screen-options';
 
 export type RotasEventos = {
   InformativoEtapas: undefined;
@@ -18,15 +19,11 @@ const EventosNavigator = () => {
   return (
     <Stack.Navigator
       initialRouteName="InformativoEtapas"
-      screenOptions={{
-        headerStyle: {backgroundColor: theme.colors.primary},
-        headerTintColor: theme.colors.onPrimary,
-        headerTitleStyle: {color: theme.colors.onPrimary},
-      }}>
+      screenOptions={({navigation}) => stackScreenOptions(theme, navigation)}>
       <Stack.Screen
         name="InformativoEtapas"
         component={InformativoEtapas}
-        options={{headerShown: false}}
+        options={{headerShown: false, title: 'Registrar etapa'}}
       />
       <Stack.Screen
         name="EtapasEvento"

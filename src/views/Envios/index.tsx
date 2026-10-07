@@ -71,6 +71,7 @@ export default function Envios() {
       <Leitor
         context="Disponibilizar etiqueta para uso offline"
         onVoltar={() => setScanning(false)}
+        backLabel="Voltar aos envios"
         onErroLeitura={setMessage}
         onLeituraRealizada={async reading => {
           setScanning(false);
@@ -118,7 +119,7 @@ export default function Envios() {
           Sincronizar agora
         </Button>
       }>
-      <VStack gap={18}>
+      <VStack gap={16}>
         <ExperimentPanel />
         <StatusPanel tone={state.status === 'offline' ? 'warning' : 'info'}>
           <Text variant="titleMedium">

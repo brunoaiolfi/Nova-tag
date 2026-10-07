@@ -73,7 +73,27 @@ const InformativoEtapas = () => {
         />
       }
       footer={<Botao onPress={iniciar}>Escolher pedido</Botao>}>
-      <VStack gap={24}>
+      <VStack gap={16}>
+        <VStack gap={4}>
+          <Text variant="titleMedium">Como identificar a etiqueta?</Text>
+          <RadioButton.Group
+            value={String(estrategia)}
+            onValueChange={valor => setEstrategia(Number(valor))}>
+            {ESTRATEGIAS.map(({valor, titulo}) => (
+              <RadioButton.Item
+                key={valor}
+                label={titulo}
+                value={String(valor)}
+                position="leading"
+                labelStyle={styles.labelRadio}
+                style={[
+                  layoutStyles.strategyOption,
+                  estrategia === valor && layoutStyles.selectedStrategy,
+                ]}
+              />
+            ))}
+          </RadioButton.Group>
+        </VStack>
         <ListaPassos passos={PASSOS} />
         {state.session?.user.perfil === 'ADMINISTRADOR' && (
           <VStack gap={8}>
@@ -120,27 +140,6 @@ const InformativoEtapas = () => {
             onPress={() => navigation.navigate('Diagnostico')}>
             Diagnosticar etiqueta
           </ActionButton>
-        </VStack>
-
-        <VStack gap={4}>
-          <Text variant="titleMedium">Como identificar a etiqueta?</Text>
-          <RadioButton.Group
-            value={String(estrategia)}
-            onValueChange={valor => setEstrategia(Number(valor))}>
-            {ESTRATEGIAS.map(({valor, titulo}) => (
-              <RadioButton.Item
-                key={valor}
-                label={titulo}
-                value={String(valor)}
-                position="leading"
-                labelStyle={styles.labelRadio}
-                style={[
-                  layoutStyles.strategyOption,
-                  estrategia === valor && layoutStyles.selectedStrategy,
-                ]}
-              />
-            ))}
-          </RadioButton.Group>
         </VStack>
 
         <Aviso>
