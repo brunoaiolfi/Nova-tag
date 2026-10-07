@@ -46,3 +46,9 @@ Veja [reconciliação](13-reconciliacao.md), [captura/decisões SDM](12-validaca
 [offline e ensaio nativo](11-captura-offline.md). Guias 05–09 preservam o registro
 histórico de suas etapas; estados antigos de branch/issue não substituem este mapa.
 Segredos, material de bancada, tokens, `.env`, `.tmp` e builds ficam fora do Git.
+
+Publicação #6: [Nova-tag #5](https://github.com/brunoaiolfi/Nova-tag/pull/5), sobre
+[#4](https://github.com/brunoaiolfi/Nova-tag/pull/4), e
+[API #16](https://github.com/Joao-AugustoPF/nfc-trace-api/pull/16), sobre
+[#15](https://github.com/Joao-AugustoPF/nfc-trace-api/pull/15). Integrar bases em ordem;
+nenhum merge na main foi realizado.
