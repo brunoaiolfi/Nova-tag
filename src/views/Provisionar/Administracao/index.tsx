@@ -10,7 +10,9 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {
   ActivityIndicator,
   Checkbox,
+  Dialog,
   List,
+  Portal,
   RadioButton,
   Text,
 } from 'react-native-paper';
@@ -65,12 +67,12 @@ const treatment = (s: Strategy) =>
     ? 'Leitura autenticada (SDM)'
     : 'Referência gravada (NDEF estático)';
 const status = (op: AdminOperation) =>
-  op.alteracaoFisica === 'CONFERIDA'
+  op.status === 'ENCERRADA'
+    ? 'Operação encerrada'
+    : op.alteracaoFisica === 'CONFERIDA'
     ? 'Configuração conferida'
     : op.status === 'INTERROMPIDA'
     ? 'Configuração interrompida'
-    : op.status === 'ENCERRADA'
-    ? 'Operação encerrada'
     : op.status === 'PERSONALIZANDO'
     ? 'Sessão NFC em andamento'
     : 'Plano pronto para configurar';
@@ -84,6 +86,12 @@ export default function Administracao() {
   const canManage =
     state.status === 'authenticated' &&
     state.session.user.perfil === 'ADMINISTRADOR';
+  const scope = state.session
+    ? [state.session.baseUrl, state.session.user.id, state.session.token].join(
+        '\u0000',
+      )
+    : state.status;
+  const scopeRef = useRef(scope);
   const [order, setOrder] = useState<OrderSummary>();
   const [uid, setUid] = useState('');
   const [strategy, setStrategy] = useState<Strategy>('UID');
@@ -100,10 +108,16 @@ export default function Administracao() {
   const [journal, setJournal] = useState<
     Awaited<ReturnType<typeof administration.localJournal>>
   >([]);
-  const [busy, setBusy] = useState('');
+  const [activity, setActivity] = useState<{
+    label: string;
+    nfc: boolean;
+  } | null>(null);
+  const busy = activity?.label ?? '';
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
   const [message, setMessage] = useState('');
   const generation = useRef(0),
     working = useRef(false);
+  const requestedPlan = useRef('');
   const opRef = useRef(operation);
   opRef.current = operation;
 
@@ -120,11 +134,21 @@ export default function Administracao() {
     }
   }, []);
   const run = useCallback(
-    async (label: string, job: (token: number) => Promise<void>) => {
-      if (working.current || !canManage || !physicalNfcAvailable) return;
+    async (
+      label: string,
+      job: (token: number) => Promise<void>,
+      nfc = false,
+    ) => {
+      if (
+        working.current ||
+        !canManage ||
+        !physicalNfcAvailable ||
+        scopeRef.current !== scope
+      )
+        return;
       const token = generation.current;
       working.current = true;
-      setBusy(label);
+      setActivity({label, nfc});
       setMessage('');
       try {
         await job(token);
@@ -145,22 +169,44 @@ export default function Administracao() {
         }
       } finally {
         working.current = false;
-        if (token === generation.current) setBusy('');
+        setActivity(null);
       }
     },
-    [canManage, install],
+    [canManage, install, scope],
   );
 
   useFocusEffect(
     useCallback(() => {
       if (!canManage) void administration.cancel().catch(() => {});
       generation.current++;
-      setBusy('');
+      if (scopeRef.current !== scope) {
+        scopeRef.current = scope;
+        setOrder(undefined);
+        setUid('');
+        setLink(undefined);
+        setOperation(undefined);
+        setMaterials([]);
+        setConfirmed(false);
+        setActivationConfirmed(false);
+        setPendingActivation(false);
+        setProgress(undefined);
+        setJournal([]);
+        setMessage('');
+        setEndDialogOpen(false);
+      }
+      setActivity(
+        working.current
+          ? {
+              label: 'Aguardando o encerramento da operação anterior',
+              nfc: false,
+            }
+          : null,
+      );
       return () => {
         generation.current++;
         void administration.cancel().catch(() => {});
       };
-    }, [canManage]),
+    }, [canManage, scope]),
   );
   useEffect(() => {
     const subscription = AppState.addEventListener('change', value => {
@@ -171,6 +217,9 @@ export default function Administracao() {
   }, []);
   useEffect(() => {
     if (!params?.provisioningId || !canManage || !physicalNfcAvailable) return;
+    const requestKey = scope + '\u0000' + params.provisioningId;
+    if (working.current || requestedPlan.current === requestKey) return;
+    requestedPlan.current = requestKey;
     void run('Consultando o plano', async token => {
       const p = await traceability.provisioning(params.provisioningId!);
       const o = await traceability.order(p.pedidoId);
@@ -181,7 +230,7 @@ export default function Administracao() {
       setStrategy(p.estrategia);
       await install(await administration.prepare(p), token);
     });
-  }, [params?.provisioningId, canManage, run, install]);
+  }, [params?.provisioningId, canManage, run, install, scope, busy]);
 
   async function identify(token: number) {
     const tag = await identifyAdministrativeTag();
@@ -243,6 +292,17 @@ export default function Administracao() {
       );
     }
   }
+  async function end(token: number) {
+    if (!operation) return;
+    const wasVerified = operation.alteracaoFisica === 'CONFERIDA';
+    await install(await administration.end(operation), token);
+    if (token === generation.current)
+      setMessage(
+        wasVerified
+          ? 'Operação administrativa encerrada. A configuração conferida e o vínculo foram preservados.'
+          : 'Plano encerrado sem configurar a etiqueta. Em Gerenciar, encerre o vínculo registrado e crie uma nova época quando quiser configurar.',
+      );
+  }
   const recovery = operation?.status === 'INTERROMPIDA';
   const verified = operation?.alteracaoFisica === 'CONFERIDA';
   const enabled = canManage && physicalNfcAvailable && !busy;
@@ -275,15 +335,20 @@ export default function Administracao() {
         busy ? (
           <VStack gap={8}>
             <Text>
-              {busy}. Mantenha a etiqueta próxima até a conclusão da sessão NFC.
+              {busy}.{' '}
+              {activity?.nfc
+                ? 'Mantenha a etiqueta próxima até a conclusão da sessão NFC.'
+                : 'Aguarde o resultado na tela. O diário será preservado.'}
             </Text>
-            <ActionButton
-              mode="outlined"
-              onPress={() => {
-                void administration.cancel().catch(() => {});
-              }}>
-              Cancelar sessão NFC
-            </ActionButton>
+            {activity?.nfc && (
+              <ActionButton
+                mode="outlined"
+                onPress={() => {
+                  void administration.cancel().catch(() => {});
+                }}>
+                Cancelar sessão NFC
+              </ActionButton>
+            )}
           </VStack>
         ) : verified && !active ? (
           <ActionButton
@@ -295,6 +360,7 @@ export default function Administracao() {
                   ? 'Confirmando leitura salva'
                   : 'Lendo em nova sessão para ativar',
                 activate,
+                !pendingActivation,
               );
             }}>
             {pendingActivation
@@ -306,7 +372,7 @@ export default function Administracao() {
             mode="contained"
             disabled={!canExecute}
             onPress={() => {
-              void run('Configurando a etiqueta', execute);
+              void run('Configurando a etiqueta', execute, true);
             }}>
             {recovery
               ? 'Recuperar com nova sessão NFC'
@@ -371,7 +437,7 @@ export default function Administracao() {
                     icon="nfc-search-variant"
                     disabled={!enabled}
                     onPress={() => {
-                      void run('Identificando a etiqueta', identify);
+                      void run('Identificando a etiqueta', identify, true);
                     }}>
                     {uid
                       ? 'Ler outra NTAG 424 DNA'
@@ -427,7 +493,9 @@ export default function Administracao() {
                   <StatusPanel tone={verified ? 'success' : 'warning'}>
                     <Text variant="titleMedium">{status(operation)}</Text>
                     <Text>
-                      {verified
+                      {operation.status === 'ENCERRADA' && !verified
+                        ? 'O plano foi encerrado sem configuração. Em Gerenciar, encerre este vínculo registrado e crie uma nova época para configurar a etiqueta.'
+                        : verified
                         ? 'Os dados, as permissões e os cinco slots foram conferidos pela API.'
                         : operation.alteracaoEmitida
                         ? 'Uma alteração já foi transmitida. Preserve o plano original e recupere antes de reutilizar a etiqueta.'
@@ -591,21 +659,11 @@ export default function Administracao() {
                       mode="outlined"
                       disabled={!enabled}
                       onPress={() => {
-                        void run(
-                          'Finalizando a operação administrativa',
-                          async token => {
-                            await install(
-                              await administration.end(operation),
-                              token,
-                            );
-                            if (token === generation.current)
-                              setMessage(
-                                'Operação administrativa encerrada. O plano e o diário permanecem preservados.',
-                              );
-                          },
-                        );
+                        setEndDialogOpen(true);
                       }}>
-                      Finalizar operação administrativa
+                      {verified
+                        ? 'Finalizar operação administrativa'
+                        : 'Encerrar plano sem configurar'}
                     </ActionButton>
                   )}
                 <List.Accordion title="Identificadores do plano">
@@ -635,6 +693,40 @@ export default function Administracao() {
               {message}
             </Text>
           </StatusPanel>
+        )}
+        {endDialogOpen && operation && (
+          <Portal>
+            <Dialog visible onDismiss={() => setEndDialogOpen(false)}>
+              <Dialog.Title>
+                {verified
+                  ? 'Finalizar a administração?'
+                  : 'Encerrar sem configurar?'}
+              </Dialog.Title>
+              <Dialog.Content>
+                <Text>
+                  {verified
+                    ? active
+                      ? 'A configuração e o vínculo ativo serão preservados. Você poderá registrar eventos e consultar o histórico normalmente.'
+                      : 'A configuração conferida será preservada, mas o vínculo continuará registrado. Você poderá voltar para fazer a leitura de ativação.'
+                    : 'Nenhum comando de configuração foi emitido. O plano será encerrado e o vínculo continuará registrado. Para configurar depois, encerre o vínculo em Gerenciar e crie uma nova época.'}
+                </Text>
+                <Text>O plano e o diário permanecerão no histórico.</Text>
+              </Dialog.Content>
+              <Dialog.Actions>
+                <ActionButton onPress={() => setEndDialogOpen(false)}>
+                  Voltar ao plano
+                </ActionButton>
+                <ActionButton
+                  mode="contained"
+                  onPress={() => {
+                    setEndDialogOpen(false);
+                    void run('Finalizando a operação administrativa', end);
+                  }}>
+                  Confirmar encerramento
+                </ActionButton>
+              </Dialog.Actions>
+            </Dialog>
+          </Portal>
         )}
       </VStack>
     </Tela>

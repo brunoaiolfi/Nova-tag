@@ -35,6 +35,19 @@ Na aba **Vincular → Configurar NTAG 424 DNA**:
    Para reutilização, encerre o vínculo em Gerenciar e crie outra época; não
    reinicie SDM mantendo as credenciais de uma época já utilizada.
 
+Consultas, preparação de plano, recuperação HTTP e reenvio da leitura salva
+mostram espera pela resposta, sem pedir aproximação ou oferecer cancelamento
+NFC. Identificação, configuração e nova leitura de ativação mostram a orientação
+de aproximação/cancelamento. O último resultado permanece na tela.
+
+**Encerrar plano sem configurar** pede confirmação e explica a consequência:
+o plano original fica encerrado, o vínculo continua REGISTRADA e não pode ser
+ativado sem configuração. Para configurar depois, encerre explicitamente esse
+vínculo em Gerenciar e crie uma nova época/plano. Não se reabre o alvo encerrado.
+**Finalizar operação administrativa**, após conferência, preserva configuração
+e vínculo; se ainda não estiver ATIVA, a leitura de ativação continua disponível.
+Nenhuma dessas ações desfaz escrita ou ativa/encerra o vínculo automaticamente.
+
 O fluxo simples UID/NDEF da Feiju permanece separado. Na tela **Gerenciar**, um
 vínculo NTAG oferece **Retomar configuração da NTAG 424 DNA**, inclusive após
 reinício do app. Consulta/Operador e sessão offline não executam esta configuração.
@@ -76,6 +89,10 @@ O orçamento da sessão administrativa no app é de 180 segundos; leituras comun
 continuam com 45 segundos e o mesmo proprietário exclusivo. A API tem seu prazo
 próprio de 180 segundos, e o sistema operacional pode encerrar antes. Duração
 efetiva e latência por comando ainda precisam ser medidas no aparelho real.
+
+Ao trocar conta, API ou login, a tela limpa pedido/plano/diário e descarta resultados
+visuais da sessão anterior. Aguarda o trabalho anterior terminar antes de consultar
+o contexto atual. O diário persistido continua separado por conta/API; não é apagado.
 
 Leitura de ativação válida fica salva antes do HTTP. Se a resposta for perdida,
 o app consulta o vínculo exato e oferece **Reenviar leitura de ativação** sem
