@@ -2,8 +2,9 @@
 
 ## Decisão e fronteiras
 
-Mesmo repositório, worktree `C:\src\Nova-tag-expo` e branch `codex/nfc-onboarding`,
-sem merge na main. Expo 57 e React Native 0.86.3 usam a nova arquitetura.
+Mesmo repositório, candidato `codex/issue-9-reproducibility`, sem merge na main.
+Os estados antigos de branch/aceite são históricos; veja [reprodução](15-reproducao-e-entrega.md).
+Expo 57 e React Native 0.86.3 usam a nova arquitetura.
 `react-native-nfc-manager@4.0.0-beta.10` fica fixado no lockfile: o
 [mantenedor](https://github.com/revtel/react-native-nfc-manager) documenta v3 para
 arquitetura antiga e v4 para a nova. A versão beta precisa de build e ensaio físico.
@@ -38,8 +39,9 @@ Armazenamento e autorização são apresentados separadamente.
 
 O horário é registrado ao concluir a leitura física, antes da confirmação da tela.
 O UUID é criado ao aceitar a leitura para um evento. Retry mantém corpo exato e operador
-original na tela. Não há fila offline, persistência de captura pendente ou retomada
-após reinício; isso não encerra a issue de sincronização offline.
+original na tela. A #4 implementou fila SQLite durável e retomada após reinício;
+#6 acrescentou decisões/reconciliação e #7 instrumentação. Veja [offline](11-captura-offline.md)
+e [reconciliação](13-reconciliacao.md). Aceite físico integrado continua na #12.
 
 ## Leitura e ciclo de vida da sessão
 

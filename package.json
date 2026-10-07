@@ -1,6 +1,6 @@
 {
   "name": "NovaTag",
-  "version": "0.0.1",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "android": "expo start --dev-client --android",
@@ -15,7 +15,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\"",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web",
-    "check": "expo install --check"
+    "check": "expo install --check",
+    "source:manifest": "node scripts/source-manifest.cjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",

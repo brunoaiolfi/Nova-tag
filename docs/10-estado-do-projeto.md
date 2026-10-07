@@ -1,7 +1,7 @@
 # Entregas atuais e pendências
 
-Atualização de 7 de outubro de 2026. Branch `codex/issue-7-experiment-instrumentation`,
-sobre `codex/issue-6-event-reconciliation`. Publicação autorizada; sem merge na main.
+Atualização de 7 de outubro de 2026. Branch `codex/issue-9-reproducibility`,
+sobre `codex/issue-7-experiment-instrumentation`. Publicação autorizada; sem merge na main.
 Software #1–#7 implementado e validado localmente.
 
 | Entrega | Disponível |
@@ -26,7 +26,17 @@ tratamentos. A #7 não realizou instalação iOS, NFC real, EAS, Actions ou merg
 Workflows permanecem manuais e desativados remotamente. Development build iOS
 precisa dos módulos SQLite/rede #4; #5/#6/#7 não acrescentam dependências nativas.
 
-Próxima parte independente: **#8 — protocolo preliminar e análise reproduzível**.
+Preparação da #8 publicada em API #18: protocolo/planejamento/analista preliminares.
+Preparação da #9: guia portátil, versões públicas de fonte/configuração, APK Android
+local 0.3.0/3 com bundle e identificação no diagnóstico. [Reprodução](15-reproducao-e-entrega.md).
+Piloto/coleta física #8 e integração/reprodução independente #9 continuam pendentes.
+
+Verificação da preparação #9: 126 testes API/13 suítes e 241 mobile/24 suítes;
+APK instalado em emulador Android abriu o login sem Metro e sem erro fatal.
+Reprodução Docker isolada conferiu migrations/seeds, dez capturas UID/NDEF,
+backup/restauração de 24 tabelas, dez recibos originais após reenvio, imutabilidade
+e retomada do worker com 34 auditorias. Zero leituras físicas; cofre SDM externo
+não foi restaurado nesse ensaio.
 
 | Issue restante | Dependência para concluir |
 | --- | --- |
@@ -54,5 +64,5 @@ na ordem de dependências apenas no aceite #9.
 - [Nova-tag #6](https://github.com/brunoaiolfi/Nova-tag/pull/6), sobre [#5](https://github.com/brunoaiolfi/Nova-tag/pull/5), implementação `e470e92`.
 
 #7 concluída em software. PRs continuam abertos, sem merge; #9 acompanha revisão,
-integração e reprodução final. #8 pode avançar com protocolo e análise de controles;
+integração e reprodução final. #8 tem preparação preliminar de protocolo/análise;
 #12 ainda precisa da administração/aceite físico NTAG 424 DNA.

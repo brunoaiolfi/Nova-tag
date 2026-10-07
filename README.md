@@ -1,12 +1,16 @@
 # Nova-tag NFC — Expo Development Build
 
-Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/issue-4-durable-offline`, no
-worktree `C:\src\Nova-tag-expo`, dentro do mesmo repositório. O checkout original
-em `C:\src\Nova-tag` permanece separado. Não foi feito merge na main.
+Aplicativo Expo com NFC físico e API NFC Trace. Branch candidata
+`codex/issue-9-reproducibility`, no mesmo repositório do Nova-tag, sem merge na main.
+O checkout pode ter qualquer caminho; `C:\src\Nova-tag-expo` é somente o ambiente
+local usado nas implementações. O checkout original continua separado.
 
-Software #1/#2/#3, fila durável #4 e validação SDM #5 implementados. Personalização/proteção
-e aceite físico ficaram na #12; reconciliação e experimentos continuam pendentes.
+Software #1–#7, incluindo fila SQLite, validação SDM, reconciliação e instrumentação,
+está implementado. Protocolo/análise preliminares #8 estão na API. Personalização/
+proteção/aceite NTAG #12, piloto/coleta #8 e integração/reprodução final #9 permanecem.
 Veja [entregas atuais e próximas etapas](docs/10-estado-do-projeto.md).
+O [guia de reprodução e APK local](docs/15-reproducao-e-entrega.md) descreve o build
+Android 0.3.0/3 com bundle embutido e identificação de fonte/artefato.
 
 ## Instalar no iPhone usando Windows
 
@@ -150,8 +154,8 @@ vínculo ativo consultado online por esse operador nas últimas 24 horas; não h
 associação offline de etiqueta desconhecida. Login verificado e ainda válido
 permite coleta local quando a API está inacessível. Envio exige revalidar a sessão.
 Não há serviço de background; a próxima abertura retoma os registros. Capturas SDM
-de tags configuradas pela bancada são validadas na API; a reconciliação continua
-na #6. Desinstalar/limpar dados remove a fila.
+de tags configuradas pela bancada são validadas na API; a reconciliação #6 mantém
+revisões/prazos/decisões atuais. Desinstalar/limpar dados remove a fila.
 
 ## Verificação local
 
@@ -193,7 +197,7 @@ o resultado permanece visível, inclusive se uma nova tentativa falhar. Leitura,
 gravação e diagnóstico compartilham uma sessão exclusiva com timeout de 45 segundos.
 Veja [hardware NFC: progresso e roteiro](docs/06-hardware-nfc.md) para os limites,
 testes e aceite físico ainda necessário. A branch atual é
-`codex/issue-5-sdm-validation`; a integração na main permanece separada.
+`codex/issue-9-reproducibility`; a integração na main permanece separada.
 
 O [perfil SDM candidato e roteiro de bancada](docs/09-perfil-sdm-bancada.md)
 inclui geração offline de NDEF/offsets e comparação estrutural com o relatório v2.
