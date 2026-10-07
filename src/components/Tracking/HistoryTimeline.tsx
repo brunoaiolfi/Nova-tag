@@ -9,6 +9,8 @@ import {
 } from '../../views/traceability-labels';
 import {trackingColors as colors} from './index';
 import {SdmEvidence} from './SdmEvidence';
+import {decisionStatus} from '../../domain/traceability/decision-status';
+import {DecisionDetails} from './DecisionDetails';
 
 const date = (value: string) => new Date(value).toLocaleString('pt-BR');
 const descriptions: Record<string, string> = {
@@ -38,7 +40,14 @@ export function HistoryItem({
   isLast?: boolean;
 }) {
   const decision = entry.decisao;
-  const color = decision.autorizada ? colors.teal : colors.red;
+  const status = decisionStatus(decision);
+  const waiting = status === 'PENDENTE';
+  const late = status === 'TARDIA';
+  const color = decision.autorizada
+    ? colors.teal
+    : waiting || late
+    ? colors.amber
+    : colors.red;
   return (
     <View style={styles.item}>
       <View style={styles.rail}>
@@ -49,12 +58,20 @@ export function HistoryItem({
             {
               backgroundColor: decision.autorizada
                 ? colors.green
+                : waiting || late
+                ? colors.amberBackground
                 : colors.redBackground,
             },
           ]}>
           <Icon
             source={
-              decision.autorizada ? icons[entry.tipo] ?? 'map-marker' : 'close'
+              decision.autorizada
+                ? icons[entry.tipo] ?? 'map-marker'
+                : waiting
+                ? 'clock-outline'
+                : late
+                ? 'history'
+                : 'close'
             }
             size={22}
             color={color}
@@ -70,6 +87,10 @@ export function HistoryItem({
         <Text style={[styles.decision, {color}]}>
           {decision.autorizada
             ? 'Operação autorizada'
+            : waiting
+            ? 'Aguardando etapa anterior · salva no servidor'
+            : late
+            ? 'Leitura tardia preservada · sem movimentação'
             : 'Operação rejeitada · pedido não alterado'}
         </Text>
         <Text style={styles.description}>
@@ -83,6 +104,10 @@ export function HistoryItem({
           </Text>
         )}
         <SdmEvidence sdm={decision.sdm} />
+        <DecisionDetails
+          decision={decision}
+          history={entry.historicoDecisoes}
+        />
         {decision.alterouEstado && (
           <Text style={styles.change}>
             {stateLabel(decision.estadoAnterior)} →{' '}

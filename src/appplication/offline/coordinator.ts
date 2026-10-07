@@ -1,3 +1,4 @@
+import {businessOutcome} from '../../domain/traceability/decision-status';
 import type {Api} from '../traceability/workflow';
 import {assertSdmReading} from '../../domain/traceability/sdm-reading';
 import type {
@@ -12,7 +13,6 @@ import {
   CaptureStore,
   QueuedCapture,
   OfflineError,
-  Settlement,
 } from '../../domain/offline/types';
 
 export interface OfflineSnapshot {
@@ -88,15 +88,15 @@ function decision(value: unknown): value is Decision {
     typeof receipt.decisao.motivo === 'string' &&
     ['REGULAR', 'SUSPEITO'].includes(receipt.decisao.classificacao) &&
     Array.isArray(receipt.decisao.avisos) &&
-    receipt.decisao.avisos.every(warning => typeof warning === 'string')
+    receipt.decisao.avisos.every(warning => typeof warning === 'string') &&
+    (receipt.decisao.revisao === undefined ||
+      (Number.isInteger(receipt.decisao.revisao) &&
+        receipt.decisao.revisao >= 1)) &&
+    (receipt.decisao.status === undefined ||
+      ['AUTORIZADA', 'PENDENTE', 'REJEITADA', 'TARDIA'].includes(
+        receipt.decisao.status,
+      ))
   );
-}
-function outcome(result: Decision): Settlement['businessState'] {
-  return result.decisao.autorizada
-    ? 'ACCEPTED'
-    : result.decisao.motivo === 'AGUARDANDO_ANTECEDENTE'
-    ? 'PENDING'
-    : 'REJECTED';
 }
 function bytes(value: string) {
   let size = 0;
@@ -385,7 +385,7 @@ export class OfflineCoordinator {
             if (answer.sucesso && answer.dados)
               await this.store.settle(item.id, claim, {
                 state: 'STORED',
-                businessState: outcome(answer.dados),
+                businessState: businessOutcome(answer.dados),
                 result: answer.dados,
               });
             else
@@ -441,7 +441,14 @@ export class OfflineCoordinator {
         this.now() + Math.min(300000, 1000 * 2 ** Math.min(item.attempts, 9)),
     });
   }
-  async refreshDecisions() {
+  private decisionRefresh?: Promise<void>;
+  refreshDecisions() {
+    this.decisionRefresh ??= this.fetchDecisions().finally(() => {
+      this.decisionRefresh = undefined;
+    });
+    return this.decisionRefresh;
+  }
+  private async fetchDecisions() {
     const owner = this.context();
     if (!owner?.canSend) return;
     const pending = (await this.store.list(owner)).filter(

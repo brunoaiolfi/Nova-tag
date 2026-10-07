@@ -17,13 +17,18 @@ import {
 } from '../../domain/enums/tipoEvento';
 import {reasonLabel} from '../traceability-labels';
 import {SdmEvidence} from '../../components/Tracking/SdmEvidence';
+import {decisionStatus} from '../../domain/traceability/decision-status';
+import {DecisionDetails} from '../../components/Tracking/DecisionDetails';
 
 export function captureStatus(item: QueuedCapture) {
   if (item.state === 'STORED')
     return item.businessState === 'ACCEPTED'
       ? 'Operação aceita'
       : item.businessState === 'PENDING'
-      ? 'Salva no servidor · aguardando decisão'
+      ? 'Salva no servidor · aguardando etapa anterior'
+      : item.currentDecision &&
+        decisionStatus(item.currentDecision.decisao) === 'TARDIA'
+      ? 'Leitura tardia preservada · sem movimentação'
       : 'Operação rejeitada · pedido não alterado';
   return {
     QUEUED: 'Salva neste aparelho · aguardando envio',
@@ -42,6 +47,9 @@ export default function Envios() {
   const [busy, setBusy] = useState(false);
   const pending = queue.items.filter(
     item => !['STORED', 'CONFLICT', 'FAILED'].includes(item.state),
+  );
+  const logistics = queue.items.filter(
+    item => item.state === 'STORED' && item.businessState === 'PENDING',
   );
   async function synchronize() {
     setBusy(true);
@@ -126,6 +134,16 @@ export default function Envios() {
             Salvar no aparelho não autoriza a movimentação. Confira a decisão
             após o envio.
           </Text>
+          {!!logistics.length && (
+            <Text>
+              {logistics.length}{' '}
+              {logistics.length === 1
+                ? 'operação salva no servidor aguarda'
+                : 'operações salvas no servidor aguardam'}{' '}
+              uma etapa anterior. A decisão é atualizada automaticamente
+              enquanto o app está aberto e conectado.
+            </Text>
+          )}
         </StatusPanel>
         {!!queue.error && <Text accessibilityRole="alert">{queue.error}</Text>}
         {!!message && <Text accessibilityRole="alert">{message}</Text>}
@@ -172,6 +190,12 @@ export default function Envios() {
               <Text>{reasonLabel(item.currentDecision.decisao.motivo)}</Text>
             )}
             <SdmEvidence sdm={item.currentDecision?.decisao.sdm} />
+            {item.currentDecision && (
+              <DecisionDetails
+                decision={item.currentDecision.decisao}
+                history={item.currentDecision.historicoDecisoes}
+              />
+            )}
             {!!item.message && <Text>{item.message}</Text>}
             <List.Accordion title="Comprovante e vínculo original">
               <Text selectable>Identificador: {item.id}</Text>
@@ -183,6 +207,13 @@ export default function Envios() {
                   : 'Vínculo consultado na API durante a confirmação.'}
               </Text>
               <Text>Envios tentados: {item.attempts}</Text>
+              {item.receipt && (
+                <Text>
+                  Decisão no comprovante original:{' '}
+                  {reasonLabel(item.receipt.decisao.motivo)}. Reenvios mantêm
+                  este comprovante.
+                </Text>
+              )}
               {!!item.errorCode && <Text>Código: {item.errorCode}</Text>}
             </List.Accordion>
             <Divider />

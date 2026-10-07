@@ -41,8 +41,15 @@ export interface Observation {
 }
 
 export interface Decision {
+  historicoDecisoes?: Decision['decisao'][];
   armazenada: boolean;
   decisao: {
+    revisao?: number;
+    status?: 'AUTORIZADA' | 'PENDENTE' | 'REJEITADA' | 'TARDIA';
+    avaliadaEm?: string;
+    causaId?: string | null;
+    expiraEm?: string | null;
+    dependencias?: {tipo: string; estadoNecessario: string}[];
     sdm?: {
       perfil: string;
       politica: 'ESTRITA' | 'REGISTRO_TARDIO';

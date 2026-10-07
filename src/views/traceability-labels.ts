@@ -4,6 +4,22 @@ import {
 } from '../domain/enums/tipoEvento';
 
 const reasons: Record<string, string> = {
+  AGUARDANDO_ANTECEDENTE:
+    'Captura salva. Uma etapa anterior ainda precisa ser registrada; o servidor avaliará novamente sem repetir a leitura.',
+  PEDIDO_JA_ENTREGUE:
+    'O pedido já foi entregue. Esta captura foi preservada sem voltar uma etapa.',
+  VINCULO_ENCERRADO:
+    'O vínculo original foi encerrado. Esta captura não pode movimentar outro vínculo ou época.',
+  PENDENCIA_EXPIRADA:
+    'O prazo para receber a etapa anterior terminou. A captura foi preservada sem movimentação.',
+  SESSAO_EXPIRADA:
+    'A sessão original expirou antes da conciliação. A captura foi preservada sem movimentação.',
+  PERMISSAO_REVOGADA:
+    'A permissão ou sessão original foi revogada antes da conciliação.',
+  IDENTIDADE_NAO_VERIFICADA:
+    'Não foi possível verificar a identidade que autoriza esta operação.',
+  SDM_RESERVA_INVALIDA:
+    'A evidência SDM não pertence a esta captura e época. O pedido não foi alterado.',
   SDM_INVALIDA:
     'Não foi possível autenticar esta leitura SDM. O pedido não foi alterado.',
   SDM_EVIDENCIA_REUTILIZADA:

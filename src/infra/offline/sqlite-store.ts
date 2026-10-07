@@ -1,3 +1,4 @@
+import {businessOutcome} from '../../domain/traceability/decision-status';
 import type {
   Observation,
   Provisioning,
@@ -318,14 +319,17 @@ export class SqliteCaptureStore implements CaptureStore {
   }
   async updateDecision(owner: CaptureOwner, id: string, result: Decision) {
     const db = await this.db();
-    const business = result.decisao.autorizada
-      ? 'ACCEPTED'
-      : result.decisao.motivo === 'AGUARDANDO_ANTECEDENTE'
-      ? 'PENDING'
-      : 'REJECTED';
+    const business = businessOutcome(result);
     await db.run(
-      "UPDATE captures SET current_decision=?,business_state=? WHERE id=? AND base_url=? AND user_id=? AND state='STORED'",
-      [JSON.stringify(result), business, id, owner.baseUrl, owner.userId],
+      "UPDATE captures SET current_decision=?,business_state=? WHERE id=? AND base_url=? AND user_id=? AND state='STORED' AND COALESCE(json_extract(current_decision,'$.decisao.revisao'),0) < ?",
+      [
+        JSON.stringify(result),
+        business,
+        id,
+        owner.baseUrl,
+        owner.userId,
+        result.decisao.revisao ?? 1,
+      ],
     );
   }
 }

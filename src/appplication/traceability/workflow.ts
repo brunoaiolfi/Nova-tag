@@ -59,6 +59,7 @@ function uncertainResponse(error: unknown): boolean {
   );
 }
 export interface HistoryEntry {
+  historicoDecisoes?: Decision['decisao'][];
   id: string;
   tipo: string;
   ocorridoEm: string;

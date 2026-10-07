@@ -125,33 +125,31 @@ test('order selection shows stored rejection, current state and separate server/
 });
 
 test('late SDM history distinguishes authentication, policy and absence of authorized movement', async () => {
-  jest
-    .mocked(traceability.history)
-    .mockResolvedValue({
-      itens: [
-        {
-          ...entry,
-          decisao: {
-            ...entry.decisao,
-            motivo: 'SDM_REGISTRO_TARDIO',
-            classificacao: 'REGULAR',
-            avisos: [],
-            sdm: {
-              perfil: 'nfc-trace.sdm.encrypted-picc.v1',
-              politica: 'REGISTRO_TARDIO',
-              epoca: 2,
-              autenticada: true,
-              previamenteUtilizada: false,
-              contador: 5,
-              maiorContadorAnterior: 10,
-              temporalidade: 'TARDIA',
-            },
+  jest.mocked(traceability.history).mockResolvedValue({
+    itens: [
+      {
+        ...entry,
+        decisao: {
+          ...entry.decisao,
+          motivo: 'SDM_REGISTRO_TARDIO',
+          classificacao: 'REGULAR',
+          avisos: [],
+          sdm: {
+            perfil: 'nfc-trace.sdm.encrypted-picc.v1',
+            politica: 'REGISTRO_TARDIO',
+            epoca: 2,
+            autenticada: true,
+            previamenteUtilizada: false,
+            contador: 5,
+            maiorContadorAnterior: 10,
+            temporalidade: 'TARDIA',
           },
         },
-      ],
-      proximaPagina: null,
-      totalDoPedido: 1,
-    });
+      },
+    ],
+    proximaPagina: null,
+    totalDoPedido: 1,
+  });
   await render();
   await act(async () =>
     tree.root.findByType(OrderSelect).props.onSelect(order),
@@ -159,7 +157,7 @@ test('late SDM history distinguishes authentication, policy and absence of autho
   const text = JSON.stringify(tree.toJSON());
   expect(text).toContain('Evidência autenticada pelo servidor');
   expect(text).toContain('sem movimentação automática');
-  expect(text).toContain('Operação rejeitada · pedido não alterado');
+  expect(text).toContain('Leitura tardia preservada · sem movimentação');
   expect(text).not.toContain('Operação autorizada');
 });
 
@@ -341,4 +339,71 @@ test('a scanned old NDEF epoch stays selected when the order has a newer current
     screen: 'Gerenciar',
     params: {provisioningId: link.id},
   });
+});
+
+test('pending logistics shows prerequisites and deadline instead of rejection', async () => {
+  jest.mocked(traceability.history).mockResolvedValue({
+    itens: [
+      {
+        ...entry,
+        tipo: 'RECEBIMENTO',
+        decisao: {
+          ...entry.decisao,
+          classificacao: 'REGULAR',
+          avisos: [],
+          status: 'PENDENTE',
+          revisao: 1,
+          motivo: 'AGUARDANDO_ANTECEDENTE',
+          dependencias: [{tipo: 'COLETA', estadoNecessario: 'COLETADO'}],
+          expiraEm: '2026-10-07T21:00:00Z',
+        },
+      },
+    ],
+    proximaPagina: null,
+    totalDoPedido: 1,
+  });
+  await render();
+  await act(async () =>
+    tree.root.findByType(OrderSelect).props.onSelect(order),
+  );
+  const text = JSON.stringify(tree.toJSON());
+  expect(text).toContain('Aguardando etapa anterior · salva no servidor');
+  expect(text).toContain('Aguardando:');
+  expect(text).toContain('Coleta');
+  expect(text).toContain('Prazo para conciliação:');
+  expect(text).not.toContain('Operação rejeitada · pedido não alterado');
+});
+
+test('history displays all decision revisions with separate evaluation and receipt times', async () => {
+  const pending = {
+    ...entry.decisao,
+    motivo: 'AGUARDANDO_ANTECEDENTE',
+    revisao: 1,
+    status: 'PENDENTE' as const,
+    avaliadaEm: '2026-10-05T13:00:00Z',
+  };
+  const accepted = {
+    ...entry.decisao,
+    autorizada: true,
+    motivo: 'ACEITA',
+    revisao: 2,
+    status: 'AUTORIZADA' as const,
+    avaliadaEm: '2026-10-05T13:30:00Z',
+  };
+  jest.mocked(traceability.history).mockResolvedValue({
+    itens: [
+      {...entry, decisao: accepted, historicoDecisoes: [pending, accepted]},
+    ],
+    proximaPagina: null,
+    totalDoPedido: 1,
+  });
+  await render();
+  await act(async () =>
+    tree.root.findByType(OrderSelect).props.onSelect(order),
+  );
+  const text = JSON.stringify(tree.toJSON());
+  expect(text).toContain('Evolução da decisão');
+  expect(text).toContain('Decisão ');
+  expect(text).toContain('Operação autorizada');
+  expect(text).toContain('Recebido pelo servidor:');
 });

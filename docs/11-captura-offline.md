@@ -169,3 +169,7 @@ aceito. Falhas de preparação não foram apresentadas como leituras NFC reais.
 Nenhuma tag real participou desses ensaios. A Feiju disponível, a NTAG 424 DNA,
 mensagens físicas, SDM e operação real dos três tratamentos continuam na #12.
 O iPhone anterior não foi atualizado nem testado com SQLite nesta entrega.
+
+Atualização #6: a API agora produz pendências por antecedente com prazo e decisões
+versionadas. Envios atualiza a projeção automaticamente; o comprovante original
+permanece imutável. Políticas e reprodução em [reconciliação](13-reconciliacao.md).
