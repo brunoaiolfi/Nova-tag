@@ -1,14 +1,15 @@
 # Reprodução e APK candidato — preparação da #9
 
-Branch `codex/issue-9-reproducibility`, sobre a instrumentação #7. Reconciliação e
+Branch `codex/issue-12-secure-messaging`, sobre a preparação #9. Reconciliação e
 offline estão implementados; protocolo/analista preliminares estão na API #18.
-NTAG/administração/proteção #12, piloto/coleta #8, integração na main e reprodução
+Administração NTAG tem [fluxo integrado candidato](16-administracao-ntag.md).
+Aceite/proteção física #12, piloto/coleta #8, integração na main e reprodução
 por outro integrante continuam pendentes. Esta preparação não fecha #9.
 
 ## Checkout e execução
 
 ```powershell
-git clone --branch codex/issue-9-reproducibility https://github.com/brunoaiolfi/Nova-tag.git
+git clone --branch codex/issue-12-secure-messaging https://github.com/brunoaiolfi/Nova-tag.git
 cd Nova-tag
 npm ci
 Copy-Item .env.example .env
@@ -36,8 +37,8 @@ npx expo prebuild --platform android --no-install
 .\android\gradlew.bat -p android assembleRelease --console=plain --no-daemon '-PreactNativeArchitectures=arm64-v8a,x86_64'
 ```
 
-APK: `android/app/build/outputs/apk/release/app-release.apk`, versão **0.3.0**,
-versionCode **3**, pacote `com.joaoaugustopf.novatag.nfc`. Bundle está embutido;
+APK: `android/app/build/outputs/apk/release/app-release.apk`, versão **0.4.0**,
+versionCode **4**, pacote `com.joaoaugustopf.novatag.nfc`. Bundle está embutido;
 não exige Metro para abrir. Inclui NFC/SQLite/SecureStore/rede. Este build é para
 laboratório com assinatura de desenvolvimento do template, não release de loja.
 Guardar log Gradle, SHA-256 do APK e manifesto. Não versionar keystores/binários.

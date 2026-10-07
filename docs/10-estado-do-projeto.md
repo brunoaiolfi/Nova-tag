@@ -1,7 +1,7 @@
 # Entregas atuais e pendências
 
-Atualização de 7 de outubro de 2026. Branch `codex/issue-9-reproducibility`,
-sobre `codex/issue-7-experiment-instrumentation`. Publicação autorizada; sem merge na main.
+Atualização de 7 de outubro de 2026. Branch `codex/issue-12-secure-messaging`,
+sobre `codex/issue-9-reproducibility`. Publicação autorizada; sem merge na main.
 Software #1–#7 implementado e validado localmente.
 
 | Entrega | Disponível |
@@ -40,7 +40,7 @@ não foi restaurado nesse ensaio.
 
 | Issue restante | Dependência para concluir |
 | --- | --- |
-| [#12](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/12) Administração/aceite NTAG | Hardware e código/procedimento de personalização/proteção/secure messaging restante |
+| [#12](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/12) Administração/aceite NTAG | API/mobile candidatos implementados; procedimento/perfil definitivo e aceite físico no hardware real |
 | [#8](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/8) Experimentos | #12; instrumentação #7 disponível |
 | [#9](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/9) Integração/entrega final | #8 e aceites físicos transitivos |
 
@@ -78,3 +78,25 @@ embutidas e hash das fontes conferidos contra o checkout. SHA-256 do APK:
 Log e manifestos em `.tmp/delivery`, fora do Git. Emulador verificou instalação/login;
 não houve NFC físico. PRs continuam abertos, sem merge/EAS/Actions; #9 continua
 pendente de integração, reprodução independente e #12/#8.
+
+## Integração administrativa candidata da #12
+
+Tela exclusiva para Administrador: pedido/modelo/UID preenchidos por seleção e leitura,
+tratamento/política por opções, confirmação do plano original, progresso preservado,
+diário de comandos e recuperação explícita dos cinco slots. SQLite separado salva
+intenção antes do NFC e resposta antes do HTTP; recibo/próximo comando são atômicos.
+Resposta HTTP perdida não retransmite APDU. Nova sessão para leitura/ativação,
+recibo recuperável, encerramento administrativo e retomada em Gerenciar.
+[Fluxo e limites](16-administracao-ntag.md).
+
+Validação local: **277 testes/28 suítes**, incluindo 36 casos administrativos novos
+com SQLite real/reabertura, concorrência de tentativa, rollback do checkpoint,
+falhas de escrita, perda de resposta HTTP, troca de login, resposta NFC tardia,
+recuperação, isolamento de API/conta, preflight/adaptador nativo e confirmação visual.
+Lint/tipos e `expo install --check` passaram. Bundle iOS foi exportado localmente;
+não equivale a build/instalação iOS. Expo 57.0.27/Constants 57.0.21 alinhados à matriz
+do SDK. Candidato Android 0.4.0/4; assinatura de desenvolvimento do laboratório.
+
+Somente Feiju disponível: nenhum comando administrativo em chip NTAG real,
+nenhum aceite físico/contador/SDK ou instalação iPhone neste incremento.
+#12/#8/#9 continuam abertas. Sem merge, EAS ou GitHub Actions.

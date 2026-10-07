@@ -27,7 +27,10 @@ export class ExclusiveNfcSession {
     private readonly timeoutMilliseconds = 45000,
   ) {}
 
-  run<T>(job: (scope: SessionScope) => Promise<T>): Promise<T> {
+  run<T>(
+    job: (scope: SessionScope) => Promise<T>,
+    timeoutMilliseconds = this.timeoutMilliseconds,
+  ): Promise<T> {
     if (this.active) {
       return Promise.reject(
         new NfcFailure(
@@ -42,18 +45,15 @@ export class ExclusiveNfcSession {
     });
     const operation: Operation = {abort, stopTimer: () => {}};
     this.active = operation;
-    operation.stopTimer = this.scheduler.schedule(
-      this.timeoutMilliseconds,
-      () => {
-        this.abort(
-          operation,
-          new NfcFailure(
-            'NFC_TIMEOUT',
-            'O tempo de leitura terminou. Aproxime a etiqueta e tente novamente. Se estava gravando, confira o conteúdo antes de ativar o vínculo.',
-          ),
-        );
-      },
-    );
+    operation.stopTimer = this.scheduler.schedule(timeoutMilliseconds, () => {
+      this.abort(
+        operation,
+        new NfcFailure(
+          'NFC_TIMEOUT',
+          'O tempo de leitura terminou. Aproxime a etiqueta e tente novamente. Se estava gravando, confira o conteúdo antes de ativar o vínculo.',
+        ),
+      );
+    });
     const checkpoint = () => {
       if (operation.failure) {
         throw operation.failure;

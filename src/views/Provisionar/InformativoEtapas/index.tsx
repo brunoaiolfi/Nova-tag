@@ -16,6 +16,7 @@ import Aviso from '../../../components/Aviso';
 import ListaPassos, {Passo} from '../../../components/ListaPassos';
 import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 import {EnumEstrategiasNFC} from '../../../domain/enums/estrategiasNFC';
+import {useSession} from '../../../components/Auth/SessionProvider';
 
 const PASSOS: Passo[] = [
   {
@@ -50,6 +51,7 @@ const ESTRATEGIAS: {valor: EnumEstrategiasNFC; titulo: string}[] = [
 ];
 
 const InformativoEtapas = () => {
+  const {state} = useSession();
   const navigation =
     useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
 
@@ -73,6 +75,23 @@ const InformativoEtapas = () => {
       footer={<Botao onPress={iniciar}>Escolher pedido</Botao>}>
       <VStack gap={24}>
         <ListaPassos passos={PASSOS} />
+        {state.session?.user.perfil === 'ADMINISTRADOR' && (
+          <VStack gap={8}>
+            <Text variant="titleMedium">
+              Configuração protegida · NTAG 424 DNA
+            </Text>
+            <Text>
+              Prepare o plano, configure a etiqueta e confira a ativação. Inclui
+              UID, NDEF estático e SDM; exige inventário de credenciais na API.
+            </Text>
+            <ActionButton
+              mode="outlined"
+              icon="shield-check-outline"
+              onPress={() => navigation.navigate('Administracao')}>
+              Configurar NTAG 424 DNA
+            </ActionButton>
+          </VStack>
+        )}
         <VStack gap={8}>
           <Text variant="titleMedium">
             Já existe um vínculo nesta etiqueta?
@@ -125,7 +144,7 @@ const InformativoEtapas = () => {
         </VStack>
 
         <Aviso>
-          A gravação NDEF substitui o conteúdo atual. Esta versão não altera
+          A gravação NDEF substitui o conteúdo atual. O fluxo simples não altera
           chaves nem bloqueia a escrita. A ativação exige conferir externamente
           a configuração física e o bloqueio definidos para o ensaio.
         </Aviso>

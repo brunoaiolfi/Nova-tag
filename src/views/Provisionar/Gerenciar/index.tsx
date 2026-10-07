@@ -252,6 +252,22 @@ export default function Gerenciar() {
             </VStack>
             <VStack gap={8}>
               <Text variant="titleMedium">Etiqueta {provisioning.uid}</Text>
+              {canManage &&
+                provisioning.modelo
+                  ?.replace(/[^a-zA-Z0-9]/g, '')
+                  .toUpperCase() === 'NTAG424DNA' &&
+                provisioning.status !== 'DESPROVISIONADA' && (
+                  <ActionButton
+                    mode="outlined"
+                    disabled={busy}
+                    onPress={() =>
+                      navigation.push('Administracao', {
+                        provisioningId: provisioning.id,
+                      })
+                    }>
+                    Retomar configuração da NTAG 424 DNA
+                  </ActionButton>
+                )}
               <Text variant="bodyMedium">
                 Época {provisioning.epoca ?? 'não informada'} ·{' '}
                 {provisioning.estrategia === 'UID'

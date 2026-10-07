@@ -18,6 +18,18 @@ const flush = async () => {
 let timeout: () => void;
 let stop: jest.Mock;
 let session: ExclusiveNfcSession;
+test('administrative deadline uses the same exclusive owner and ordinary reads retain their default deadline', async () => {
+  const delays: number[] = [],
+    owner = new ExclusiveNfcSession({
+      schedule: milliseconds => {
+        delays.push(milliseconds);
+        return () => {};
+      },
+    });
+  await owner.run(async () => undefined, 180000);
+  await owner.run(async () => undefined);
+  expect(delays).toEqual([180000, 45000]);
+});
 beforeEach(() => {
   stop = jest.fn();
   const scheduler: SessionScheduler = {

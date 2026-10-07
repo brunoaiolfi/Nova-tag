@@ -5,6 +5,7 @@ import InformativoEtapas from '../views/Provisionar/InformativoEtapas';
 import EtapasProvisionamento from '../views/Provisionar/Etapas';
 import Diagnostico from '../views/Provisionar/Diagnostico';
 import Gerenciar from '../views/Provisionar/Gerenciar';
+import Administracao from '../views/Provisionar/Administracao';
 import {useAppTheme} from '../theme';
 import {EnumEstrategiasNFC} from '../domain/enums/estrategiasNFC';
 
@@ -17,6 +18,7 @@ export type RotasProvisionar = {
   };
   Diagnostico: undefined;
   Gerenciar: {provisioningId?: string} | undefined;
+  Administracao: {provisioningId?: string} | undefined;
 };
 
 const Stack = createNativeStackNavigator<RotasProvisionar>();
@@ -46,6 +48,11 @@ const ProvisionarNavigator = () => {
         name="Diagnostico"
         component={Diagnostico}
         options={{title: 'Diagnóstico da etiqueta'}}
+      />
+      <Stack.Screen
+        name="Administracao"
+        component={Administracao}
+        options={{title: 'Configurar NTAG 424 DNA'}}
       />
       <Stack.Screen
         name="Gerenciar"
