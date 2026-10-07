@@ -180,7 +180,12 @@ export default function Gerenciar() {
         />
       }
       footer={
-        context && closed ? (
+        context && closed && provisioning.estrategia === 'SDM' ? (
+          <Text>
+            Uma nova época SDM exige novo provisionamento pela bancada e nova
+            configuração física da NTAG 424 DNA.
+          </Text>
+        ) : context && closed ? (
           <ActionButton
             mode="contained"
             disabled={busy || !canManage}
@@ -251,8 +256,19 @@ export default function Gerenciar() {
                 Época {provisioning.epoca ?? 'não informada'} ·{' '}
                 {provisioning.estrategia === 'UID'
                   ? 'Identificação por UID'
+                  : provisioning.estrategia === 'SDM'
+                  ? 'SDM · validação no servidor'
                   : 'Referência NDEF estática'}
               </Text>
+              {provisioning.sdm && (
+                <Text>
+                  Política{' '}
+                  {provisioning.sdm.politica === 'ESTRITA'
+                    ? 'estrita'
+                    : 'de registro tardio'}
+                  . Configuração física administrada pela bancada.
+                </Text>
+              )}
               <StatusPanel
                 tone={
                   closed || provisioning.status === 'ATIVA'

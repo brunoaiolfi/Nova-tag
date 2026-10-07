@@ -26,6 +26,7 @@ import {installationId} from '../../../infra/traceability/runtime';
 import {sessionManager} from '../../../infra/auth/runtime';
 import {useOffline} from '../../../components/Offline/OfflineProvider';
 import {reasonLabel} from '../../traceability-labels';
+import {SdmEvidence} from '../../../components/Tracking/SdmEvidence';
 import {captureStatus} from '../../Envios';
 import type {CaptureOwner} from '../../../domain/offline/types';
 
@@ -195,6 +196,7 @@ export default function EtapasEvento() {
               {saved?.currentDecision && (
                 <Text>{reasonLabel(saved.currentDecision.decisao.motivo)}</Text>
               )}
+              <SdmEvidence sdm={saved?.currentDecision?.decisao.sdm} />
               {!!saved?.message && <Text>{saved.message}</Text>}
               <Text selectable>Identificador: {savedId}</Text>
             </VStack>

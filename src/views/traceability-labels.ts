@@ -4,6 +4,16 @@ import {
 } from '../domain/enums/tipoEvento';
 
 const reasons: Record<string, string> = {
+  SDM_INVALIDA:
+    'Não foi possível autenticar esta leitura SDM. O pedido não foi alterado.',
+  SDM_EVIDENCIA_REUTILIZADA:
+    'Esta leitura já foi utilizada. Aproxime novamente a etiqueta para obter uma nova evidência.',
+  SDM_CONTADOR_NAO_CRESCENTE:
+    'A leitura chegou fora de ordem e a política estrita impediu a movimentação.',
+  SDM_REGISTRO_TARDIO:
+    'Leitura autenticada recebida fora de ordem. Ficou preservada para análise, sem movimentar o pedido.',
+  SDM_CHAVES_INDISPONIVEIS:
+    'O servidor precisa recuperar as chaves da etiqueta. A captura será reenviada.',
   ACEITA: 'O evento está de acordo com a sequência logística do pedido.',
   VINCULO_ATIVADO: 'Etiqueta ativada e pronta para registrar operações.',
   SEQUENCIA_INVALIDA:

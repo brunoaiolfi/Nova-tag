@@ -4,8 +4,8 @@ Aplicativo Expo com NFC físico e API NFC Trace. Branch `codex/issue-4-durable-o
 worktree `C:\src\Nova-tag-expo`, dentro do mesmo repositório. O checkout original
 em `C:\src\Nova-tag` permanece separado. Não foi feito merge na main.
 
-Software #1/#2/#3 e fila durável #4 implementados. Personalização/proteção e aceite físico
-ficaram na #12; SDM, reconciliação e experimentos continuam pendentes.
+Software #1/#2/#3, fila durável #4 e validação SDM #5 implementados. Personalização/proteção
+e aceite físico ficaram na #12; reconciliação e experimentos continuam pendentes.
 Veja [entregas atuais e próximas etapas](docs/10-estado-do-projeto.md).
 
 ## Instalar no iPhone usando Windows
@@ -149,8 +149,9 @@ Capturas confirmadas localmente persistem no aparelho. Etiquetas precisam de
 vínculo ativo consultado online por esse operador nas últimas 24 horas; não há
 associação offline de etiqueta desconhecida. Login verificado e ainda válido
 permite coleta local quando a API está inacessível. Envio exige revalidar a sessão.
-Não há serviço de background; a próxima abertura retoma os registros. SDM e
-reconciliação continuam nas respectivas issues. Desinstalar/limpar dados remove a fila.
+Não há serviço de background; a próxima abertura retoma os registros. Capturas SDM
+de tags configuradas pela bancada são validadas na API; a reconciliação continua
+na #6. Desinstalar/limpar dados remove a fila.
 
 ## Verificação local
 
@@ -192,8 +193,11 @@ o resultado permanece visível, inclusive se uma nova tentativa falhar. Leitura,
 gravação e diagnóstico compartilham uma sessão exclusiva com timeout de 45 segundos.
 Veja [hardware NFC: progresso e roteiro](docs/06-hardware-nfc.md) para os limites,
 testes e aceite físico ainda necessário. A branch atual é
-`codex/issue-4-durable-offline`; a integração na main permanece separada.
+`codex/issue-5-sdm-validation`; a integração na main permanece separada.
 
 O [perfil SDM candidato e roteiro de bancada](docs/09-perfil-sdm-bancada.md)
 inclui geração offline de NDEF/offsets e comparação estrutural com o relatório v2.
 Ele funciona sem configurar etiquetas, armazenar chaves ou habilitar SDM na API.
+
+O [guia de captura SDM](docs/12-validacao-sdm.md) documenta resolução sem fallback,
+fila por época, validação no servidor e resultados separados da movimentação.

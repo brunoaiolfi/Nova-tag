@@ -2,6 +2,7 @@ import {Ndef, NdefStatus, NfcError} from 'react-native-nfc-manager';
 import manager from 'react-native-nfc-manager';
 import {type4Fixture} from '../test-support/type4-fixture';
 import {bytesBase64} from '../src/domain/nfc/ndef';
+import {createSdmBenchPlan} from '../src/domain/nfc/sdm-profile';
 import {diagnosePhysicalTag} from '../src/infra/nfc/diagnostics';
 import {
   cancelPhysicalRead,
@@ -69,6 +70,25 @@ test('decodes real URI and Text records and rejects ambiguous references', () =>
   expect(() =>
     decodeReference(
       [Ndef.uriRecord(reference), Ndef.textRecord(reference)],
+      Ndef,
+    ),
+  ).toThrow('múltiplas');
+});
+
+test('synthetic SDM URI is selected explicitly and mixed project references are rejected', () => {
+  const plan = createSdmBenchPlan('00000000-0000-4000-8000-000000000001');
+  expect(
+    decodeReference(
+      [
+        Ndef.uriRecord('https://example.test'),
+        Ndef.uriRecord(plan.uriTemplate),
+      ],
+      Ndef,
+    ),
+  ).toBe(plan.uriTemplate);
+  expect(() =>
+    decodeReference(
+      [Ndef.uriRecord(reference), Ndef.uriRecord(plan.uriTemplate)],
       Ndef,
     ),
   ).toThrow('múltiplas');

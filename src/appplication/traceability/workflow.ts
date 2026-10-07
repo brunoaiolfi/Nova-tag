@@ -5,6 +5,10 @@ import type {
   Observation,
   Decision,
 } from '../../domain/traceability/types';
+import {
+  assertSdmReading,
+  sdmProvisioningId,
+} from '../../domain/traceability/sdm-reading';
 export type {
   Strategy,
   Reading,
@@ -227,6 +231,10 @@ export class TraceabilityWorkflow {
     strategy: Strategy,
     model: string,
   ): Promise<Provisioning> {
+    if (strategy === 'SDM')
+      throw new Error(
+        'O provisionamento SDM é administrado pela bancada. Configure fisicamente a NTAG 424 DNA antes de ativar o vínculo.',
+      );
     const normalizedCode = code.trim().toUpperCase();
     const order = await this.findOrderByCode(normalizedCode);
     if (!order) {
@@ -310,12 +318,14 @@ export class TraceabilityWorkflow {
     ) {
       throw new Error('A referência NDEF lida diverge do vínculo registrado.');
     }
+    assertSdmReading(provisioning, reading);
     return this.api.request<Provisioning>(
       `/provisionamentos/${provisioning.id}/ativacao`,
       {
         method: 'POST',
         body: {
           bloqueioConfirmado: true,
+          ...(provisioning.estrategia === 'SDM' ? {leituraSdm: reading} : {}),
           ...(provisioning.estrategia === 'NDEF_ESTATICO'
             ? {referenciaNdef: reading.ndef}
             : {}),
@@ -326,7 +336,13 @@ export class TraceabilityWorkflow {
 
   async resolveProvisioning(reading: Reading): Promise<Provisioning> {
     let provisioning: Provisioning | null;
-    if (
+    if (reading.ndef?.startsWith('urn:nfc-trace:sdm:')) {
+      const id = sdmProvisioningId(reading.ndef);
+      provisioning = await this.api.request<Provisioning>(
+        `/provisionamentos/${id}`,
+      );
+      assertSdmReading(provisioning, reading);
+    } else if (
       typeof reading.ndef === 'string' &&
       reading.ndef.startsWith('urn:nfc-trace:provisioning:')
     ) {
@@ -345,6 +361,7 @@ export class TraceabilityWorkflow {
     if (!provisioning) {
       throw new Error('Etiqueta ainda não provisionada.');
     }
+    assertSdmReading(provisioning, reading);
     return provisioning;
   }
 

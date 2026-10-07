@@ -16,6 +16,7 @@ import {
   EnumTipoEvento,
 } from '../../domain/enums/tipoEvento';
 import {reasonLabel} from '../traceability-labels';
+import {SdmEvidence} from '../../components/Tracking/SdmEvidence';
 
 export function captureStatus(item: QueuedCapture) {
   if (item.state === 'STORED')
@@ -170,6 +171,7 @@ export default function Envios() {
             {item.currentDecision && (
               <Text>{reasonLabel(item.currentDecision.decisao.motivo)}</Text>
             )}
+            <SdmEvidence sdm={item.currentDecision?.decisao.sdm} />
             {!!item.message && <Text>{item.message}</Text>}
             <List.Accordion title="Comprovante e vínculo original">
               <Text selectable>Identificador: {item.id}</Text>

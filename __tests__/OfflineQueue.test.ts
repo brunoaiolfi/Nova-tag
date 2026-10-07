@@ -8,6 +8,11 @@ import {
 } from '../src/infra/offline/sqlite-store';
 import {OfflineCoordinator} from '../src/appplication/offline/coordinator';
 import type {CaptureContext} from '../src/domain/offline/types';
+import {
+  createSdmBenchPlan,
+  SDM_BENCH_PROFILE,
+} from '../src/domain/nfc/sdm-profile';
+import {bytesBase64} from '../src/domain/nfc/ndef';
 import type {
   Api,
   Observation,
@@ -532,4 +537,122 @@ test('malformed native evidence is not locally confirmed or silently normalized'
   ).rejects.toMatchObject({code: 'LEITURA_INVALIDA'});
   expect(resolve).not.toHaveBeenCalled();
   expect(await store.list(owner)).toEqual([]);
+});
+
+test('stores candidate SDM offline across cold reopen, retries 503 unchanged and displays separate late decision', async () => {
+  const plan = createSdmBenchPlan(p.id);
+  const sdm: Provisioning = {
+    ...p,
+    estrategia: 'SDM',
+    sdm: {
+      perfil: SDM_BENCH_PROFILE,
+      perfilCandidato: true,
+      politica: 'REGISTRO_TARDIO',
+      referenciaChaves: p.id,
+      versaoChaves: 1,
+      metaReadSlot: 1,
+      fileReadSlot: 2,
+      uriTemplate: plan.uriTemplate,
+    },
+  };
+  const reading = {
+    uid: '04FFFFFFFFFFFF',
+    ndef: plan.uriTemplate,
+    bytesBase64: bytesBase64(plan.messageBytes),
+  };
+  // Placeholder evidence checks storage/layout only and is not cryptographically valid.
+  await store.remember(owner, sdm, now);
+  const {manager, setContext, request, resolve} = coordinator();
+  setContext({...owner, canCapture: true, canSend: false});
+  const local = await manager.capture(
+    reading,
+    'COLETA',
+    input().id,
+    input().ocorridoEm,
+    'synthetic-device',
+  );
+  expect(local.metadata.provisioning.estrategia).toBe('SDM');
+  expect(local.metadata.provisioning.sdm?.politica).toBe('REGISTRO_TARDIO');
+  expect(local.payload.leituraBruta).toEqual(reading);
+  expect(resolve).not.toHaveBeenCalled();
+  db.close();
+  db = new DatabaseSync(join(folder, 'queue.db'));
+  sql = connection(db);
+  store = new SqliteCaptureStore(async () => sql);
+  expect((await store.get(owner, local.id))?.payload).toEqual(local.payload);
+  const next = coordinator();
+  next.request.mockRejectedValueOnce({
+    status: 503,
+    code: 'SDM_CHAVES_INDISPONIVEIS',
+    message: 'cofre',
+  });
+  await next.manager.synchronize();
+  expect((await store.get(owner, local.id))?.state).toBe('RETRY');
+  const result: Decision = {
+    armazenada: true,
+    decisao: {
+      autorizada: false,
+      motivo: 'SDM_REGISTRO_TARDIO',
+      classificacao: 'REGULAR',
+      avisos: [],
+      sdm: {
+        perfil: SDM_BENCH_PROFILE,
+        politica: 'REGISTRO_TARDIO',
+        epoca: 1,
+        autenticada: true,
+        previamenteUtilizada: false,
+        contador: 2,
+        maiorContadorAnterior: 10,
+        temporalidade: 'TARDIA',
+      },
+    },
+  };
+  next.request.mockResolvedValueOnce({
+    itens: [
+      {
+        indice: 0,
+        id: local.id,
+        sucesso: true,
+        status: 200,
+        codigo: null,
+        mensagem: 'stored',
+        dados: result,
+      },
+    ],
+  });
+  await next.manager.synchronize(true);
+  const saved = await store.get(owner, local.id);
+  expect(saved?.state).toBe('STORED');
+  expect(saved?.businessState).toBe('REJECTED');
+  expect(saved?.currentDecision?.decisao.sdm?.autenticada).toBe(true);
+  expect(next.request.mock.calls[0][1].body).toEqual(
+    next.request.mock.calls[1][1].body,
+  );
+  expect(request).not.toHaveBeenCalled();
+});
+
+test('offline SDM does not follow latest UID across unknown epochs or altered profiles', async () => {
+  await store.remember(owner, p, now);
+  const plan = createSdmBenchPlan(p.id);
+  const raw = {
+    uid: p.uid,
+    ndef: plan.uriTemplate,
+    bytesBase64: bytesBase64(plan.messageBytes),
+  };
+  await expect(store.cached(owner, raw, now, 10000)).rejects.toThrow(
+    'estratégia',
+  );
+  const other = createSdmBenchPlan('00000000-0000-4000-8000-000000000011');
+  expect(
+    await store.cached(
+      owner,
+      {
+        ...raw,
+        ndef: other.uriTemplate,
+        bytesBase64: bytesBase64(other.messageBytes),
+      },
+      now,
+      10000,
+    ),
+  ).toBeNull();
 });

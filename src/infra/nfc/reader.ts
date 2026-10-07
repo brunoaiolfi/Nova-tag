@@ -64,8 +64,10 @@ export function decodeReference(
       }
       return [];
     });
-  const references = values.filter(value =>
-    value.startsWith('urn:nfc-trace:provisioning:'),
+  const references = values.filter(
+    value =>
+      value.startsWith('urn:nfc-trace:provisioning:') ||
+      value.startsWith('urn:nfc-trace:sdm:'),
   );
   if (references.length > 1) {
     throw new NfcFailure(

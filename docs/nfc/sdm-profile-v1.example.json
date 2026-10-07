@@ -1,6 +1,6 @@
 {
   "artifactVersion": 1,
-  "notice": "Candidato de bancada. Sem segredos, comandos de escrita, ativação ou verificação criptográfica. A API v1 não aceita SDM.",
+  "notice": "Candidato de bancada. Sem segredos, comandos de escrita ou prova física. O verificador SDM da API valida mensagens; este plano com placeholders não é evidência autenticada.",
   "plan": {
     "profile": "nfc-trace.sdm.encrypted-picc.v1",
     "status": "CANDIDATO_BANCADA",

@@ -8,6 +8,7 @@ import {
   stateLabel,
 } from '../../views/traceability-labels';
 import {trackingColors as colors} from './index';
+import {SdmEvidence} from './SdmEvidence';
 
 const date = (value: string) => new Date(value).toLocaleString('pt-BR');
 const descriptions: Record<string, string> = {
@@ -81,6 +82,7 @@ export function HistoryItem({
             Leitura suspeita · divergências identificadas
           </Text>
         )}
+        <SdmEvidence sdm={decision.sdm} />
         {decision.alterouEstado && (
           <Text style={styles.change}>
             {stateLabel(decision.estadoAnterior)} →{' '}
