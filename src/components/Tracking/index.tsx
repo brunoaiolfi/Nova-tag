@@ -178,7 +178,6 @@ export function RouteMotif() {
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <View style={styles.routeCurve} />
       <View style={styles.routeOrigin}>
         <Icon
           source="package-variant-closed"
@@ -186,8 +185,13 @@ export function RouteMotif() {
           color={trackingColors.blue}
         />
       </View>
+      <View style={styles.routeLine} />
+      <View style={styles.routeWaypoint}>
+        <Icon source="truck-outline" size={22} color="white" />
+      </View>
+      <View style={styles.routeLine} />
       <View style={styles.routeDestination}>
-        <Icon source="map-marker" size={58} color={trackingColors.orange} />
+        <Icon source="map-marker" size={28} color={trackingColors.navy} />
       </View>
     </View>
   );
@@ -476,31 +480,41 @@ const styles = StyleSheet.create({
     color: trackingColors.navy,
   },
   tileDescription: {fontSize: 14, lineHeight: 21, color: trackingColors.muted},
-  motif: {height: 108, width: 210, alignSelf: 'center', marginVertical: 6},
-  routeCurve: {
-    position: 'absolute',
-    left: 25,
-    top: 35,
-    width: 150,
-    height: 52,
-    borderWidth: 2,
-    borderColor: '#C4CEFF',
-    borderTopWidth: 0,
-    borderRadius: 40,
-    transform: [{rotate: '-12deg'}],
+  motif: {
+    height: 72,
+    width: 240,
+    maxWidth: '100%',
+    alignSelf: 'center',
+    marginVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+  routeLine: {flex: 1, height: 2, backgroundColor: '#C4CEFF'},
   routeOrigin: {
-    position: 'absolute',
-    left: 0,
-    top: 24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  routeDestination: {position: 'absolute', right: 0, top: 0},
+  routeWaypoint: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C4CEFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeDestination: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: trackingColors.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   action: {
     backgroundColor: 'white',
     borderBottomWidth: 1,

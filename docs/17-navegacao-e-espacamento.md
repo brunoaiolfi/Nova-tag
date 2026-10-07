@@ -13,6 +13,7 @@ Revisão de interface em 07/10/2026, na branch `codex/issue-12-secure-messaging`
 - Na leitura, **Trocar etapa**, **Voltar ao pedido**, **Voltar ao vínculo**, **Voltar ao histórico**, **Voltar à consulta**, **Voltar aos envios** e **Voltar ao início** identificam o destino da ação local. O **Voltar** do cabeçalho retorna pela pilha de navegação.
 - A seleção UID/NDEF aparece antes das instruções e ferramentas auxiliares de vínculo. A introdução de registro explica corretamente que a captura pode ser salva offline e só será autorizada após avaliação pela API.
 - O login omite a ilustração decorativa em telas com altura inferior a 700 pontos ou largura inferior a 360 pontos, reservando mais espaço ao formulário.
+- A ilustração do login conecta pacote, transporte e destino em uma linha com os elementos alinhados. Não utiliza borda parcial rotacionada nem posicionamento absoluto, evitando diferenças de desenho entre plataformas. Essa correção está no JavaScript e pode ser carregada pelo Metro no development client 0.4.0 (5), sem outro build EAS.
 - O painel de experimento não inicializa o identificador nativo quando não existe diário disponível; falhas de leitura desse identificador são tratadas na tela, sem promessa rejeitada sem tratamento.
 
 ## Verificação local
