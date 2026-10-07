@@ -102,3 +102,26 @@ Documentos 03/05/06/07/08 preservam registros históricos. O [estado atual](10-e
 e este guia definem reprodução vigente; falhas/limites históricos não significam
 que funcionalidades posteriores estejam ausentes. Integração/revisão/conclusões
 permanecem #9. Nenhum push/PR deve reativar os workflows automáticos do GitHub.
+
+## Build iOS de 7 de outubro de 2026
+
+Build **0.4.0 (5)** concluído no EAS, solicitado explicitamente pelo usuário para
+reinstalar no iPhone. SDK 57, perfil `development`, distribuição interna/ad hoc,
+bundle `com.joaoaugustopf.novatag.nfc`. As credenciais remotas existentes foram
+reutilizadas; o perfil inclui o iPhone já registrado. A validação do perfil contra
+os servidores Apple foi dispensada pelo modo não interativo; a instalação efetiva
+ainda precisa ser confirmada no aparelho.
+
+- Fonte enviada: `319fe6ae8f393f3ed739a7ef79a035939939bba0`, sem mudanças rastreadas.
+- Build: `05c703b8-a46a-4dbd-bd15-42cb36a260ef`, estado `FINISHED`.
+- [Abrir instalação no Safari do iPhone](https://expo.dev/accounts/joaoaugustopfpf/projects/nova-tag-nfc/builds/05c703b8-a46a-4dbd-bd15-42cb36a260ef).
+
+Inclui a revisão de navegação/espaçamento, administração NTAG, diários SQLite,
+fila offline e demais implementações atuais. O development client requer conexão
+ao Metro para carregar o aplicativo durante os testes. Instale por cima do app
+atual; desinstalar ou limpar dados remove os registros locais da fila.
+
+Esta compilação remota verifica a geração do binário iOS; não comprova instalação,
+renderização no iPhone nem NFC físico. O APK Android da revisão `6e9083b` continua
+sendo um artefato anterior, separado deste build. Foi iniciado apenas este build
+EAS iOS, com autorização explícita. Nenhum GitHub Actions ou merge foi realizado.

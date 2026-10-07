@@ -10,6 +10,10 @@ lint/tipos e prévia de 15 telas em 320 × 568 e 390 × 844 passaram localmente.
 As prévias usam HTTP sintético; não substituem a conferência nativa no iPhone ou
 o aceite físico NFC. [Detalhes e limites](17-navegacao-e-espacamento.md).
 
+Build iOS **0.4.0 (5)** concluído no EAS em 7/10, por solicitação explícita do
+usuário. Inclui a revisão de interface e os módulos atuais. Instalação e testes
+no aparelho ainda não foram confirmados. [Link e fonte do build](15-reproducao-e-entrega.md#build-ios-de-7-de-outubro-de-2026).
+
 | Entrega | Disponível                                                                                                                              |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | #1      | NFC exclusivo, timeout/cancelamento, Type 4/bytes, diagnóstico/perfil candidato                                                         |
