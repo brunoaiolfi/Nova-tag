@@ -3,6 +3,11 @@ import {
   Provisioning,
   TraceabilityWorkflow,
 } from '../src/appplication/traceability/workflow';
+import {
+  createSdmBenchPlan,
+  SDM_BENCH_PROFILE,
+} from '../src/domain/nfc/sdm-profile';
+import {bytesBase64} from '../src/domain/nfc/ndef';
 const id = '00000000-0000-4000-8000-000000000001';
 const reference = `urn:nfc-trace:provisioning:${id}`;
 const link: Provisioning = {
@@ -17,6 +22,78 @@ const request = jest.fn();
 const workflow = new TraceabilityWorkflow({request} as Api);
 beforeEach(() => {
   request.mockReset();
+});
+
+const sdmPlan = createSdmBenchPlan(id);
+const sdmLink: Provisioning = {
+  ...link,
+  estrategia: 'SDM',
+  status: 'ATIVA',
+  referenciaNdef: null,
+  epoca: 1,
+  sdm: {
+    perfil: SDM_BENCH_PROFILE,
+    perfilCandidato: true,
+    politica: 'ESTRITA',
+    referenciaChaves: id,
+    versaoChaves: 1,
+    metaReadSlot: 1,
+    fileReadSlot: 2,
+    uriTemplate: sdmPlan.uriTemplate,
+  },
+};
+const sdmReading = {
+  uid: link.uid,
+  ndef: sdmPlan.uriTemplate,
+  bytesBase64: bytesBase64(sdmPlan.messageBytes),
+};
+test('resolves candidate SDM by provisioning reference without UID fallback or local authentication', async () => {
+  request.mockResolvedValue(sdmLink);
+  const prepared = await workflow.prepare(
+    {...sdmReading, uid: '04FFFFFFFFFFFF'},
+    'COLETA',
+    'capture',
+    'time',
+    'device',
+  );
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledWith('/provisionamentos/' + id);
+  expect(prepared.leituraBruta.bytesBase64).toBe(sdmReading.bytesBase64);
+  expect(prepared).not.toHaveProperty('autenticada');
+  expect(prepared).not.toHaveProperty('epoca');
+});
+test('rejects missing SDM bytes, unknown profile and downgraded strategy without fallback', async () => {
+  request.mockResolvedValue(sdmLink);
+  await expect(
+    workflow.resolveProvisioning({...sdmReading, bytesBase64: undefined}),
+  ).rejects.toThrow('originais');
+  request.mockResolvedValue({
+    ...sdmLink,
+    sdm: {...sdmLink.sdm, perfil: 'unknown'},
+  });
+  await expect(workflow.resolveProvisioning(sdmReading)).rejects.toThrow(
+    'Perfil',
+  );
+  request.mockResolvedValue({...sdmLink, estrategia: 'UID'});
+  await expect(workflow.resolveProvisioning(sdmReading)).rejects.toThrow(
+    'estratégia',
+  );
+  const prior = request.mock.calls.length;
+  await expect(
+    workflow.resolveProvisioning({
+      ...sdmReading,
+      ndef: 'urn:nfc-trace:sdm:v2:other',
+    }),
+  ).rejects.toThrow('inválida');
+  expect(request).toHaveBeenCalledTimes(prior);
+});
+test('passes immutable raw SDM proof when confirming a physically configured pending link', async () => {
+  request.mockResolvedValue(sdmLink);
+  await workflow.activate({...sdmLink, status: 'REGISTRADA'}, sdmReading, true);
+  expect(request).toHaveBeenLastCalledWith(
+    '/provisionamentos/' + id + '/ativacao',
+    {method: 'POST', body: {bloqueioConfirmado: true, leituraSdm: sdmReading}},
+  );
 });
 test('resumes exact pending link without duplicate registration', async () => {
   request

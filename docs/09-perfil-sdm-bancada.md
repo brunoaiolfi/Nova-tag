@@ -1,5 +1,10 @@
 # Perfil SDM e permissões — próxima etapa da issue #1
 
+**Atualização de 7/10/2026:** o verificador e as políticas #5 estão implementados
+em software. O perfil continua candidato; comparação estrutural não autentica
+SDM. [Contrato atual de captura e decisões](12-validacao-sdm.md). O restante desta
+página conserva o registro da etapa anterior e seus limites daquela data.
+
 **Registro histórico de implementação.** O mantenedor aprovou o software #1/#2/#3 para publicação. Personalização administrativa, proteção, recuperação e aceite físico pendentes estão na [issue #12](https://github.com/Joao-AugustoPF/nfc-trace-api/issues/12); integração na main permanece nos PRs. Estados de issue/branch desta etapa são históricos. Veja [situação atual](10-estado-do-projeto.md).
 
 Etapa local de 6 de outubro de 2026 em `codex/issue-1-sdm-bench-profile`, nos

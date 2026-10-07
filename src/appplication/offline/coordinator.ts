@@ -1,4 +1,5 @@
 import type {Api} from '../traceability/workflow';
+import {assertSdmReading} from '../../domain/traceability/sdm-reading';
 import type {
   Reading,
   Provisioning,
@@ -242,14 +243,6 @@ export class OfflineCoordinator {
       await this.refresh();
       return existing;
     }
-    if (
-      typeof raw.ndef === 'string' &&
-      raw.ndef.startsWith('urn:nfc-trace:sdm:')
-    )
-      throw new OfflineError(
-        'SDM_INDISPONIVEL',
-        'O tratamento SDM ainda não está disponível para captura operacional.',
-      );
     let p: Provisioning | null = null;
     let cacheUsed = !owner.canSend;
     if (owner.canSend) {
@@ -272,6 +265,7 @@ export class OfflineCoordinator {
         'VINCULO_INATIVO',
         'O vínculo precisa estar ativo para capturar.',
       );
+    assertSdmReading(p, raw);
     const current = this.context();
     if (!sameOwner(owner, current) || !current?.canCapture)
       throw new OfflineError(

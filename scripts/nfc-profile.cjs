@@ -69,7 +69,7 @@ function main() {
   const artifact = {
     artifactVersion: 1,
     notice:
-      'Candidato de bancada. Sem segredos, comandos de escrita, ativação ou verificação criptográfica. A API v1 não aceita SDM.',
+      'Candidato de bancada. Sem segredos, comandos de escrita ou prova física. O verificador SDM da API valida mensagens; este plano com placeholders não é evidência autenticada.',
     plan,
     messageHex: Buffer.from(plan.messageBytes).toString('hex').toUpperCase(),
     fileHex: Buffer.from(plan.fileBytes).toString('hex').toUpperCase(),

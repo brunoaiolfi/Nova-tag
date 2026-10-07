@@ -77,9 +77,10 @@ expirada ou 401 conhecido exige login. O modo offline nunca libera HTTP e não
 transforma o perfil local em autorização do servidor. Na volta da conexão a
 sessão é conferida novamente antes do envio.
 
-SDM operacional ainda é recusado. A fila é capaz de persistir bytes opacos; o
-teste sintético disso não autentica SDM. Verificador é #5, integração/reconciliação
-é #6 e fluxo/aceite físico UID/NDEF/NTAG 424 DNA é #12.
+A entrega #5 adicionou captura SDM de vínculos previamente configurados na bancada,
+resolução por referência e verificação no servidor. A fila continua tratando bytes
+como opacos. Veja [contrato atual SDM](12-validacao-sdm.md). Reconciliação é #6 e
+fluxo/aceite físico UID/NDEF/NTAG 424 DNA é #12; o ensaio nativo abaixo registra a #4.
 
 ## Reproduzir a verificação nativa
 

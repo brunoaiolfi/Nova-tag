@@ -124,6 +124,45 @@ test('order selection shows stored rejection, current state and separate server/
   expect(text).toContain('Leitura suspeita');
 });
 
+test('late SDM history distinguishes authentication, policy and absence of authorized movement', async () => {
+  jest
+    .mocked(traceability.history)
+    .mockResolvedValue({
+      itens: [
+        {
+          ...entry,
+          decisao: {
+            ...entry.decisao,
+            motivo: 'SDM_REGISTRO_TARDIO',
+            classificacao: 'REGULAR',
+            avisos: [],
+            sdm: {
+              perfil: 'nfc-trace.sdm.encrypted-picc.v1',
+              politica: 'REGISTRO_TARDIO',
+              epoca: 2,
+              autenticada: true,
+              previamenteUtilizada: false,
+              contador: 5,
+              maiorContadorAnterior: 10,
+              temporalidade: 'TARDIA',
+            },
+          },
+        },
+      ],
+      proximaPagina: null,
+      totalDoPedido: 1,
+    });
+  await render();
+  await act(async () =>
+    tree.root.findByType(OrderSelect).props.onSelect(order),
+  );
+  const text = JSON.stringify(tree.toJSON());
+  expect(text).toContain('Evidência autenticada pelo servidor');
+  expect(text).toContain('sem movimentação automática');
+  expect(text).toContain('Operação rejeitada · pedido não alterado');
+  expect(text).not.toContain('Operação autorizada');
+});
+
 test('a scanned NDEF tag opens its exact provisioning history and can expand to the order', async () => {
   mockParams = {
     reading: {
@@ -291,12 +330,10 @@ test('a scanned old NDEF epoch stays selected when the order has a newer current
       ndef: 'urn:nfc-trace:provisioning:00000000-0000-4000-8000-000000000001',
     },
   };
-  jest
-    .mocked(traceability.order)
-    .mockResolvedValue({
-      ...order,
-      provisionamentoVigente: {...link, id: 'new-id', epoca: 2},
-    });
+  jest.mocked(traceability.order).mockResolvedValue({
+    ...order,
+    provisionamentoVigente: {...link, id: 'new-id', epoca: 2},
+  });
   await render();
   await expandTag();
   await act(async () => button('Gerenciar este vínculo').props.onPress());

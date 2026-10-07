@@ -293,6 +293,8 @@ export default function Historico() {
                     Identificação por{' '}
                     {context.provisioning.estrategia === 'UID'
                       ? 'UID'
+                      : context.provisioning.estrategia === 'SDM'
+                      ? 'SDM (validação no servidor)'
                       : 'referência NDEF'}
                     .
                   </Text>

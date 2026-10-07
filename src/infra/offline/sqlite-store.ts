@@ -5,6 +5,10 @@ import type {
   Reading,
 } from '../../domain/traceability/types';
 import {
+  assertSdmReading,
+  sdmProvisioningId,
+} from '../../domain/traceability/sdm-reading';
+import {
   CaptureOwner,
   CaptureStore,
   CaptureMetadata,
@@ -275,19 +279,14 @@ export class SqliteCaptureStore implements CaptureStore {
     now: number,
     maxAge: number,
   ) {
-    if (
-      typeof reading.ndef === 'string' &&
-      reading.ndef.startsWith('urn:nfc-trace:sdm:')
-    ) {
-      throw new OfflineError(
-        'SDM_INDISPONIVEL',
-        'O tratamento SDM ainda não está disponível para captura operacional.',
-      );
-    }
+    const sdm = reading.ndef?.startsWith('urn:nfc-trace:sdm:');
     const reference =
-      typeof reading.ndef === 'string' &&
-      reading.ndef.startsWith('urn:nfc-trace:provisioning:');
-    const id = reference
+      sdm ||
+      (typeof reading.ndef === 'string' &&
+        reading.ndef.startsWith('urn:nfc-trace:provisioning:'));
+    const id = sdm
+      ? sdmProvisioningId(reading.ndef!)
+      : reference
       ? /^urn:nfc-trace:provisioning:([0-9a-f-]{36})$/i
           .exec(reading.ndef!)?.[1]
           ?.toLowerCase()
@@ -310,9 +309,11 @@ export class SqliteCaptureStore implements CaptureStore {
     if (
       p.status !== 'ATIVA' ||
       (reference &&
+        !sdm &&
         (p.estrategia !== 'NDEF_ESTATICO' || p.referenciaNdef !== reading.ndef))
     )
       return null;
+    assertSdmReading(p, reading);
     return freeze(p);
   }
   async updateDecision(owner: CaptureOwner, id: string, result: Decision) {

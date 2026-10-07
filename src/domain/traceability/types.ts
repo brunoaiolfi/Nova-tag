@@ -1,4 +1,4 @@
-export type Strategy = 'UID' | 'NDEF_ESTATICO';
+export type Strategy = 'UID' | 'NDEF_ESTATICO' | 'SDM';
 
 export interface Reading {
   uid: string;
@@ -9,6 +9,16 @@ export interface Reading {
 }
 
 export interface Provisioning {
+  sdm?: {
+    perfil: string;
+    perfilCandidato: boolean;
+    politica: 'ESTRITA' | 'REGISTRO_TARDIO';
+    referenciaChaves: string;
+    versaoChaves: number;
+    metaReadSlot: number;
+    fileReadSlot: number;
+    uriTemplate: string;
+  };
   id: string;
   pedidoId: string;
   uid: string;
@@ -33,6 +43,16 @@ export interface Observation {
 export interface Decision {
   armazenada: boolean;
   decisao: {
+    sdm?: {
+      perfil: string;
+      politica: 'ESTRITA' | 'REGISTRO_TARDIO';
+      epoca: number;
+      autenticada: boolean;
+      previamenteUtilizada: boolean;
+      contador: number | null;
+      maiorContadorAnterior: number | null;
+      temporalidade: 'NAO_AVALIADA' | 'NOVA' | 'TARDIA' | 'REUTILIZADA';
+    };
     autorizada: boolean;
     motivo: string;
     classificacao: string;
