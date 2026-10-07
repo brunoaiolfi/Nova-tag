@@ -656,3 +656,95 @@ test('offline SDM does not follow latest UID across unknown epochs or altered pr
     ),
   ).toBeNull();
 });
+
+test('versioned reconciliation updates projection, fences stale queries and retains the original SQLite receipt after restart', async () => {
+  await enqueue();
+  await store.claim(owner, 'sync', now, 45000, 20);
+  const original: Decision = {
+    armazenada: true,
+    decisao: {
+      ...response.decisao,
+      autorizada: false,
+      motivo: 'AGUARDANDO_ANTECEDENTE',
+      status: 'PENDENTE',
+      revisao: 1,
+      dependencias: [{tipo: 'COLETA', estadoNecessario: 'COLETADO'}],
+    },
+  };
+  await store.settle(input().id, 'sync', {
+    state: 'STORED',
+    businessState: 'PENDING',
+    result: original,
+  });
+  const accepted: Decision = {
+    ...original,
+    decisao: {...response.decisao, status: 'AUTORIZADA', revisao: 2},
+    historicoDecisoes: [
+      original.decisao,
+      {...response.decisao, status: 'AUTORIZADA', revisao: 2},
+    ],
+  };
+  await store.updateDecision(owner, input().id, accepted);
+  await store.updateDecision(owner, input().id, original);
+  await store.updateDecision(owner, input().id, {
+    ...original,
+    decisao: {...original.decisao, revisao: 2},
+  });
+  const saved = await store.get(owner, input().id);
+  expect(saved).toMatchObject({
+    receipt: original,
+    currentDecision: accepted,
+    businessState: 'ACCEPTED',
+    payload: input(),
+  });
+  db.close();
+  db = new DatabaseSync(join(folder, 'queue.db'));
+  sql = connection(db);
+  store = new SqliteCaptureStore(async () => sql);
+  expect(await store.get(owner, input().id)).toEqual(saved);
+});
+
+test('decision refresh coalesces concurrent callers, queries business pending only and preserves rejected originals', async () => {
+  await enqueue();
+  await store.claim(owner, 'sync', now, 45000, 20);
+  const original: Decision = {
+    armazenada: true,
+    decisao: {
+      ...response.decisao,
+      autorizada: false,
+      motivo: 'AGUARDANDO_ANTECEDENTE',
+      status: 'PENDENTE',
+      revisao: 1,
+    },
+  };
+  await store.settle(input().id, 'sync', {
+    state: 'STORED',
+    businessState: 'PENDING',
+    result: original,
+  });
+  const final: Decision = {
+    ...original,
+    decisao: {
+      ...original.decisao,
+      status: 'REJEITADA',
+      motivo: 'VINCULO_ENCERRADO',
+      revisao: 2,
+    },
+    historicoDecisoes: [original.decisao],
+  };
+  const {manager, request} = coordinator();
+  request.mockResolvedValue(final);
+  await Promise.all([manager.refreshDecisions(), manager.refreshDecisions()]);
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledWith('/eventos/' + input().id, {
+    expectedUserId: owner.userId,
+    expectedBaseUrl: owner.baseUrl,
+  });
+  expect(await store.get(owner, input().id)).toMatchObject({
+    receipt: original,
+    currentDecision: final,
+    businessState: 'REJECTED',
+  });
+  await manager.refreshDecisions();
+  expect(request).toHaveBeenCalledTimes(1);
+});

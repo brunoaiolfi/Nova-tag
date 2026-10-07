@@ -23,7 +23,11 @@ export function OfflineProvider({
   const auth = useSyncExternalStore(session.subscribe, session.getSnapshot);
   useEffect(() => {
     void manager.refresh();
-    if (auth.status === 'authenticated') void manager.synchronize(true);
+    if (auth.status === 'authenticated')
+      void manager
+        .synchronize(true)
+        .then(() => manager.refreshDecisions())
+        .catch(() => {});
   }, [auth, manager]);
   useEffect(() => {
     let disposed = false;
@@ -54,7 +58,10 @@ export function OfflineProvider({
     });
     const timer = setInterval(() => {
       if (!disposed && appState.currentState === 'active')
-        void manager.synchronize();
+        void manager
+          .synchronize()
+          .then(() => manager.refreshDecisions())
+          .catch(() => {});
     }, 15000);
     return () => {
       disposed = true;

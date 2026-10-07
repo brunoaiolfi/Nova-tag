@@ -27,6 +27,7 @@ import {sessionManager} from '../../../infra/auth/runtime';
 import {useOffline} from '../../../components/Offline/OfflineProvider';
 import {reasonLabel} from '../../traceability-labels';
 import {SdmEvidence} from '../../../components/Tracking/SdmEvidence';
+import {DecisionDetails} from '../../../components/Tracking/DecisionDetails';
 import {captureStatus} from '../../Envios';
 import type {CaptureOwner} from '../../../domain/offline/types';
 
@@ -166,6 +167,8 @@ export default function EtapasEvento() {
               stored
                 ? saved?.businessState === 'ACCEPTED'
                   ? 'success'
+                  : saved?.businessState === 'PENDING'
+                  ? 'warning'
                   : 'error'
                 : 'info'
             }>
@@ -197,6 +200,12 @@ export default function EtapasEvento() {
                 <Text>{reasonLabel(saved.currentDecision.decisao.motivo)}</Text>
               )}
               <SdmEvidence sdm={saved?.currentDecision?.decisao.sdm} />
+              {saved?.currentDecision && (
+                <DecisionDetails
+                  decision={saved.currentDecision.decisao}
+                  history={saved.currentDecision.historicoDecisoes}
+                />
+              )}
               {!!saved?.message && <Text>{saved.message}</Text>}
               <Text selectable>Identificador: {savedId}</Text>
             </VStack>
