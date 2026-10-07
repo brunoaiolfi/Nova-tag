@@ -66,3 +66,15 @@ na ordem de dependências apenas no aceite #9.
 #7 concluída em software. PRs continuam abertos, sem merge; #9 acompanha revisão,
 integração e reprodução final. #8 tem preparação preliminar de protocolo/análise;
 #12 ainda precisa da administração/aceite físico NTAG 424 DNA.
+
+## Publicação da preparação #9
+
+- [API #19](https://github.com/Joao-AugustoPF/nfc-trace-api/pull/19), sobre [#18](https://github.com/Joao-AugustoPF/nfc-trace-api/pull/18), implementação `6774450`.
+- [Nova-tag #7](https://github.com/brunoaiolfi/Nova-tag/pull/7), sobre [#6](https://github.com/brunoaiolfi/Nova-tag/pull/6), implementação `9474d35`.
+
+APK 0.3.0/3 recompilado após `9474d35`, sem mudanças rastreadas; revisão/configuração
+embutidas e hash das fontes conferidos contra o checkout. SHA-256 do APK:
+`cdf486e69dc56f6d7fe6a451a50b7e79153c8ac20034775640b835b46797425e`.
+Log e manifestos em `.tmp/delivery`, fora do Git. Emulador verificou instalação/login;
+não houve NFC físico. PRs continuam abertos, sem merge/EAS/Actions; #9 continua
+pendente de integração, reprodução independente e #12/#8.
