@@ -7,17 +7,13 @@ import {
 import {SqliteExperimentJournal} from '../src/infra/experimentation/sqlite-journal';
 import {ExperimentJournal} from '../src/appplication/experimentation/journal';
 import {OfflineCoordinator} from '../src/appplication/offline/coordinator';
-import type {
-  ExperimentPlan,
-  MonotonicClock,
-} from '../src/domain/experimentation/types';
-import type {
-  Api,
-  Observation,
-  Provisioning,
-  Decision,
-} from '../src/appplication/traceability/workflow';
-import type {CaptureContext} from '../src/domain/offline/types';
+import type {ExperimentPlan} from '../src/domain/experimentation/plan';
+import type {MonotonicClock} from '../src/appplication/experimentation/ports/monotonic-clock';
+import type {Api} from '../src/appplication/auth/ports/authenticated-api';
+import type {Observation} from '../src/domain/traceability/observation';
+import type {Provisioning} from '../src/domain/traceability/provisioning';
+import type {Decision} from '../src/domain/traceability/decision';
+import type {CaptureContext} from '../src/appplication/offline/capture-context.types';
 function connection(db: DatabaseSync): SqlConnection {
   let tail = Promise.resolve();
   const port: SqlConnection = {

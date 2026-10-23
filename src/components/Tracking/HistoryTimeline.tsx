@@ -1,12 +1,8 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {Icon, List, Text} from 'react-native-paper';
-import type {HistoryEntry} from '../../appplication/traceability/workflow';
-import {
-  eventLabel,
-  reasonLabel,
-  stateLabel,
-} from '../../views/traceability-labels';
+import type {HistoryEntry} from '../../appplication/traceability/contracts/history.types';
+import {eventLabel, reasonLabel, stateLabel} from './labels';
 import {trackingColors as colors} from './index';
 import {SdmEvidence} from './SdmEvidence';
 import {decisionStatus} from '../../domain/traceability/decision-status';

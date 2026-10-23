@@ -157,14 +157,16 @@ export function bytesBase64(bytes: readonly number[]): string {
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   let encoded = '';
   for (let offset = 0; offset < bytes.length; offset += 3) {
-    const a = bytes[offset],
-      b = bytes[offset + 1],
-      c = bytes[offset + 2];
+    const firstByte = bytes[offset],
+      secondByte = bytes[offset + 1],
+      thirdByte = bytes[offset + 2];
     encoded +=
-      alphabet[a >> 2] +
-      alphabet[((a & 3) << 4) | ((b ?? 0) >> 4)] +
-      (b === undefined ? '=' : alphabet[((b & 15) << 2) | ((c ?? 0) >> 6)]) +
-      (c === undefined ? '=' : alphabet[c & 63]);
+      alphabet[firstByte >> 2] +
+      alphabet[((firstByte & 3) << 4) | ((secondByte ?? 0) >> 4)] +
+      (secondByte === undefined
+        ? '='
+        : alphabet[((secondByte & 15) << 2) | ((thirdByte ?? 0) >> 6)]) +
+      (thirdByte === undefined ? '=' : alphabet[thirdByte & 63]);
   }
   return encoded;
 }

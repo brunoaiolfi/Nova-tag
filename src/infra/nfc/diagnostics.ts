@@ -1,9 +1,6 @@
 import {Platform} from 'react-native';
 import Constants from 'expo-constants';
-import {
-  inspectType4,
-  Type4Inspection,
-} from '../../appplication/nfc/inspect-type4';
+import {inspectType4} from '../../appplication/nfc/inspect-type4';
 import {
   decodeReference,
   nativeFailure,
@@ -11,30 +8,11 @@ import {
   withNativeSession,
 } from './reader';
 import {NfcFailure} from '../../domain/nfc/failure';
-import {hex} from '../../domain/nfc/type4';
 import {wireNdefRecords} from '../../domain/nfc/ndef';
 
-export interface PhysicalTagReport extends Type4Inspection {
-  reportVersion: 2;
-  capturedAt: string;
-  uid: string;
-  technologies: string[];
-  device: {
-    platform: string;
-    osVersion: string;
-    appVersion: string;
-    nativeBuild: string;
-    jsSource?: {
-      revision: string | null;
-      sourceSha256: string;
-      lockSha256: string;
-      trackedChanges: boolean | null;
-    };
-  };
-  reference?: string;
-  ndefDecodeIssue?: string;
-  uidMatchesProduction: boolean | null;
-}
+import type {PhysicalTagReport} from '../../appplication/nfc/physical-report';
+export {diagnosticJson} from '../../appplication/nfc/physical-report';
+export type {PhysicalTagReport} from '../../appplication/nfc/physical-report';
 
 /** Independent of the API and provisionments: no activation, configuration or secrets. */
 export function diagnosePhysicalTag(): Promise<PhysicalTagReport> {
@@ -94,21 +72,4 @@ export function diagnosePhysicalTag(): Promise<PhysicalTagReport> {
         : null,
     };
   });
-}
-
-export function diagnosticJson(report: PhysicalTagReport): string {
-  const {bytes, ...ndef} = report.ndef;
-  return JSON.stringify(
-    {
-      ...report,
-      ndef: {
-        ...ndef,
-        ...(bytes ? {messageHex: hex(bytes), messageLength: bytes.length} : {}),
-      },
-      notice:
-        'Diagnóstico de leitura. GET_VERSION e GetFileSettings são declarações do chip, sem prova de autenticidade ou proteção efetiva. A leitura pode avançar o contador de uma etiqueta com SDM. Nenhum vínculo foi ativado.',
-    },
-    null,
-    2,
-  );
 }

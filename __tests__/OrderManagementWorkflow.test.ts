@@ -1,9 +1,7 @@
-import {
-  Api,
-  Provisioning,
-  TraceabilityWorkflow,
-} from '../src/appplication/traceability/workflow';
-import {SessionError} from '../src/domain/auth/types';
+import {Api} from '../src/appplication/auth/ports/authenticated-api';
+import {Provisioning} from '../src/domain/traceability/provisioning';
+import {TraceabilityWorkflow} from '../src/appplication/traceability/workflow';
+import {SessionError} from '../src/appplication/auth/session-error';
 
 const request = jest.fn();
 const workflow = new TraceabilityWorkflow({request} as Api);

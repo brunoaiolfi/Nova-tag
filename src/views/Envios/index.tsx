@@ -1,45 +1,27 @@
+import {captureStatus} from '../../components/Tracking/capture-status';
 import React, {useState} from 'react';
+import {FlatList} from 'react-native';
 import {ActivityIndicator, Divider, List, Text} from 'react-native-paper';
 import Tela from '../../components/Base/Tela';
 import VStack from '../../components/Base/VStack';
 import {
   ActionButton as Button,
+  Details,
   PageHero,
   StatusPanel,
 } from '../../components/Tracking';
 import {useOffline} from '../../components/Offline/OfflineProvider';
 import {useSession} from '../../components/Auth/SessionProvider';
 import Leitor from '../../components/Nfc/Leitor';
-import type {QueuedCapture} from '../../domain/offline/types';
 import {
   descricaoEnumTipoEvento,
   EnumTipoEvento,
 } from '../../domain/enums/tipoEvento';
-import {reasonLabel} from '../traceability-labels';
+import {reasonLabel} from '../../components/Tracking/labels';
 import {SdmEvidence} from '../../components/Tracking/SdmEvidence';
-import {decisionStatus} from '../../domain/traceability/decision-status';
 import {DecisionDetails} from '../../components/Tracking/DecisionDetails';
 import {ExperimentPanel} from '../../components/Offline/ExperimentPanel';
 
-export function captureStatus(item: QueuedCapture) {
-  if (item.state === 'STORED')
-    return item.businessState === 'ACCEPTED'
-      ? 'Operação aceita'
-      : item.businessState === 'PENDING'
-      ? 'Salva no servidor · aguardando etapa anterior'
-      : item.currentDecision &&
-        decisionStatus(item.currentDecision.decisao) === 'TARDIA'
-      ? 'Leitura tardia preservada · sem movimentação'
-      : 'Operação rejeitada · pedido não alterado';
-  return {
-    QUEUED: 'Salva neste aparelho · aguardando envio',
-    SENDING: 'Enviando · registro preservado',
-    RETRY: 'Aguardando nova tentativa',
-    AUTH_REQUIRED: 'Entre novamente com o operador original',
-    CONFLICT: 'Conflito · registro original preservado',
-    FAILED: 'Envio não aceito · confira o motivo',
-  }[item.state];
-}
 export default function Envios() {
   const queue = useOffline();
   const {manager, state} = useSession();
@@ -77,10 +59,10 @@ export default function Envios() {
           setScanning(false);
           setBusy(true);
           try {
-            const p = await queue.manager.remember(reading);
+            const cachedProvisioning = await queue.manager.remember(reading);
             setMessage(
               'Etiqueta disponível offline por até 24 horas. Vínculo ativo · época ' +
-                p.epoca +
+                cachedProvisioning.epoca +
                 '.',
             );
           } catch (error) {
@@ -93,14 +75,12 @@ export default function Envios() {
     );
   return (
     <Tela
-      scroll
       header={
         <PageHero
           fullBleed
           title="Capturas e envios"
-          eyebrow="SEU APARELHO"
           icon="cloud-upload-outline"
-          description="Acompanhe o que foi salvo aqui e a decisão de cada operação."
+          description="Confira o envio e a decisão das etapas."
         />
       }
       footer={
@@ -116,114 +96,130 @@ export default function Envios() {
           onPress={() => {
             void synchronize();
           }}>
-          Sincronizar agora
+          Sincronizar
         </Button>
-      }>
-      <VStack gap={16}>
-        <ExperimentPanel />
-        <StatusPanel tone={state.status === 'offline' ? 'warning' : 'info'}>
-          <Text variant="titleMedium">
-            {state.status === 'offline'
-              ? 'Você está em modo offline'
-              : 'Fila deste operador'}
-          </Text>
-          <Text>
-            {pending.length}{' '}
-            {pending.length === 1
-              ? 'captura aguardando confirmação'
-              : 'capturas aguardando confirmação'}{' '}
-            do servidor.
-          </Text>
-          <Text>
-            Salvar no aparelho não autoriza a movimentação. Confira a decisão
-            após o envio.
-          </Text>
-          {!!logistics.length && (
-            <Text>
-              {logistics.length}{' '}
-              {logistics.length === 1
-                ? 'operação salva no servidor aguarda'
-                : 'operações salvas no servidor aguardam'}{' '}
-              uma etapa anterior. A decisão é atualizada automaticamente
-              enquanto o app está aberto e conectado.
-            </Text>
-          )}
-        </StatusPanel>
-        {!!queue.error && <Text accessibilityRole="alert">{queue.error}</Text>}
-        {!!message && <Text accessibilityRole="alert">{message}</Text>}
-        {queue.loading && (
-          <ActivityIndicator accessibilityLabel="Abrindo capturas salvas" />
-        )}
-        <Button
-          mode="outlined"
-          disabled={
-            busy ||
-            !!queue.error ||
-            state.status !== 'authenticated' ||
-            state.session?.user.perfil === 'CONSULTA'
-          }
-          onPress={() => {
-            setMessage('');
-            setScanning(true);
-          }}>
-          Disponibilizar etiqueta para offline
-        </Button>
-        <Text>
-          Faça isso com conexão antes da coleta. Somente vínculos ativos já
-          confirmados ficam disponíveis; a configuração de etiquetas continua
-          online.
-        </Text>
-        {!queue.items.length && !queue.loading && (
-          <Text>
-            Nenhuma captura salva para este operador nesta API. Capturas de
-            outras contas permanecem guardadas para o operador original.
-          </Text>
-        )}
-        {queue.items.map(item => (
-          <VStack key={item.id} gap={8}>
-            <Text variant="titleMedium">
-              {descricaoEnumTipoEvento[item.payload.tipo as EnumTipoEvento] ??
-                item.payload.tipo}{' '}
-              · {item.payload.leituraBruta.uid}
-            </Text>
-            <Text>
-              {new Date(item.payload.ocorridoEm).toLocaleString('pt-BR')}
-            </Text>
-            <Text accessibilityRole="alert">{captureStatus(item)}</Text>
-            {item.currentDecision && (
-              <Text>{reasonLabel(item.currentDecision.decisao.motivo)}</Text>
-            )}
-            <SdmEvidence sdm={item.currentDecision?.decisao.sdm} />
-            {item.currentDecision && (
-              <DecisionDetails
-                decision={item.currentDecision.decisao}
-                history={item.currentDecision.historicoDecisoes}
-              />
-            )}
-            {!!item.message && <Text>{item.message}</Text>}
-            <List.Accordion title="Comprovante e vínculo original">
-              <Text selectable>Identificador: {item.id}</Text>
-              <Text>Época: {item.metadata.provisioning.epoca}</Text>
-              <Text selectable>Vínculo: {item.payload.provisionamentoId}</Text>
-              <Text>
-                {item.metadata.cacheUsed
-                  ? 'Vínculo obtido da confirmação local anterior.'
-                  : 'Vínculo consultado na API durante a confirmação.'}
-              </Text>
-              <Text>Envios tentados: {item.attempts}</Text>
-              {item.receipt && (
+      }
+      renderContent={({header, contentStyle}) => (
+        <FlatList
+          data={queue.items}
+          keyExtractor={item => item.id}
+          contentContainerStyle={contentStyle}
+          ListHeaderComponent={
+            <VStack gap={16}>
+              {header}
+              <StatusPanel
+                tone={state.status === 'offline' ? 'warning' : 'info'}>
+                <Text variant="titleMedium">
+                  {state.status === 'offline'
+                    ? 'Você está em modo offline'
+                    : 'Fila deste operador'}
+                </Text>
                 <Text>
-                  Decisão no comprovante original:{' '}
-                  {reasonLabel(item.receipt.decisao.motivo)}. Reenvios mantêm
-                  este comprovante.
+                  {pending.length}{' '}
+                  {pending.length === 1
+                    ? 'captura aguardando confirmação'
+                    : 'capturas aguardando confirmação'}{' '}
+                  do servidor.
+                </Text>
+                <Text>A etapa só avança após a autorização do servidor.</Text>
+                {!!logistics.length && (
+                  <Text>
+                    {logistics.length}{' '}
+                    {logistics.length === 1
+                      ? 'operação salva no servidor aguarda'
+                      : 'operações salvas no servidor aguardam'}{' '}
+                    uma etapa anterior.
+                  </Text>
+                )}
+              </StatusPanel>
+              {!!queue.error && (
+                <Text accessibilityRole="alert">{queue.error}</Text>
+              )}
+              {!!message && <Text accessibilityRole="alert">{message}</Text>}
+              {queue.loading && (
+                <ActivityIndicator accessibilityLabel="Abrindo capturas salvas" />
+              )}
+              <Details title="Preparar uso offline">
+                <Text>
+                  Leia com conexão antes de sair. O vínculo fica disponível por
+                  até 24 horas.
+                </Text>
+                <Button
+                  disabled={
+                    busy ||
+                    !!queue.error ||
+                    state.status !== 'authenticated' ||
+                    state.session?.user.perfil === 'CONSULTA'
+                  }
+                  onPress={() => {
+                    setMessage('');
+                    setScanning(true);
+                  }}>
+                  Preparar etiqueta
+                </Button>
+              </Details>
+              {!queue.items.length && !queue.loading && (
+                <Text>
+                  Nenhuma captura salva para este operador nesta API. Capturas
+                  de outras contas permanecem guardadas para o operador
+                  original.
                 </Text>
               )}
-              {!!item.errorCode && <Text>Código: {item.errorCode}</Text>}
-            </List.Accordion>
-            <Divider />
-          </VStack>
-        ))}
-      </VStack>
-    </Tela>
+            </VStack>
+          }
+          renderItem={({item}) => (
+            <VStack key={item.id} gap={8}>
+              <Text variant="titleMedium">
+                {descricaoEnumTipoEvento[item.payload.tipo as EnumTipoEvento] ??
+                  item.payload.tipo}{' '}
+                · {item.payload.leituraBruta.uid}
+              </Text>
+              <Text>
+                {new Date(item.payload.ocorridoEm).toLocaleString('pt-BR')}
+              </Text>
+              <Text accessibilityRole="alert">{captureStatus(item)}</Text>
+              {item.currentDecision && item.businessState !== 'ACCEPTED' && (
+                <Text>{reasonLabel(item.currentDecision.decisao.motivo)}</Text>
+              )}
+              <SdmEvidence sdm={item.currentDecision?.decisao.sdm} />
+              {item.currentDecision && (
+                <DecisionDetails
+                  decision={item.currentDecision.decisao}
+                  history={item.currentDecision.historicoDecisoes}
+                />
+              )}
+              {!!item.message && <Text>{item.message}</Text>}
+              <List.Accordion title="Comprovante e vínculo original">
+                <Text selectable>Identificador: {item.id}</Text>
+                <Text>Época: {item.metadata.provisioning.epoca}</Text>
+                <Text selectable>
+                  Vínculo: {item.payload.provisionamentoId}
+                </Text>
+                <Text>
+                  {item.metadata.cacheUsed
+                    ? 'Vínculo obtido da confirmação local anterior.'
+                    : 'Vínculo consultado na API durante a confirmação.'}
+                </Text>
+                <Text>Envios tentados: {item.attempts}</Text>
+                {item.receipt && (
+                  <Text>
+                    Decisão no comprovante original:{' '}
+                    {reasonLabel(item.receipt.decisao.motivo)}. Reenvios mantêm
+                    este comprovante.
+                  </Text>
+                )}
+                {!!item.errorCode && <Text>Código: {item.errorCode}</Text>}
+              </List.Accordion>
+              <Divider />
+            </VStack>
+          )}
+          ListFooterComponent={
+            <VStack gap={16}>
+              <ExperimentPanel />
+            </VStack>
+          }
+        />
+      )}
+    />
   );
 }

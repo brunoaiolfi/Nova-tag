@@ -1,7 +1,16 @@
 import React, {useContext} from 'react';
-import {ScrollView, StatusBar, StyleSheet, View} from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  View,
+} from 'react-native';
+import type {StyleProp, ViewStyle} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {BottomTabBarHeightContext} from '@react-navigation/bottom-tabs';
+import {HeaderHeightContext} from '@react-navigation/elements';
 
 import {useAppTheme} from '../../../theme';
 
@@ -12,6 +21,12 @@ type TelaProps = {
   header?: React.ReactNode;
   /** Native stack headers already include the top safe area. */
   insetTop?: boolean;
+  keyboard?: boolean;
+  /** A virtualized list owns scrolling and receives the same screen padding/insets. */
+  renderContent?: (layout: {
+    header?: React.ReactNode;
+    contentStyle: StyleProp<ViewStyle>;
+  }) => React.ReactNode;
 };
 
 const Tela = ({
@@ -20,10 +35,13 @@ const Tela = ({
   footer,
   header,
   insetTop = true,
+  renderContent,
+  keyboard = false,
 }: TelaProps) => {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   // A visible tab bar already protects the home indicator area.
   const bottomInset = tabBarHeight > 0 ? 0 : insets.bottom;
   const contentStyle = [
@@ -51,25 +69,33 @@ const Tela = ({
           header ? theme.colors.primary : theme.colors.background
         }
       />
-      {scroll ? (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          {header}
-          {body}
-        </ScrollView>
-      ) : (
-        <View style={styles.scrollContent}>
-          {header}
-          {body}
-        </View>
-      )}
-      {footer && (
-        <View style={[styles.footer, {paddingBottom: 12 + bottomInset}]}>
-          {footer}
-        </View>
-      )}
+      <KeyboardAvoidingView
+        style={styles.scroll}
+        enabled={keyboard}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight}>
+        {renderContent ? (
+          renderContent({header, contentStyle})
+        ) : scroll ? (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled">
+            {header}
+            {body}
+          </ScrollView>
+        ) : (
+          <View style={styles.scrollContent}>
+            {header}
+            {body}
+          </View>
+        )}
+        {footer && (
+          <View style={[styles.footer, {paddingBottom: 12 + bottomInset}]}>
+            {footer}
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

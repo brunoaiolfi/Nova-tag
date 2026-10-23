@@ -1,9 +1,9 @@
 import {Platform, StyleSheet} from 'react-native';
 import React from 'react';
-import {Icon, List, Text} from 'react-native-paper';
+import {Icon, Text} from 'react-native-paper';
 import {View} from 'react-native';
-import {StatusPanel, trackingColors as colors} from '../Tracking';
-import type {Reading} from '../../appplication/traceability/workflow';
+import {Details, StatusPanel, trackingColors as colors} from '../Tracking';
+import type {Reading} from '../../domain/traceability/reading';
 
 const technologies: Record<string, string> = {
   iso7816: 'ISO 14443-4 · ISO-DEP',
@@ -32,27 +32,23 @@ export default function TagDetails({
           Etiqueta encontrada
         </Text>
       </View>
-      <Text variant="labelLarge">Número da etiqueta (UID)</Text>
+      <Text variant="labelLarge">Etiqueta · UID</Text>
       <Text selectable variant="titleLarge" style={layoutStyles.uid}>
         {reading.uid.match(/.{1,2}/g)?.join(':') ?? reading.uid}
       </Text>
-      {!!capturedAt && (
-        <Text variant="bodySmall">
-          Lida em {new Date(capturedAt).toLocaleString('pt-BR')}
+      <Details title="Dados da leitura">
+        {!!capturedAt && (
+          <Text variant="bodySmall">
+            Lida em {new Date(capturedAt).toLocaleString('pt-BR')}
+          </Text>
+        )}
+        <Text>
+          {reference
+            ? 'Referência do NFC Trace encontrada'
+            : reading.ndef
+            ? 'A etiqueta já contém dados'
+            : 'Nenhum texto ou link NDEF identificado'}
         </Text>
-      )}
-      <Text>
-        {reference
-          ? 'Referência do NFC Trace encontrada'
-          : reading.ndef
-          ? 'A etiqueta já contém dados'
-          : 'Nenhum texto ou link NDEF identificado'}
-      </Text>
-      <List.Accordion
-        title="Ver detalhes técnicos"
-        titleNumberOfLines={2}
-        style={layoutStyles.accordion}
-        titleStyle={layoutStyles.accordionTitle}>
         <View style={layoutStyles.details}>
           <Text variant="bodySmall">
             O formato da etiqueta e a tecnologia lida não identificam o modelo
@@ -71,7 +67,7 @@ export default function TagDetails({
               : 'Esta leitura não disponibilizou os bytes originais do NDEF. Nenhuma evidência binária foi reconstruída.'}
           </Text>
         </View>
-      </List.Accordion>
+      </Details>
     </StatusPanel>
   );
 }

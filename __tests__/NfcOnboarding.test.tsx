@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
@@ -5,14 +6,17 @@ import {PaperProvider} from 'react-native-paper';
 import Leitor from '../src/components/Nfc/Leitor';
 import TagDetails from '../src/components/Nfc/TagDetails';
 import {readPhysicalTag, cancelPhysicalRead} from '../src/infra/nfc/reader';
-import {experimentJournal} from '../src/infra/offline/runtime';
-import type {Attempt} from '../src/domain/experimentation/types';
+
+import type {Attempt} from '../src/domain/experimentation/attempt';
 
 jest.mock('../src/infra/nfc/reader', () => ({
   physicalNfcAvailable: true,
   readPhysicalTag: jest.fn(),
   cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
 }));
+const services = createTestServices({});
+const {experiment: experimentJournal} = services;
+
 let tree: TestRenderer.ReactTestRenderer;
 const read = jest.mocked(readPhysicalTag);
 const button = (label: string) =>
@@ -22,13 +26,16 @@ async function render(experimentType?: string) {
   const error = jest.fn();
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <Leitor
-          onLeituraRealizada={next}
-          onErroLeitura={error}
-          experimentType={experimentType}
-        />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <Leitor
+            onLeituraRealizada={next}
+            onErroLeitura={error}
+            experimentType={experimentType}
+          />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   return {next, error};
@@ -52,9 +59,9 @@ test('keeps the scanned tag visible until explicit continuation and retains scan
   expect(tree.root.findByType(TagDetails).props.reading).toEqual(reading);
   const capturedAt = tree.root.findByType(TagDetails).props.capturedAt;
   expect(Date.parse(capturedAt)).not.toBeNaN();
-  expect(JSON.stringify(tree.toJSON())).toContain('Leitura concluída');
+  expect(JSON.stringify(tree.toJSON())).toContain('Etiqueta lida');
   await act(async () => {
-    button('Continuar com esta etiqueta').props.onPress();
+    button('Continuar').props.onPress();
   });
   expect(next).toHaveBeenCalledWith(reading, capturedAt, null);
 });

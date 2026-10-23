@@ -24,7 +24,10 @@ export default function ModelSelect({
   disabled: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [custom, setCustom] = useState(false);
+  const [customDraft, setCustomDraft] = useState<string | null>(null);
+  const custom =
+    customDraft === value ||
+    !models.some(model => model.value === value && model.value !== 'OUTRO');
   return (
     <View style={layoutStyles.options}>
       <VStack gap={8}>
@@ -32,10 +35,11 @@ export default function ModelSelect({
         <Text>
           {models.find(model => model.value === value)?.label ?? value}
         </Text>
-        <Text variant="bodySmall">
-          Pode continuar com Desconhecido. Informe outro modelo apenas se
-          conhecer o chip.
-        </Text>
+        {expanded && (
+          <Text variant="bodySmall">
+            Informe o modelo somente se conhecer o chip.
+          </Text>
+        )}
         {!disabled && (
           <Button onPress={() => setExpanded(!expanded)}>
             {expanded ? 'Fechar opções' : 'Escolher modelo'}
@@ -55,7 +59,7 @@ export default function ModelSelect({
                     : 'unchecked'
                 }
                 onPress={() => {
-                  setCustom(model.value === 'OUTRO');
+                  setCustomDraft(model.value === 'OUTRO' ? '' : null);
                   onChange(model.value === 'OUTRO' ? '' : model.value);
                   if (model.value !== 'OUTRO') {
                     setExpanded(false);
@@ -67,7 +71,10 @@ export default function ModelSelect({
               <TextInput
                 label="Nome do modelo conhecido"
                 value={value}
-                onChangeText={onChange}
+                onChangeText={customModel => {
+                  setCustomDraft(customModel);
+                  onChange(customModel);
+                }}
                 maxLength={64}
               />
             )}

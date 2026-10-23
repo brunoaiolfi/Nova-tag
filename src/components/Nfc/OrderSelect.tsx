@@ -1,6 +1,9 @@
-import {StyleSheet} from 'react-native';
+import {useOrderSearch} from './use-order-search';
+import {FlatList, StyleSheet} from 'react-native';
+import Tela from '../Base/Tela';
+import {PageHero} from '../Tracking';
 import {ActionButton as Button} from '../Tracking';
-import React, {useEffect, useRef, useState} from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Icon,
@@ -8,11 +11,10 @@ import {
   Text,
   TouchableRipple,
 } from 'react-native-paper';
-import type {OrderSummary} from '../../appplication/traceability/workflow';
-import {traceability} from '../../infra/traceability/runtime';
+import type {OrderSummary} from '../../appplication/traceability/contracts/order.types';
 import VStack from '../Base/VStack';
 import {View} from 'react-native';
-import {stateLabel} from '../../views/traceability-labels';
+import {stateLabel} from '../Tracking/labels';
 import {trackingColors as colors} from '../Tracking';
 
 export function OrderOption({
@@ -28,8 +30,8 @@ export function OrderOption({
     <TouchableRipple
       onPress={onPress}
       disabled={disabled}
-      accessibilityRole="radio"
-      accessibilityState={{checked: false, disabled}}
+      accessibilityRole="button"
+      accessibilityState={{disabled}}
       accessibilityLabel={`${order.codigo}${
         order.descricao ? ` · ${order.descricao}` : ''
       } · ${stateLabel(order.estado)}`}
@@ -71,199 +73,134 @@ export default function OrderSelect({
   onSelect,
   purpose = 'provisioning',
   onCreate,
+  pickerHeader,
+  pickerFooter,
+  insetTop = true,
 }: {
   selected?: OrderSummary;
   disabled: boolean;
   onSelect: (order?: OrderSummary) => void;
   purpose?: 'provisioning' | 'history';
   onCreate?: () => void;
+  pickerHeader?: React.ReactNode;
+  pickerFooter?: React.ReactNode;
+  insetTop?: boolean;
 }) {
-  const [search, setSearch] = useState('');
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
-  const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  const generation = useRef(0);
-  const loading = useRef(false);
-
-  useEffect(() => {
-    const token = ++generation.current;
-    loading.current = true;
-    setBusy(true);
-    setOrders([]);
-    setPage(0);
-    setTotal(0);
-    setError('');
-    const timer = setTimeout(() => {
-      traceability
-        .listOrders(search)
-        .then(result => {
-          if (generation.current === token) {
-            setOrders(result.itens);
-            setTotal(result.total);
-            setPage(1);
-          }
-        })
-        .catch(reason => {
-          if (generation.current === token) {
-            setError(
-              reason instanceof Error
-                ? reason.message
-                : 'Não foi possível carregar os pedidos.',
-            );
-          }
-        })
-        .finally(() => {
-          if (generation.current === token) {
-            loading.current = false;
-            setBusy(false);
-          }
-        });
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-      generation.current = token + 1;
-    };
-  }, [search, retry]);
-
-  async function loadMore() {
-    if (loading.current) {
-      return;
-    }
-    const token = generation.current;
-    loading.current = true;
-    setBusy(true);
-    setError('');
-    try {
-      const result = await traceability.listOrders(search, page + 1);
-      if (generation.current === token) {
-        setOrders(current => [
-          ...current,
-          ...result.itens.filter(
-            item => !current.some(existing => existing.id === item.id),
-          ),
-        ]);
-        setTotal(result.total);
-        setPage(page + 1);
-      }
-    } catch (reason) {
-      if (generation.current === token) {
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : 'Não foi possível carregar mais pedidos.',
-        );
-      }
-    } finally {
-      if (generation.current === token) {
-        loading.current = false;
-        setBusy(false);
-      }
-    }
-  }
-
+  const {search, setSearch, orders, page, total, busy, error, retry, loadMore} =
+    useOrderSearch(!selected);
+  if (selected)
+    return (
+      <View>
+        <VStack gap={12}>
+          <Text variant="titleMedium">Pedido</Text>
+          <Text variant="titleLarge" style={layoutStyles.orderCode}>
+            {selected.codigo}
+          </Text>
+          {!!selected.descricao && <Text>{selected.descricao}</Text>}
+          {!disabled && (
+            <Button onPress={() => onSelect(undefined)}>Trocar pedido</Button>
+          )}
+        </VStack>
+      </View>
+    );
   return (
-    <View>
-      <VStack gap={12}>
-        <Text variant="titleMedium">
-          {purpose === 'history'
-            ? 'Ou busque pelo pedido'
-            : '1. Escolha o pedido'}
-        </Text>
-        {selected ? (
-          <>
-            <Text variant="titleLarge" style={layoutStyles.orderCode}>
-              {selected.codigo}
-            </Text>
-            {!!selected.descricao && <Text>{selected.descricao}</Text>}
-            <Text>
-              {purpose === 'history'
-                ? 'O histórico inclui todos os vínculos deste pedido.'
-                : 'Esta etiqueta representará um volume deste pedido.'}
-            </Text>
-            {!disabled && (
-              <Button onPress={() => onSelect(undefined)}>Trocar pedido</Button>
-            )}
-          </>
-        ) : (
-          <>
-            <Text>
-              {purpose === 'history'
-                ? 'Toque em um pedido para abrir seu caminho.'
-                : 'Escolha um pedido que ainda não iniciou o trajeto.'}
-            </Text>
-            <Searchbar
-              placeholder="Buscar pedido por código ou descrição"
-              value={search}
-              onChangeText={setSearch}
-              editable={!disabled}
-              style={layoutStyles.search}
-            />
-            {purpose === 'provisioning' && onCreate && (
-              <Button
-                mode="outlined"
-                icon="plus"
-                disabled={disabled}
-                onPress={onCreate}>
-                Novo pedido
-              </Button>
-            )}
-            {!busy && total > 0 && (
-              <Text variant="bodySmall" style={layoutStyles.description}>
-                {total} pedido(s) encontrado(s)
+    <Tela
+      keyboard
+      insetTop={insetTop}
+      footer={pickerFooter}
+      header={
+        <PageHero
+          fullBleed
+          title={purpose === 'history' ? 'Rastrear pedido' : 'Escolher pedido'}
+          description={
+            purpose === 'history'
+              ? 'Leia a etiqueta ou busque pelo código.'
+              : 'Selecione o pedido deste volume.'
+          }
+          icon="package-variant-closed"
+        />
+      }
+      renderContent={({header, contentStyle}) => (
+        <FlatList
+          data={orders}
+          keyExtractor={order => order.id}
+          contentContainerStyle={contentStyle}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          ListHeaderComponent={
+            <VStack gap={12}>
+              {header}
+              {pickerHeader}
+              <Text variant="titleMedium">
+                {purpose === 'history' ? 'Ou busque pelo pedido' : 'Pedido'}
               </Text>
-            )}
-            {orders.map(order => (
-              <OrderOption
-                key={order.id}
-                order={order}
-                disabled={
-                  disabled ||
-                  (purpose === 'provisioning' && order.estado !== 'CADASTRADO')
-                }
-                onPress={() => onSelect(order)}
+              <Searchbar
+                placeholder="Buscar pedido"
+                value={search}
+                onChangeText={setSearch}
+                editable={!disabled}
+                style={layoutStyles.search}
               />
-            ))}
-            {busy && (
-              <ActivityIndicator accessibilityLabel="Carregando pedidos" />
-            )}
-            {!busy && !error && orders.length === 0 && (
-              <Text>
-                Nenhum pedido encontrado. Ajuste a busca
-                {onCreate ? ' ou toque em Novo pedido.' : '.'}
-              </Text>
-            )}
-            {!!error && (
-              <>
-                <Text accessibilityRole="alert">{error}</Text>
+              {purpose === 'provisioning' && onCreate && (
+                <Button icon="plus" disabled={disabled} onPress={onCreate}>
+                  Novo pedido
+                </Button>
+              )}
+              {!busy && total > 0 && (
+                <Text variant="bodySmall" style={layoutStyles.description}>
+                  {total} pedido(s) encontrado(s)
+                </Text>
+              )}
+            </VStack>
+          }
+          renderItem={({item: order}) => (
+            <OrderOption
+              order={order}
+              disabled={
+                disabled ||
+                (purpose === 'provisioning' && order.estado !== 'CADASTRADO')
+              }
+              onPress={() => onSelect(order)}
+            />
+          )}
+          ListFooterComponent={
+            <VStack gap={12}>
+              {busy && (
+                <ActivityIndicator accessibilityLabel="Carregando pedidos" />
+              )}
+              {!busy && !error && orders.length === 0 && (
+                <Text>
+                  Nenhum pedido encontrado. Ajuste a busca
+                  {onCreate ? ' ou toque em Novo pedido.' : '.'}
+                </Text>
+              )}
+              {!!error && (
+                <>
+                  <Text accessibilityRole="alert">{error}</Text>
+                  <Button
+                    disabled={busy}
+                    onPress={() => {
+                      if (page === 0) retry();
+                      else void loadMore();
+                    }}>
+                    Tentar novamente
+                  </Button>
+                </>
+              )}
+              {page > 0 && page * 10 < total && !error && (
                 <Button
                   disabled={busy}
                   onPress={() => {
-                    if (page === 0) {
-                      setRetry(value => value + 1);
-                    } else {
-                      void loadMore();
-                    }
+                    void loadMore();
                   }}>
-                  Tentar novamente
+                  Carregar mais pedidos
                 </Button>
-              </>
-            )}
-            {page > 0 && page * 10 < total && !error && (
-              <Button
-                disabled={busy}
-                onPress={() => {
-                  void loadMore();
-                }}>
-                Carregar mais pedidos
-              </Button>
-            )}
-          </>
-        )}
-      </VStack>
-    </View>
+              )}
+            </VStack>
+          }
+        />
+      )}
+    />
   );
 }
 

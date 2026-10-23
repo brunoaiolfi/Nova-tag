@@ -1,16 +1,20 @@
+import {createTestServices, withServices} from '../test-support/app-services';
+import {Confirmation} from '../src/components/Nfc/SetupControls';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Checkbox, PaperProvider, Text} from 'react-native-paper';
+import {PaperProvider, Text} from 'react-native-paper';
 import Gerenciar from '../src/views/Provisionar/Gerenciar';
 import {ActionButton} from '../src/components/Tracking';
 import Leitor from '../src/components/Nfc/Leitor';
-import {traceability} from '../src/infra/traceability/runtime';
-import type {Provisioning} from '../src/appplication/traceability/workflow';
+
+import type {Provisioning} from '../src/domain/traceability/provisioning';
 
 let mockParams: {provisioningId?: string} | undefined;
 let mockRole = 'ADMINISTRADOR';
 const mockNavigation = {push: jest.fn()};
 jest.mock('@react-navigation/native', () => ({
+  NavigationContext: jest.requireActual('@react-navigation/native')
+    .NavigationContext,
   useRoute: () => ({params: mockParams}),
   useNavigation: () => mockNavigation,
   useFocusEffect: (callback: () => void | (() => void)) =>
@@ -24,18 +28,21 @@ jest.mock('../src/components/Auth/SessionProvider', () => ({
     },
   }),
 }));
-jest.mock('../src/infra/traceability/runtime', () => ({
+
+jest.mock('../src/infra/nfc/reader', () => ({
+  physicalNfcAvailable: true,
+  cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
+}));
+const services = createTestServices({
   traceability: {
     provisioning: jest.fn(),
     tag: jest.fn(),
     order: jest.fn(),
     closeProvisioning: jest.fn(),
   },
-}));
-jest.mock('../src/infra/nfc/reader', () => ({
-  physicalNfcAvailable: true,
-  cancelPhysicalRead: jest.fn(),
-}));
+});
+const {traceability} = services;
+
 const order = {
   id: 'order',
   codigo: 'TCC-001',
@@ -68,9 +75,12 @@ const text = () =>
 async function mount() {
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <Gerenciar />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <Gerenciar />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
 }
@@ -79,7 +89,7 @@ async function confirm() {
     button('Encerrar vínculo').props.onPress();
   });
   await act(async () => {
-    tree.root.findByType(Checkbox.Item).props.onPress();
+    tree.root.findByType(Confirmation).props.onPress();
   });
 }
 beforeEach(() => {
@@ -109,7 +119,7 @@ test('closure requires confirmation, submits once and reuse rereads the same UID
   });
   expect(traceability.closeProvisioning).not.toHaveBeenCalled();
   await act(async () => {
-    tree.root.findByType(Checkbox.Item).props.onPress();
+    tree.root.findByType(Confirmation).props.onPress();
   });
   const submit = button('Confirmar encerramento').props.onPress;
   await act(async () => {
@@ -122,7 +132,7 @@ test('closure requires confirmation, submits once and reuse rereads the same UID
   expect(text()).toContain('Coletado');
   expect(button('Encerrar vínculo')).toBeUndefined();
   await act(async () => {
-    button('Vincular a outro pedido').props.onPress();
+    button('Novo vínculo').props.onPress();
   });
   expect(mockNavigation.push).toHaveBeenCalledWith('EtapasProvisionamento', {
     estrategia: 2,
@@ -142,8 +152,9 @@ test('failed closure remains active and retries the same provisioning', async ()
     button('Confirmar encerramento').props.onPress();
   });
   expect(text()).toContain('Encerramento não confirmado');
-  expect(text()).toContain('Vínculo ativo');
-  expect(button('Vincular a outro pedido')).toBeUndefined();
+  expect(button('Confirmar encerramento')).toBeDefined();
+  expect(traceability.closeProvisioning).toHaveBeenCalledWith(link, 'admin');
+  expect(button('Novo vínculo')).toBeUndefined();
   await act(async () => {
     button('Confirmar encerramento').props.onPress();
   });
@@ -159,7 +170,7 @@ test('a copied NDEF does not select another tag for an administrative closure', 
   jest.mocked(traceability.tag).mockResolvedValue(null);
   await mount();
   await act(async () => {
-    button('Ler etiqueta para gerenciar').props.onPress();
+    button('Ler etiqueta').props.onPress();
   });
   await act(async () => {
     tree.root.findByType(Leitor).props.onLeituraRealizada({
@@ -170,6 +181,35 @@ test('a copied NDEF does not select another tag for an administrative closure', 
   expect(traceability.tag).toHaveBeenCalledWith('04FFFFFFFFFFFF');
   expect(traceability.provisioning).not.toHaveBeenCalled();
   expect(text()).toContain('Esta etiqueta ainda não possui vínculo');
+  expect(traceability.closeProvisioning).not.toHaveBeenCalled();
+});
+
+test('a pending NTAG prioritizes resuming configuration over closing the link', async () => {
+  jest.mocked(traceability.provisioning).mockResolvedValueOnce({
+    ...link,
+    modelo: 'NTAG424DNA',
+    status: 'REGISTRADA',
+  });
+  await mount();
+  expect(button('Retomar configuração').props.mode).toBe('contained');
+  expect(button('Encerrar vínculo').props.mode).not.toBe('contained');
+  await act(async () => button('Retomar configuração').props.onPress());
+  expect(mockNavigation.push).toHaveBeenCalledWith('Administracao', {
+    provisioningId: link.id,
+  });
+  expect(traceability.closeProvisioning).not.toHaveBeenCalled();
+});
+
+test('a closed SDM link opens fresh administration without reusing the closed plan', async () => {
+  jest.mocked(traceability.provisioning).mockResolvedValueOnce({
+    ...link,
+    estrategia: 'SDM',
+    status: 'DESPROVISIONADA',
+    modelo: 'NTAG424DNA',
+  });
+  await mount();
+  await act(async () => button('Novo vínculo').props.onPress());
+  expect(mockNavigation.push).toHaveBeenCalledWith('Administracao');
   expect(traceability.closeProvisioning).not.toHaveBeenCalled();
 });
 
@@ -202,9 +242,12 @@ test('a late lookup cannot replace a newer selected provisioning', async () => {
   mockParams = {provisioningId: next.id};
   await act(async () => {
     tree.update(
-      <PaperProvider>
-        <Gerenciar />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <Gerenciar />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   expect(text()).toContain('Época 2');

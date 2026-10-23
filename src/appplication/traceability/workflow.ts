@@ -1,52 +1,20 @@
+import type {Api} from '../auth/ports/authenticated-api';
 import type {
-  Strategy,
-  Reading,
-  Provisioning,
-  Observation,
-  Decision,
-} from '../../domain/traceability/types';
+  OrderSummary,
+  OrderPage,
+  OrderDetails,
+  OrderInput,
+} from './contracts/order.types';
+import type {HistoryEntry, HistoryPage} from './contracts/history.types';
+import {normalizeOrderInput} from './order-input-policy';
+import type {Strategy, Reading} from '../../domain/traceability/reading';
+import type {Provisioning} from '../../domain/traceability/provisioning';
+import type {Observation} from '../../domain/traceability/observation';
+import type {Decision} from '../../domain/traceability/decision';
 import {
   assertSdmReading,
   sdmProvisioningId,
 } from '../../domain/traceability/sdm-reading';
-export type {
-  Strategy,
-  Reading,
-  Provisioning,
-  Observation,
-  Decision,
-} from '../../domain/traceability/types';
-export interface OrderSummary {
-  id: string;
-  codigo: string;
-  descricao: string | null;
-  estado: string;
-}
-export interface OrderPage {
-  itens: OrderSummary[];
-  total: number;
-}
-export interface OrderDetails extends OrderSummary {
-  expedido: boolean;
-  provisionamentoVigente?: Provisioning | null;
-}
-export interface OrderInput {
-  codigo: string;
-  descricao?: string;
-}
-export function normalizeOrderInput(input: OrderInput): OrderInput {
-  const codigo = input.codigo.trim().toUpperCase();
-  if (!/^[A-Z0-9][A-Z0-9._-]{0,63}$/.test(codigo)) {
-    throw new Error(
-      'Use até 64 letras sem acentos, números, pontos, traços ou sublinhados no código. Comece com uma letra ou número.',
-    );
-  }
-  const descricao = input.descricao?.trim();
-  if (descricao && descricao.length > 500) {
-    throw new Error('A descrição pode ter até 500 caracteres.');
-  }
-  return {codigo, ...(descricao ? {descricao} : {})};
-}
 
 function uncertainResponse(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -57,41 +25,6 @@ function uncertainResponse(error: unknown): boolean {
     ['API_INDISPONIVEL', 'RESPOSTA_INVALIDA'].includes(failure.code ?? '') ||
     (failure.status !== undefined && failure.status >= 500)
   );
-}
-export interface HistoryEntry {
-  historicoDecisoes?: Decision['decisao'][];
-  id: string;
-  tipo: string;
-  ocorridoEm: string;
-  recebidoEm: string;
-  provisionamentoId: string;
-  origem: 'CAPTURA' | 'SISTEMA';
-  autoria: {
-    tipo: 'AUTENTICADA' | 'DECLARADA';
-    usuarioId: string | null;
-    perfil: string | null;
-  } | null;
-  decisao: Decision['decisao'] & {
-    alterouEstado: boolean;
-    estadoAnterior: string | null;
-    estadoResultante: string | null;
-  };
-}
-export interface HistoryPage {
-  itens: HistoryEntry[];
-  proximaPagina: number | null;
-  totalDoPedido: number;
-}
-export interface Api {
-  request<T>(
-    path: string,
-    options?: {
-      method?: string;
-      body?: unknown;
-      expectedUserId?: string;
-      expectedBaseUrl?: string;
-    },
-  ): Promise<T>;
 }
 const referencePattern =
   /^urn:nfc-trace:provisioning:([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;

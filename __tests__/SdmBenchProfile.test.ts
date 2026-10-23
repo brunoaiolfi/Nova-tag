@@ -1,7 +1,5 @@
-import {
-  ndefFileSettings,
-  writeAccessSummary,
-} from '../src/domain/nfc/file-settings';
+import {ndefFileSettings} from '../src/domain/nfc/file-settings';
+import {writeAccessSummary} from '../src/components/Nfc/file-access-labels';
 import {
   createSdmBenchPlan,
   compareSdmLayout,

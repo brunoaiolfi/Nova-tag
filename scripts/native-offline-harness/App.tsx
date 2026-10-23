@@ -9,12 +9,13 @@ import {TraceabilityWorkflow} from '../../src/appplication/traceability/workflow
 import {OfflineCoordinator} from '../../src/appplication/offline/coordinator';
 import {SqliteCaptureStore} from '../../src/infra/offline/sqlite-store';
 import {openCaptureDatabase} from '../../src/infra/offline/database';
+import {connectivity} from '../../src/infra/network/connectivity';
 import {
   OfflineProvider,
   useOffline,
 } from '../../src/components/Offline/OfflineProvider';
-import type {CaptureContext} from '../../src/domain/offline/types';
-import type {Reading} from '../../src/domain/traceability/types';
+import type {CaptureContext} from '../../src/appplication/offline/capture-context.types';
+import type {Reading} from '../../src/domain/traceability/reading';
 
 type Fixture = {
   baseUrl: string;
@@ -193,7 +194,10 @@ function Content() {
 }
 export default function Harness() {
   return (
-    <OfflineProvider manager={queue} session={session}>
+    <OfflineProvider
+      manager={queue}
+      session={session}
+      connectivity={connectivity}>
       <Content />
     </OfflineProvider>
   );

@@ -1,12 +1,10 @@
-import {
-  isSession,
-  normalizeApiUrl,
-  Session,
-  SessionError,
-  SessionStorage,
-  Transport,
-  User,
-} from '../../domain/auth/types';
+import {isSession} from './session-decoder';
+import {normalizeApiUrl} from './api-url-policy';
+import {Session} from '../../domain/auth/session';
+import {SessionError} from './session-error';
+import {SessionStorage} from './ports/session-storage';
+import {Transport} from './ports/transport';
+import {User} from '../../domain/auth/user';
 
 export type AuthSnapshot =
   | {

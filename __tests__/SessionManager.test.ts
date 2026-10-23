@@ -1,10 +1,8 @@
 import {SessionManager} from '../src/appplication/auth/session-manager';
-import {
-  Session,
-  SessionError,
-  SessionStorage,
-  Transport,
-} from '../src/domain/auth/types';
+import {Session} from '../src/domain/auth/session';
+import {SessionError} from '../src/appplication/auth/session-error';
+import {SessionStorage} from '../src/appplication/auth/ports/session-storage';
+import {Transport} from '../src/appplication/auth/ports/transport';
 import {HttpTransport} from '../src/infra/auth/http-transport';
 
 const baseUrl = 'http://127.0.0.1:3000/api/v1';

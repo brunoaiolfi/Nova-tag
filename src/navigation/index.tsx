@@ -18,7 +18,7 @@ import EventosNavigator from './EventosNavigator';
 import {useSession} from '../components/Auth/SessionProvider';
 import Historico from '../views/Historico';
 import Envios from '../views/Envios';
-import type {Reading} from '../appplication/traceability/workflow';
+import type {Reading} from '../domain/traceability/reading';
 
 export type RotasTab = {
   Provisionar: NavigatorScreenParams<RotasProvisionar> | undefined;

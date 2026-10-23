@@ -1,4 +1,4 @@
-import {AdministrationError} from '../../domain/administration/types';
+import {AdministrationError} from '../../domain/administration/error';
 import type {SqlConnection} from '../offline/sqlite-store';
 export async function openAdministrationDatabase(): Promise<SqlConnection> {
   throw new AdministrationError(

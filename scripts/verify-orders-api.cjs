@@ -55,7 +55,9 @@ async function main() {
   const {
     HttpTransport,
   } = require('../.tmp/orders-contract/infra/auth/http-transport');
-  const {SessionError} = require('../.tmp/orders-contract/domain/auth/types');
+  const {
+    SessionError,
+  } = require('../.tmp/orders-contract/appplication/auth/session-error');
   const managers = [];
   async function session(role) {
     const user = fixture.users.find(item => item.role === role);

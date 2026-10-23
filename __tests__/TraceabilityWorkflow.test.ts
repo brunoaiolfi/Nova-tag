@@ -1,8 +1,6 @@
-import {
-  Api,
-  Provisioning,
-  TraceabilityWorkflow,
-} from '../src/appplication/traceability/workflow';
+import {Api} from '../src/appplication/auth/ports/authenticated-api';
+import {Provisioning} from '../src/domain/traceability/provisioning';
+import {TraceabilityWorkflow} from '../src/appplication/traceability/workflow';
 import {
   createSdmBenchPlan,
   SDM_BENCH_PROFILE,

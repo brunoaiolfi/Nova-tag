@@ -7,13 +7,12 @@ import React, {
 } from 'react';
 import {AppState} from 'react-native';
 import {SessionManager} from '../../appplication/auth/session-manager';
-import {sessionManager} from '../../infra/auth/runtime';
 
-const Context = createContext<SessionManager>(sessionManager);
+const Context = createContext<SessionManager | null>(null);
 export function SessionProvider({
   children,
-  manager = sessionManager,
-}: PropsWithChildren<{manager?: SessionManager}>) {
+  manager,
+}: PropsWithChildren<{manager: SessionManager}>) {
   const state = useSyncExternalStore(manager.subscribe, manager.getSnapshot);
   useEffect(() => {
     void manager.restore();
@@ -47,6 +46,8 @@ export function SessionProvider({
 }
 export function useSession() {
   const manager = useContext(Context);
+  if (!manager)
+    throw new Error('SessionProvider é necessário para este fluxo.');
   return {
     manager,
     state: useSyncExternalStore(manager.subscribe, manager.getSnapshot),

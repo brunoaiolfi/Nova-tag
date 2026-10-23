@@ -1,6 +1,6 @@
 import Constants, {ExecutionEnvironment} from 'expo-constants';
 import {Platform} from 'react-native';
-import type {Reading} from '../../appplication/traceability/workflow';
+import type {Reading} from '../../domain/traceability/reading';
 import {ExclusiveNfcSession} from '../../appplication/nfc/exclusive-session';
 import type {SessionScope} from '../../appplication/nfc/exclusive-session';
 import {NfcFailure} from '../../domain/nfc/failure';
@@ -131,6 +131,48 @@ export function nativeFailure(
     return new NfcFailure(
       'NFC_UNSUPPORTED_TAG',
       'Esta etiqueta ou aparelho não suporta a operação solicitada.',
+    );
+  }
+  if (errors && error instanceof errors.SecurityViolation) {
+    return new NfcFailure(
+      'NFC_SECURITY_VIOLATION',
+      'O iPhone bloqueou o comando NFC por uma restrição de segurança (Core NFC 2). É necessário conferir a configuração nativa do app; aproximar a tag novamente não resolve essa restrição.',
+    );
+  }
+  if (errors && error instanceof errors.TagResponseError) {
+    return new NfcFailure(
+      'NFC_TAG_RESPONSE_ERROR',
+      'O iPhone não conseguiu concluir a troca de comando com a etiqueta (Core NFC 102). Isso não confirma senha incorreta. Preserve o plano e informe esse código para conferir o protocolo.',
+    );
+  }
+  if (
+    errors &&
+    (error instanceof errors.InvalidParameter ||
+      error instanceof errors.InvalidParameterLength ||
+      error instanceof errors.ParameterOutOfBound ||
+      error instanceof errors.PacketTooLong)
+  ) {
+    return new NfcFailure(
+      'NFC_INVALID_COMMAND',
+      'O leitor recusou o formato ou tamanho do comando NFC. Preserve o plano; é necessário conferir o comando antes de repetir a configuração.',
+    );
+  }
+  if (errors && error instanceof errors.SessionInvalidated) {
+    return new NfcFailure(
+      'NFC_SESSION_INVALIDATED',
+      'A sessão NFC do iPhone foi encerrada (Core NFC 103). Afaste a etiqueta e atualize o plano antes de recuperar a operação.',
+    );
+  }
+  if (errors && error instanceof errors.SystemBusy) {
+    return new NfcFailure(
+      'NFC_SYSTEM_BUSY',
+      'O leitor NFC do iPhone está ocupado (Core NFC 203). Aguarde a sessão anterior encerrar antes de iniciar outra leitura.',
+    );
+  }
+  if (errors && error instanceof errors.RetryExceeded) {
+    return new NfcFailure(
+      'NFC_RETRY_EXCEEDED',
+      'O iPhone encerrou a comunicação após falhas de transmissão (Core NFC 101). Preserve o plano e confira a posição da tag antes de recuperar.',
     );
   }
   return new NfcFailure(

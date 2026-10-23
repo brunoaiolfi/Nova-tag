@@ -1,8 +1,6 @@
-import {
-  Api,
-  HistoryEntry,
-  TraceabilityWorkflow,
-} from '../src/appplication/traceability/workflow';
+import {Api} from '../src/appplication/auth/ports/authenticated-api';
+import {HistoryEntry} from '../src/appplication/traceability/contracts/history.types';
+import {TraceabilityWorkflow} from '../src/appplication/traceability/workflow';
 
 const entry = (id: string, link: string): HistoryEntry => ({
   id,

@@ -1,6 +1,7 @@
 import {bytesBase64} from '../nfc/ndef';
 import {createSdmBenchPlan, SDM_BENCH_PROFILE} from '../nfc/sdm-profile';
-import type {Provisioning, Reading} from './types';
+import type {Provisioning} from './provisioning';
+import type {Reading} from './reading';
 
 export function sdmProvisioningId(uri: string): string {
   const match =
@@ -14,8 +15,11 @@ export function sdmProvisioningId(uri: string): string {
   return match[1];
 }
 /** Structural check only. Authentication, counter consumption and logistics belong to the API. */
-export function assertSdmReading(p: Provisioning, reading: Reading): void {
-  if (p.estrategia !== 'SDM') {
+export function assertSdmReading(
+  provisioning: Provisioning,
+  reading: Reading,
+): void {
+  if (provisioning.estrategia !== 'SDM') {
     if (reading.ndef?.startsWith('urn:nfc-trace:sdm:'))
       throw new Error(
         'A referência SDM não corresponde à estratégia deste vínculo.',
@@ -24,19 +28,19 @@ export function assertSdmReading(p: Provisioning, reading: Reading): void {
   }
   if (
     !reading.ndef ||
-    sdmProvisioningId(reading.ndef) !== p.id ||
-    !p.sdm ||
-    p.sdm.perfil !== SDM_BENCH_PROFILE ||
-    !p.epoca ||
-    p.epoca < 1
+    sdmProvisioningId(reading.ndef) !== provisioning.id ||
+    !provisioning.sdm ||
+    provisioning.sdm.perfil !== SDM_BENCH_PROFILE ||
+    !provisioning.epoca ||
+    provisioning.epoca < 1
   )
     throw new Error(
       'Perfil ou época SDM incompatível. Consulte o vínculo atualizado.',
     );
-  const plan = createSdmBenchPlan(p.id);
+  const plan = createSdmBenchPlan(provisioning.id);
   const bytes = [
     ...plan.messageBytes.slice(0, 5),
-    ...Array.from(reading.ndef, c => c.charCodeAt(0)),
+    ...Array.from(reading.ndef, character => character.charCodeAt(0)),
   ];
   if (reading.bytesBase64 !== bytesBase64(bytes))
     throw new Error(

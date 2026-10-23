@@ -9,6 +9,12 @@ export type NfcFailureCode =
   | 'NFC_INVALID_RESPONSE'
   | 'NFC_ACCESS_DENIED'
   | 'NFC_UNSUPPORTED_TAG'
+  | 'NFC_SECURITY_VIOLATION'
+  | 'NFC_TAG_RESPONSE_ERROR'
+  | 'NFC_INVALID_COMMAND'
+  | 'NFC_SESSION_INVALIDATED'
+  | 'NFC_SYSTEM_BUSY'
+  | 'NFC_RETRY_EXCEEDED'
   | 'NFC_FAILURE';
 
 export class NfcFailure extends Error {

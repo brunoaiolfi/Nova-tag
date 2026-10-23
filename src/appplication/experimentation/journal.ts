@@ -1,21 +1,25 @@
-import type {Api} from '../traceability/workflow';
-import type {Observation, Decision} from '../../domain/traceability/types';
-import type {
-  CaptureContext,
-  CaptureOwner,
-  QueuedCapture,
-} from '../../domain/offline/types';
-import {OfflineError} from '../../domain/offline/types';
+import type {Api} from '../auth/ports/authenticated-api';
+import type {Observation} from '../../domain/traceability/observation';
+import type {Decision} from '../../domain/traceability/decision';
+import type {CaptureContext} from '../offline/capture-context.types';
+import type {CaptureOwner} from '../../domain/offline/owner';
+import type {QueuedCapture} from '../../domain/offline/capture';
+import {OfflineError} from '../offline/offline-error';
 import type {
   Attempt,
-  ExperimentPlan,
-  ExperimentRecord,
-  ExperimentStorage,
-  MonotonicClock,
   ExperimentalCapture,
-} from '../../domain/experimentation/types';
-const same = (a: CaptureOwner, b: CaptureOwner | null) =>
-  !!b && a.userId === b.userId && a.baseUrl === b.baseUrl;
+} from '../../domain/experimentation/attempt';
+import type {ExperimentPlan} from '../../domain/experimentation/plan';
+import type {ExperimentRecord} from '../../domain/experimentation/record';
+import type {ExperimentStorage} from './ports/experiment-storage';
+import type {MonotonicClock} from './ports/monotonic-clock';
+const sameCaptureOwner = (
+  expectedOwner: CaptureOwner,
+  actualOwner: CaptureOwner | null,
+) =>
+  !!actualOwner &&
+  expectedOwner.userId === actualOwner.userId &&
+  expectedOwner.baseUrl === actualOwner.baseUrl;
 export class ExperimentJournal {
   private flushWork?: Promise<void>;
   constructor(
@@ -28,13 +32,13 @@ export class ExperimentJournal {
     private readonly wall: () => number = Date.now,
   ) {}
   private owner() {
-    const o = this.context();
-    if (!o?.canCapture)
+    const captureContext = this.context();
+    if (!captureContext?.canCapture)
       throw new OfflineError(
         'IDENTIDADE_NECESSARIA',
         'Entre com um operador para executar o ensaio.',
       );
-    return {...o};
+    return {...captureContext};
   }
   private record(
     attempt: Attempt,
@@ -60,11 +64,12 @@ export class ExperimentJournal {
     };
   }
   async state() {
-    const o = this.context();
-    if (!o) return {plan: null, hold: false, pending: 0, sent: 0, failed: 0};
-    await this.recover(o);
-    const choice = await this.storage.selection(o);
-    return {...choice, ...(await this.storage.counts(o))};
+    const captureContext = this.context();
+    if (!captureContext)
+      return {plan: null, hold: false, pending: 0, sent: 0, failed: 0};
+    await this.recover(captureContext);
+    const selectionState = await this.storage.selection(captureContext);
+    return {...selectionState, ...(await this.storage.counts(captureContext))};
   }
   async select(plan: ExperimentPlan | null, hold = false) {
     const owner = this.owner();
@@ -86,25 +91,25 @@ export class ExperimentJournal {
     if (!task) {
       task = (async () => {
         const records = await this.storage.records(owner);
-        for (const r of records.filter(
+        for (const experimentRecord of records.filter(
           start =>
             start.stage === 'TENTATIVA_INICIADA' &&
             start.clockId !== this.clock.originId,
         )) {
           if (
             records.some(
-              e =>
-                e.attemptId === r.attemptId &&
+              error =>
+                error.attemptId === experimentRecord.attemptId &&
                 [
                   'LEITURA_OK',
                   'LEITURA_FALHOU',
                   'LEITURA_INTERROMPIDA',
-                ].includes(e.stage),
+                ].includes(error.stage),
             )
           )
             continue;
           await this.storage.put(owner, {
-            ...r,
+            ...experimentRecord,
             id: this.id(),
             stage: 'LEITURA_INTERROMPIDA',
             occurredAt: new Date(this.wall()).toISOString(),
@@ -115,9 +120,9 @@ export class ExperimentJournal {
             code: 'REINICIO',
           });
         }
-      })().catch(e => {
+      })().catch(error => {
         this.recoverWork.delete(key);
-        throw e;
+        throw error;
       });
       this.recoverWork.set(key, task);
     }
@@ -166,7 +171,7 @@ export class ExperimentJournal {
   ): Promise<ExperimentalCapture | undefined> {
     if (!attempt) return undefined;
     if (
-      !same(attempt.owner, this.context()) ||
+      !sameCaptureOwner(attempt.owner, this.context()) ||
       attempt.plan.provisioningId !== payload.provisionamentoId ||
       attempt.plan.eventType !== payload.tipo ||
       attempt.plan.deviceId !== payload.dispositivoId
@@ -185,24 +190,30 @@ export class ExperimentJournal {
     return !owner || (await this.storage.selection(owner)).hold !== true;
   }
   async confirmedLocal(item: QueuedCapture) {
-    const a = this.attempt(item);
-    if (!a) return;
-    const records = await this.storage.records(a.owner);
+    const attempt = this.attempt(item);
+    if (!attempt) return;
+    const records = await this.storage.records(attempt.owner);
     if (
-      records.some(r => r.attemptId === a.id && r.stage === 'CONFIRMACAO_LOCAL')
+      records.some(
+        experimentRecord =>
+          experimentRecord.attemptId === attempt.id &&
+          experimentRecord.stage === 'CONFIRMACAO_LOCAL',
+      )
     )
       return;
     const start = records.find(
-      r => r.attemptId === a.id && r.stage === 'TENTATIVA_INICIADA',
+      experimentRecord =>
+        experimentRecord.attemptId === attempt.id &&
+        experimentRecord.stage === 'TENTATIVA_INICIADA',
     );
     const elapsed =
       start?.clockId === this.clock.originId
         ? Math.max(0, this.clock.nowMs() - start.monotonicMs)
         : null;
     await this.storage.put(
-      a.owner,
+      attempt.owner,
       this.record(
-        a,
+        attempt,
         'CONFIRMACAO_LOCAL',
         item.id,
         elapsed,
@@ -218,11 +229,11 @@ export class ExperimentJournal {
       : null;
   }
   async sendStart(item: QueuedCapture) {
-    const a = this.attempt(item);
-    if (a)
+    const attempt = this.attempt(item);
+    if (attempt)
       await this.storage.put(
-        a.owner,
-        this.record(a, 'ENVIO_INICIADO', item.id),
+        attempt.owner,
+        this.record(attempt, 'ENVIO_INICIADO', item.id),
       );
   }
   async sendEnd(
@@ -232,12 +243,12 @@ export class ExperimentJournal {
     result?: Decision,
     endMs = this.clock.nowMs(),
   ) {
-    const a = this.attempt(item);
-    if (!a) return;
+    const attempt = this.attempt(item);
+    if (!attempt) return;
     await this.storage.put(
-      a.owner,
+      attempt.owner,
       this.record(
-        a,
+        attempt,
         success ? 'ENVIO_CONFIRMADO' : 'ENVIO_FALHOU',
         item.id,
         Math.max(0, endMs - startMs),
@@ -252,17 +263,19 @@ export class ExperimentJournal {
     const releasedAt = this.clock.nowMs();
     for (const item of items.filter(
       i =>
-        same(owner, i.owner) &&
+        sameCaptureOwner(owner, i.owner) &&
         i.metadata.experiment &&
         !(i.state === 'STORED' && i.businessState !== 'PENDING'),
     )) {
-      const a = this.attempt(item)!;
+      const attempt = this.attempt(item)!;
       const prior = (await this.storage.records(owner)).some(
-        r => r.attemptId === a.id && r.stage === 'COMUNICACAO_LIBERADA',
+        experimentRecord =>
+          experimentRecord.attemptId === attempt.id &&
+          experimentRecord.stage === 'COMUNICACAO_LIBERADA',
       );
       if (!prior)
         await this.storage.put(owner, {
-          ...this.record(a, 'COMUNICACAO_LIBERADA', item.id),
+          ...this.record(attempt, 'COMUNICACAO_LIBERADA', item.id),
           monotonicMs: releasedAt,
         });
     }
@@ -270,17 +283,21 @@ export class ExperimentJournal {
     await this.storage.select(owner, selected.plan, false);
   }
   async decision(item: QueuedCapture, result: Decision) {
-    const a = this.attempt(item);
-    if (!a) return;
-    const records = await this.storage.records(a.owner);
+    const attempt = this.attempt(item);
+    if (!attempt) return;
+    const records = await this.storage.records(attempt.owner);
     // At most one marker per final decision; original operational receipt stays immutable.
     if (result.decisao.status === 'PENDENTE') return;
     const start = records.find(
-      r => r.attemptId === a.id && r.stage === 'TENTATIVA_INICIADA',
+      experimentRecord =>
+        experimentRecord.attemptId === attempt.id &&
+        experimentRecord.stage === 'TENTATIVA_INICIADA',
     );
     if (
       !records.some(
-        r => r.attemptId === a.id && r.stage === 'CONFIRMACAO_FINAL',
+        experimentRecord =>
+          experimentRecord.attemptId === attempt.id &&
+          experimentRecord.stage === 'CONFIRMACAO_FINAL',
       )
     ) {
       const elapsed =
@@ -288,9 +305,9 @@ export class ExperimentJournal {
           ? Math.max(0, this.clock.nowMs() - start.monotonicMs)
           : null;
       await this.storage.put(
-        a.owner,
+        attempt.owner,
         this.record(
-          a,
+          attempt,
           'CONFIRMACAO_FINAL',
           item.id,
           elapsed,
@@ -301,26 +318,30 @@ export class ExperimentJournal {
     }
     if (
       records.some(
-        r => r.attemptId === a.id && r.stage === 'RECONCILIACAO_CONCLUIDA',
+        experimentRecord =>
+          experimentRecord.attemptId === attempt.id &&
+          experimentRecord.stage === 'RECONCILIACAO_CONCLUIDA',
       )
     )
       return;
     const release = records.find(
-      r => r.attemptId === a.id && r.stage === 'COMUNICACAO_LIBERADA',
+      experimentRecord =>
+        experimentRecord.attemptId === attempt.id &&
+        experimentRecord.stage === 'COMUNICACAO_LIBERADA',
     );
     if (!release) return; // Online reads have send timings, no invented offline release boundary.
     await this.storage.put(
-      a.owner,
-      this.record(a, 'DECISAO_CONSULTADA', item.id),
+      attempt.owner,
+      this.record(attempt, 'DECISAO_CONSULTADA', item.id),
     );
     const duration =
       release.clockId === this.clock.originId
         ? Math.max(0, this.clock.nowMs() - release.monotonicMs)
         : null;
     await this.storage.put(
-      a.owner,
+      attempt.owner,
       this.record(
-        a,
+        attempt,
         'RECONCILIACAO_CONCLUIDA',
         item.id,
         duration,
@@ -340,7 +361,8 @@ export class ExperimentJournal {
     if (!owner?.canSend || !(await this.allowed())) return;
     await this.recover(owner);
     for (const record of await this.storage.pending(owner, this.wall())) {
-      if (!same(owner, this.context()) || !this.context()?.canSend) break;
+      if (!sameCaptureOwner(owner, this.context()) || !this.context()?.canSend)
+        break;
       try {
         await this.api.request('/experimentos/registros', {
           method: 'POST',
@@ -349,8 +371,8 @@ export class ExperimentJournal {
           expectedBaseUrl: owner.baseUrl,
         });
         await this.storage.sent(owner, record.id);
-      } catch (e) {
-        const status = (e as {status?: number})?.status;
+      } catch (error) {
+        const status = (error as {status?: number})?.status;
         await this.storage.retry(
           owner,
           record.id,

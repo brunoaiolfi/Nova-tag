@@ -1,14 +1,12 @@
 import {DatabaseSync} from 'node:sqlite';
 import type {SqlConnection} from '../../src/infra/offline/sqlite-store';
 import {SqliteAdministrationStore} from '../../src/infra/administration/sqlite-store';
-import type {
-  AdminOperation,
-  AdminContext,
-  AdminCommand,
-  AdminReply,
-  AdminRfSession,
-} from '../../src/domain/administration/types';
-import type {Provisioning} from '../../src/domain/traceability/types';
+import type {AdminOperation} from '../../src/domain/administration/operation';
+import type {AdminContext} from '../../src/appplication/administration/operation-context.types';
+import type {AdminCommand} from '../../src/domain/nfc/administrative-command.types';
+import type {AdminReply} from '../../src/appplication/administration/contracts/admin-reply.types';
+import type {AdminRfSession} from '../../src/appplication/administration/recovery.types';
+import type {Provisioning} from '../../src/domain/traceability/provisioning';
 export const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 export const now = Date.parse('2026-10-07T12:00:00Z');
@@ -90,23 +88,33 @@ export function reply(
   sid = session.id,
   command: AdminCommand | null = frame,
 ): AdminReply {
-  return {
+  const envelope = {
     sessaoId: sid,
-    status: command ? 'EM_ANDAMENTO' : 'CONCLUIDA',
-    comando: command,
     expiraEm: new Date(now + 180000).toISOString(),
+  };
+  if (command)
+    return {
+      ...envelope,
+      status: 'EM_ANDAMENTO',
+      comando: command,
+      codigo: null,
+      alteracaoFisica: 'NAO_ALTERADA',
+      resultado: null,
+    };
+  return {
+    ...envelope,
+    status: 'CONCLUIDA',
+    comando: null,
     codigo: null,
-    alteracaoFisica: command ? 'NAO_ALTERADA' : 'CONFERIDA',
-    resultado: command
-      ? null
-      : {
-          uid: provisioning.uid,
-          personalizada: true,
-          configuracaoNdefHex:
-            operation.plano.personalizacao.configuracaoNdefFinalHex,
-          versoesChaves: [1, 1, 1, 1, 1],
-          slotsAutenticados: [0, 1, 2, 3, 4],
-        },
+    alteracaoFisica: 'CONFERIDA',
+    resultado: {
+      uid: provisioning.uid,
+      personalizada: true,
+      configuracaoNdefHex:
+        operation.plano.personalizacao.configuracaoNdefFinalHex,
+      versoesChaves: [1, 1, 1, 1, 1],
+      slotsAutenticados: [0, 1, 2, 3, 4],
+    },
   };
 }
 export function connection(db: DatabaseSync): SqlConnection {

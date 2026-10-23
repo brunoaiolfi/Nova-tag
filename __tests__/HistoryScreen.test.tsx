@@ -1,3 +1,5 @@
+import {createTestServices, withServices} from '../test-support/app-services';
+import {renderedText} from '../test-support/rendered-text';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {
@@ -9,16 +11,15 @@ import {
 import {ActionButton as Button, OrderJourney} from '../src/components/Tracking';
 import Historico, {HistoryItem} from '../src/views/Historico';
 import OrderSelect from '../src/components/Nfc/OrderSelect';
-import type {
-  HistoryEntry,
-  Reading,
-} from '../src/appplication/traceability/workflow';
-import {traceability} from '../src/infra/traceability/runtime';
+import type {HistoryEntry} from '../src/appplication/traceability/contracts/history.types';
+import type {Reading} from '../src/domain/traceability/reading';
 
 let mockParams: {reading?: Reading} | undefined;
 const mockNavigation = {setParams: jest.fn(), navigate: jest.fn()};
 let mockRole = 'ADMINISTRADOR';
 jest.mock('@react-navigation/native', () => ({
+  NavigationContext: jest.requireActual('@react-navigation/native')
+    .NavigationContext,
   useRoute: () => ({params: mockParams}),
   useNavigation: () => mockNavigation,
   useFocusEffect: (callback: () => void | (() => void)) =>
@@ -29,14 +30,17 @@ jest.mock('../src/components/Auth/SessionProvider', () => ({
     state: {status: 'authenticated', session: {user: {perfil: mockRole}}},
   }),
 }));
-jest.mock('../src/infra/traceability/runtime', () => ({
+
+const services = createTestServices({
   traceability: {
     listOrders: jest.fn(),
     order: jest.fn(),
     history: jest.fn(),
     resolveProvisioning: jest.fn(),
   },
-}));
+});
+const {traceability} = services;
+
 const order = {
   id: 'order',
   codigo: 'TCC-001',
@@ -77,9 +81,12 @@ const button = (label: string) =>
 async function render() {
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <Historico />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <Historico />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
 }
@@ -115,7 +122,7 @@ test('order selection shows stored rejection, current state and separate server/
       .findByType(TouchableRipple)
       .props.onPress(),
   );
-  const text = JSON.stringify(tree.toJSON());
+  const text = renderedText(tree);
   expect(text).toContain(order.codigo);
   expect(text).toContain('Entregue');
   expect(text).toContain('Operação rejeitada · pedido não alterado');
@@ -154,9 +161,12 @@ test('late SDM history distinguishes authentication, policy and absence of autho
   await act(async () =>
     tree.root.findByType(OrderSelect).props.onSelect(order),
   );
-  const text = JSON.stringify(tree.toJSON());
-  expect(text).toContain('Evidência autenticada pelo servidor');
-  expect(text).toContain('sem movimentação automática');
+  const text = renderedText(tree);
+  expect(text).not.toContain('Evidência autenticada pelo servidor');
+  await expandDetails('Validação NFC');
+  const expanded = renderedText(tree);
+  expect(expanded).toContain('Evidência autenticada pelo servidor');
+  expect(expanded).toContain('sem movimentação automática');
   expect(text).toContain('Leitura tardia preservada · sem movimentação');
   expect(text).not.toContain('Operação autorizada');
 });
@@ -176,7 +186,7 @@ test('a scanned NDEF tag opens its exact provisioning history and can expand to 
     mockParams.reading,
   );
   expect(traceability.history).toHaveBeenCalledWith(order.id, 1, link.id);
-  expect(JSON.stringify(tree.toJSON())).toContain('o UID lido é diferente');
+  expect(renderedText(tree)).toContain('o UID lido é diferente');
   await act(async () => {
     tree.root.findByType(SegmentedButtons).props.onValueChange('pedido');
   });
@@ -203,7 +213,7 @@ test('load more keeps previous entries and refresh starts from the first page', 
   expect(tree.root.findAllByType(HistoryItem)).toHaveLength(2);
   expect(traceability.history).toHaveBeenLastCalledWith(order.id, 2, link.id);
   await act(async () => {
-    button('Atualizar histórico').props.onPress();
+    button('Atualizar').props.onPress();
   });
   expect(traceability.history).toHaveBeenLastCalledWith(order.id, 1, link.id);
 });
@@ -239,7 +249,7 @@ test('a network failure offers retry without losing the selected order', async (
   await act(async () => {
     tree.root.findByType(OrderSelect).props.onSelect(order);
   });
-  expect(JSON.stringify(tree.toJSON())).toContain('Sem conexão');
+  expect(renderedText(tree)).toContain('Sem conexão');
   await act(async () => {
     button('Tentar novamente').props.onPress();
   });
@@ -273,14 +283,12 @@ test('a rejected delivery does not advance the journey and delivery does not req
   expect(tree.root.findByType(OrderJourney).props.order.estado).toBe(
     'CADASTRADO',
   );
-  expect(JSON.stringify(tree.toJSON())).toContain(
-    'Entrega: ainda não registrada',
-  );
+  expect(renderedText(tree)).toContain('Entrega: ainda não registrada');
   jest
     .mocked(traceability.order)
     .mockResolvedValue({...order, expedido: false});
-  await act(async () => button('Atualizar histórico').props.onPress());
-  const text = JSON.stringify(tree.toJSON());
+  await act(async () => button('Atualizar').props.onPress());
+  const text = renderedText(tree);
   expect(text).toContain('Entrega: etapa atual');
   expect(text).not.toContain('Saída para entrega registrada');
 });
@@ -303,7 +311,7 @@ test('the selected order exposes its current link for administrative management'
     tree.root.findByType(OrderSelect).props.onSelect(order),
   );
   await expandTag();
-  await act(async () => button('Gerenciar este vínculo').props.onPress());
+  await act(async () => button('Gerenciar vínculo').props.onPress());
   expect(mockNavigation.navigate).toHaveBeenCalledWith('Provisionar', {
     screen: 'Gerenciar',
     params: {provisioningId: link.id},
@@ -319,7 +327,7 @@ test('management stays unavailable to operators even when order details expose t
     tree.root.findByType(OrderSelect).props.onSelect(order),
   );
   await expandTag();
-  expect(button('Gerenciar este vínculo')).toBeUndefined();
+  expect(button('Gerenciar vínculo')).toBeUndefined();
 });
 test('a scanned old NDEF epoch stays selected when the order has a newer current link', async () => {
   mockParams = {
@@ -334,7 +342,7 @@ test('a scanned old NDEF epoch stays selected when the order has a newer current
   });
   await render();
   await expandTag();
-  await act(async () => button('Gerenciar este vínculo').props.onPress());
+  await act(async () => button('Gerenciar vínculo').props.onPress());
   expect(mockNavigation.navigate).toHaveBeenCalledWith('Provisionar', {
     screen: 'Gerenciar',
     params: {provisioningId: link.id},
@@ -366,11 +374,11 @@ test('pending logistics shows prerequisites and deadline instead of rejection', 
   await act(async () =>
     tree.root.findByType(OrderSelect).props.onSelect(order),
   );
-  const text = JSON.stringify(tree.toJSON());
+  const text = renderedText(tree);
   expect(text).toContain('Aguardando etapa anterior · salva no servidor');
   expect(text).toContain('Aguardando:');
   expect(text).toContain('Coleta');
-  expect(text).toContain('Prazo para conciliação:');
+  expect(text).toContain('Prazo:');
   expect(text).not.toContain('Operação rejeitada · pedido não alterado');
 });
 
@@ -401,9 +409,20 @@ test('history displays all decision revisions with separate evaluation and recei
   await act(async () =>
     tree.root.findByType(OrderSelect).props.onSelect(order),
   );
-  const text = JSON.stringify(tree.toJSON());
+  const text = renderedText(tree);
   expect(text).toContain('Evolução da decisão');
-  expect(text).toContain('Decisão ');
+  expect(text).not.toContain('Decisão ');
+  await expandDetails('Evolução da decisão');
+  expect(renderedText(tree)).toContain('Decisão ');
   expect(text).toContain('Operação autorizada');
   expect(text).toContain('Recebido pelo servidor:');
 });
+
+async function expandDetails(title: string) {
+  await act(async () =>
+    tree.root
+      .findAllByType(TouchableRipple)
+      .find(item => item.props.accessibilityLabel === title)!
+      .props.onPress(),
+  );
+}

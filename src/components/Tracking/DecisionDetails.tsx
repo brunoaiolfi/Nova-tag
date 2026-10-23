@@ -1,9 +1,10 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-paper';
-import type {Decision} from '../../domain/traceability/types';
+import type {Decision} from '../../domain/traceability/decision';
 import {decisionStatus} from '../../domain/traceability/decision-status';
-import {eventLabel, reasonLabel} from '../../views/traceability-labels';
+import {eventLabel, reasonLabel} from './labels';
+import {Details} from '.';
 
 const date = (value: string) => new Date(value).toLocaleString('pt-BR');
 export function DecisionDetails({
@@ -26,22 +27,20 @@ export function DecisionDetails({
         </Text>
       )}
       {pending && decision.expiraEm && (
-        <Text>
-          Prazo para conciliação: {date(decision.expiraEm)}. O vínculo e a
-          sessão original precisam continuar válidos.
-        </Text>
+        <Text>Prazo: {date(decision.expiraEm)}.</Text>
       )}
       {!!history && history.length > 1 && (
-        <>
-          <Text style={styles.title}>Evolução da decisão</Text>
-          {history.map((d, i) => (
-            <Text key={d.revisao ?? i}>
-              Decisão {d.revisao ?? i + 1}
-              {d.avaliadaEm ? ' · ' + date(d.avaliadaEm) : ''}:{' '}
-              {reasonLabel(d.motivo)}
+        <Details title="Evolução da decisão">
+          {history.map((decisionRevision, i) => (
+            <Text key={decisionRevision.revisao ?? i}>
+              Decisão {decisionRevision.revisao ?? i + 1}
+              {decisionRevision.avaliadaEm
+                ? ' · ' + date(decisionRevision.avaliadaEm)
+                : ''}
+              : {reasonLabel(decisionRevision.motivo)}
             </Text>
           ))}
-        </>
+        </Details>
       )}
     </View>
   );

@@ -1,10 +1,11 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {PaperProvider, Text, TextInput} from 'react-native-paper';
 import {ActionButton} from '../src/components/Tracking';
 import CreateOrderForm from '../src/components/Nfc/CreateOrderForm';
-import {traceability} from '../src/infra/traceability/runtime';
-import {SessionError} from '../src/domain/auth/types';
+
+import {SessionError} from '../src/appplication/auth/session-error';
 
 let mockRole = 'ADMINISTRADOR';
 jest.mock('../src/components/Auth/SessionProvider', () => ({
@@ -15,9 +16,10 @@ jest.mock('../src/components/Auth/SessionProvider', () => ({
     },
   }),
 }));
-jest.mock('../src/infra/traceability/runtime', () => ({
-  traceability: {createOrder: jest.fn()},
-}));
+
+const services = createTestServices({traceability: {createOrder: jest.fn()}});
+const {traceability} = services;
+
 const order = {
   id: 'server-id',
   codigo: 'TCC-001',
@@ -40,9 +42,12 @@ const text = () =>
 async function mount() {
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <CreateOrderForm onCreated={onCreated} onCancel={onCancel} />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <CreateOrderForm onCreated={onCreated} onCancel={onCancel} />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
 }

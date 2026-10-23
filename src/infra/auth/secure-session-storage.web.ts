@@ -1,4 +1,5 @@
-import {Session, SessionStorage} from '../../domain/auth/types';
+import {Session} from '../../domain/auth/session';
+import {SessionStorage} from '../../appplication/auth/ports/session-storage';
 
 // A prévia web não persiste tokens em armazenamento acessível a scripts.
 export class SecureSessionStorage implements SessionStorage {

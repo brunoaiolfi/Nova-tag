@@ -1,19 +1,19 @@
+import {AdministrationError} from '../../domain/administration/error';
 import {
-  AdministrationError,
   AdminDraft,
-  AdminOperation,
-  AdminOwner,
-  AdminReply,
   AdminRfSession,
-  AdminStore,
   LocalCommand,
-  AdminCommand,
   AdminActivation,
-  assertOperation,
-  assertReply,
-} from '../../domain/administration/types';
+} from '../../appplication/administration/recovery.types';
+import {AdminOperation} from '../../domain/administration/operation';
+import {AdminOwner} from '../../domain/administration/owner';
+import {AdminReply} from '../../appplication/administration/contracts/admin-reply.types';
+import {AdminStore} from '../../appplication/administration/ports/admin-store';
+import {AdminCommand} from '../../domain/nfc/administrative-command.types';
+import {assertOperation} from '../../appplication/administration/operation-owner-policy';
+import {assertSessionReply} from '../../appplication/administration/rf-session-policy';
 import type {SqlConnection} from '../offline/sqlite-store';
-import type {Provisioning} from '../../domain/traceability/types';
+import type {Provisioning} from '../../domain/traceability/provisioning';
 const fail = (message: string): never => {
   throw new AdministrationError('ADMIN_DIARIO_CONFLITANTE', message);
 };
@@ -113,9 +113,9 @@ export class SqliteAdministrationStore implements AdminStore {
           );
         if (!version?.user_version) await tx.exec(schema);
       });
-    })().catch(e => {
+    })().catch(error => {
       this.initialized = undefined;
-      throw e;
+      throw error;
     });
     return this.initialized;
   }
@@ -142,27 +142,33 @@ export class SqliteAdministrationStore implements AdminStore {
         }
       : null;
   }
-  async saveDraft(d: AdminDraft): Promise<void> {
+  async saveDraft(draft: AdminDraft): Promise<void> {
     await (
       await this.db()
     ).transaction(async tx => {
       const previous = await tx.first<OperationRow>(
         'SELECT * FROM admin_operations WHERE id=?',
-        [d.id],
+        [draft.id],
       );
       if (previous) {
         if (
-          previous.base_url !== d.owner.baseUrl ||
-          previous.user_id !== d.owner.userId ||
-          previous.provisioning_id !== d.provisioningId ||
-          previous.station !== d.station
+          previous.base_url !== draft.owner.baseUrl ||
+          previous.user_id !== draft.owner.userId ||
+          previous.provisioning_id !== draft.provisioningId ||
+          previous.station !== draft.station
         )
           fail('O identificador da preparação já possui outra origem.');
         return;
       }
       await tx.run(
         'INSERT INTO admin_operations(id,provisioning_id,base_url,user_id,station) VALUES(?,?,?,?,?)',
-        [d.id, d.provisioningId, d.owner.baseUrl, d.owner.userId, d.station],
+        [
+          draft.id,
+          draft.provisioningId,
+          draft.owner.baseUrl,
+          draft.owner.userId,
+          draft.station,
+        ],
       );
     });
   }
@@ -226,30 +232,37 @@ export class SqliteAdministrationStore implements AdminStore {
       'SELECT * FROM admin_operations WHERE id=? AND base_url=? AND user_id=?',
       [id, owner.baseUrl, owner.userId],
     );
-    return row?.snapshot ? JSON.parse(row.snapshot) : null;
+    if (!row?.snapshot) return null;
+    const operation: unknown = JSON.parse(row.snapshot);
+    assertOperation(operation, owner);
+    return operation;
   }
-  async saveSession(s: AdminRfSession): Promise<void> {
+  async saveSession(rfSession: AdminRfSession): Promise<void> {
     await (
       await this.db()
     ).transaction(async tx => {
       const operation = await tx.first<OperationRow>(
         'SELECT * FROM admin_operations WHERE id=? AND base_url=? AND user_id=?',
-        [s.operationId, s.owner.baseUrl, s.owner.userId],
+        [
+          rfSession.operationId,
+          rfSession.owner.baseUrl,
+          rfSession.owner.userId,
+        ],
       );
-      if (!operation?.snapshot || operation.station !== s.station)
+      if (!operation?.snapshot || operation.station !== rfSession.station)
         fail('A sessão não corresponde a uma operação local preparada.');
       await tx.run(
         'INSERT INTO admin_rf_sessions(id,operation_id,base_url,user_id,rf_id,station,session_marker,recovery,materials) VALUES(?,?,?,?,?,?,?,?,?)',
         [
-          s.id,
-          s.operationId,
-          s.owner.baseUrl,
-          s.owner.userId,
-          s.rfId,
-          s.station,
-          s.sessionMarker,
-          s.recovery ? 1 : 0,
-          JSON.stringify(s.materials),
+          rfSession.id,
+          rfSession.operationId,
+          rfSession.owner.baseUrl,
+          rfSession.owner.userId,
+          rfSession.rfId,
+          rfSession.station,
+          rfSession.sessionMarker,
+          rfSession.recovery ? 1 : 0,
+          JSON.stringify(rfSession.materials),
         ],
       );
     });
@@ -269,31 +282,36 @@ export class SqliteAdministrationStore implements AdminStore {
   }
   private async session(
     tx: SqlConnection,
-    s: AdminRfSession,
+    rfSession: AdminRfSession,
   ): Promise<SessionRow> {
     const row = await tx.first<SessionRow>(
       'SELECT * FROM admin_rf_sessions WHERE id=? AND operation_id=? AND base_url=? AND user_id=?',
-      [s.id, s.operationId, s.owner.baseUrl, s.owner.userId],
+      [
+        rfSession.id,
+        rfSession.operationId,
+        rfSession.owner.baseUrl,
+        rfSession.owner.userId,
+      ],
     );
     if (
       !row ||
       row.ended ||
-      row.rf_id !== s.rfId ||
-      row.session_marker !== s.sessionMarker ||
-      row.station !== s.station
+      row.rf_id !== rfSession.rfId ||
+      row.session_marker !== rfSession.sessionMarker ||
+      row.station !== rfSession.station
     )
       fail('Esta sessão NFC não permite nova transmissão.');
     return row!;
   }
   private async checkpoint(
     tx: SqlConnection,
-    s: AdminRfSession,
+    rfSession: AdminRfSession,
     reply: AdminReply,
   ): Promise<void> {
-    assertReply(reply, s.id);
+    assertSessionReply(reply, rfSession.id);
     await tx.run('UPDATE admin_rf_sessions SET reply=? WHERE id=?', [
       JSON.stringify(reply),
-      s.id,
+      rfSession.id,
     ]);
     if (reply.comando) {
       const existing = await tx.first<CommandRow>(
@@ -302,7 +320,7 @@ export class SqliteAdministrationStore implements AdminStore {
       );
       if (existing) {
         if (
-          existing.session_id !== s.id ||
+          existing.session_id !== rfSession.id ||
           existing.frame !== JSON.stringify(reply.comando)
         )
           fail('A API devolveu um comando com conteúdo divergente.');
@@ -311,40 +329,40 @@ export class SqliteAdministrationStore implements AdminStore {
           "INSERT INTO admin_commands(command_id,session_id,sequence,frame,state) VALUES(?,?,?,?,'READY')",
           [
             reply.comando.id,
-            s.id,
+            rfSession.id,
             reply.comando.sequencia,
             JSON.stringify(reply.comando),
           ],
         );
     }
   }
-  async saveReply(s: AdminRfSession, reply: AdminReply): Promise<void> {
+  async saveReply(rfSession: AdminRfSession, reply: AdminReply): Promise<void> {
     await (
       await this.db()
     ).transaction(async tx => {
-      await this.session(tx, s);
-      await this.checkpoint(tx, s, reply);
+      await this.session(tx, rfSession);
+      await this.checkpoint(tx, rfSession, reply);
     });
   }
   private async command(
     tx: SqlConnection,
-    s: AdminRfSession,
+    rfSession: AdminRfSession,
     frame: AdminCommand,
   ): Promise<CommandRow> {
     const row = await tx.first<CommandRow>(
       'SELECT * FROM admin_commands WHERE command_id=? AND session_id=?',
-      [frame.id, s.id],
+      [frame.id, rfSession.id],
     );
     if (!row || row.frame !== JSON.stringify(frame))
       fail('O comando não corresponde ao diário original.');
     return row!;
   }
-  async attempt(s: AdminRfSession, frame: AdminCommand): Promise<void> {
+  async attempt(rfSession: AdminRfSession, frame: AdminCommand): Promise<void> {
     await (
       await this.db()
     ).transaction(async tx => {
-      await this.session(tx, s);
-      const command = await this.command(tx, s, frame);
+      await this.session(tx, rfSession);
+      const command = await this.command(tx, rfSession, frame);
       if (command.state !== 'READY')
         fail(
           'Este comando já teve uma tentativa física. Não o retransmita; abra outra sessão NFC para recuperar.',
@@ -360,7 +378,7 @@ export class SqliteAdministrationStore implements AdminStore {
     });
   }
   async response(
-    s: AdminRfSession,
+    rfSession: AdminRfSession,
     frame: AdminCommand,
     responseHex: string,
   ): Promise<void> {
@@ -369,8 +387,8 @@ export class SqliteAdministrationStore implements AdminStore {
     await (
       await this.db()
     ).transaction(async tx => {
-      await this.session(tx, s);
-      const row = await this.command(tx, s, frame);
+      await this.session(tx, rfSession);
+      const row = await this.command(tx, rfSession, frame);
       if (row.response_hex !== null) {
         if (row.response_hex !== responseHex)
           fail('A resposta NFC original foi preservada.');
@@ -385,15 +403,15 @@ export class SqliteAdministrationStore implements AdminStore {
     });
   }
   async acknowledge(
-    s: AdminRfSession,
+    rfSession: AdminRfSession,
     frame: AdminCommand,
     reply: AdminReply,
   ): Promise<void> {
     await (
       await this.db()
     ).transaction(async tx => {
-      await this.session(tx, s);
-      const row = await this.command(tx, s, frame),
+      await this.session(tx, rfSession);
+      const row = await this.command(tx, rfSession, frame),
         json = JSON.stringify(reply);
       if (row.receipt !== null) {
         if (row.receipt !== json)
@@ -408,7 +426,7 @@ export class SqliteAdministrationStore implements AdminStore {
         "UPDATE admin_commands SET state='ACKNOWLEDGED',receipt=? WHERE command_id=?",
         [json, frame.id],
       );
-      await this.checkpoint(tx, s, reply);
+      await this.checkpoint(tx, rfSession, reply);
     });
   }
   async commands(
@@ -422,12 +440,12 @@ export class SqliteAdministrationStore implements AdminStore {
       WHERE s.id=? AND s.base_url=? AND s.user_id=? ORDER BY c.sequence`,
       [sessionId, owner.baseUrl, owner.userId],
     );
-    return rows.map(r => ({
-      sessionId: r.session_id,
-      frame: JSON.parse(r.frame),
-      state: r.state,
-      responseHex: r.response_hex,
-      receipt: r.receipt ? JSON.parse(r.receipt) : null,
+    return rows.map(commandRow => ({
+      sessionId: commandRow.session_id,
+      frame: JSON.parse(commandRow.frame),
+      state: commandRow.state,
+      responseHex: commandRow.response_hex,
+      receipt: commandRow.receipt ? JSON.parse(commandRow.receipt) : null,
     }));
   }
   async endSession(id: string, owner: AdminOwner): Promise<void> {

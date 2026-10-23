@@ -2,11 +2,9 @@ import {
   AdministrationCoordinator,
   AdministrativeNfc,
 } from '../src/appplication/administration/coordinator';
-import type {Api} from '../src/appplication/traceability/workflow';
-import {
-  AdministrationError,
-  AdminCommand,
-} from '../src/domain/administration/types';
+import type {Api} from '../src/appplication/auth/ports/authenticated-api';
+import {AdministrationError} from '../src/domain/administration/error';
+import {AdminCommand} from '../src/domain/nfc/administrative-command.types';
 import {
   localDatabase,
   context,
@@ -93,6 +91,39 @@ function harness() {
   };
 }
 const materials = Array<'ATUAL'>(5).fill('ATUAL');
+
+test('pending lookup normalizes the UID, preserves the original operation and performs no NFC or closure', async () => {
+  const h = harness();
+  h.request.mockResolvedValueOnce(operation);
+  expect(await h.coordinator.pending('04:aa:bb:cc:dd:ee:01')).toEqual(
+    operation,
+  );
+  expect(h.request).toHaveBeenCalledTimes(1);
+  expect(h.request).toHaveBeenCalledWith(
+    '/administracao-nfc/etiquetas/04AABBCCDDEE01/operacao-pendente',
+    expect.objectContaining({
+      expectedUserId: context.userId,
+      expectedBaseUrl: context.baseUrl,
+    }),
+  );
+  expect(h.transceive).not.toHaveBeenCalled();
+  expect(h.nfc.read).not.toHaveBeenCalled();
+});
+
+test.each([
+  [{...operation, administradorId: id(99)}, 'ADMIN_OPERACAO_OUTRA_CONTA'],
+  [
+    {...operation, plano: {...operation.plano, uid: '04FFFFFFFFFFFF'}},
+    'ADMIN_PLANO_DIVERGENTE',
+  ],
+])('pending lookup refuses another owner or tag', async (value, code) => {
+  const h = harness();
+  h.request.mockResolvedValueOnce(value);
+  await expect(h.coordinator.pending(provisioning.uid)).rejects.toMatchObject({
+    code,
+  });
+  expect(h.transceive).not.toHaveBeenCalled();
+});
 test('intent is committed before NFC, response before HTTP, and a lost HTTP response never retransmits NFC', async () => {
   const h = harness();
   h.setFailures(1);

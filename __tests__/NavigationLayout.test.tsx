@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {PaperProvider, TouchableRipple} from 'react-native-paper';
@@ -17,16 +18,20 @@ jest.mock('../src/views/Historico', () => 'HistoryScreen');
 jest.mock('../src/views/Envios', () => 'QueueScreen');
 jest.mock('../src/navigation/EventosNavigator', () => 'EventsScreen');
 jest.mock('../src/navigation/ProvisionarNavigator', () => 'ProvisionScreen');
+const services = createTestServices({});
 
 test('mounts the custom tab bar inside React and navigates between authenticated tabs', async () => {
   let tree: TestRenderer.ReactTestRenderer;
   await act(async () => {
     tree = TestRenderer.create(
-      <SafeAreaProvider>
-        <PaperProvider>
-          <Navigator />
-        </PaperProvider>
-      </SafeAreaProvider>,
+      withServices(
+        <SafeAreaProvider>
+          <PaperProvider>
+            <Navigator />
+          </PaperProvider>
+        </SafeAreaProvider>,
+        services,
+      ),
     );
   });
   const tabs = () =>

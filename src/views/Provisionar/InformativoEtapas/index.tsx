@@ -5,6 +5,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RadioButton, Text} from 'react-native-paper';
 import {
   ActionButton,
+  Details,
   PageHero,
   trackingColors as colors,
 } from '../../../components/Tracking';
@@ -42,11 +43,11 @@ const PASSOS: Passo[] = [
 const ESTRATEGIAS: {valor: EnumEstrategiasNFC; titulo: string}[] = [
   {
     valor: EnumEstrategiasNFC.UID,
-    titulo: 'Usar o número da etiqueta (UID) · sem gravação',
+    titulo: 'Número da etiqueta · UID',
   },
   {
     valor: EnumEstrategiasNFC.NDEF_ESTATICO,
-    titulo: 'Gravar uma referência na etiqueta (NDEF estático)',
+    titulo: 'Referência gravada · NDEF',
   },
 ];
 
@@ -66,16 +67,15 @@ const InformativoEtapas = () => {
       header={
         <PageHero
           fullBleed
-          title="Dê uma identidade ao pedido."
-          description="Vincule uma etiqueta NFC a um volume para começar a acompanhar seu trajeto."
+          title="Vincular etiqueta"
+          description="Escolha como identificar o pedido."
           icon="nfc-tap"
-          eyebrow="VINCULAR ETIQUETA"
         />
       }
       footer={<Botao onPress={iniciar}>Escolher pedido</Botao>}>
       <VStack gap={16}>
         <VStack gap={4}>
-          <Text variant="titleMedium">Como identificar a etiqueta?</Text>
+          <Text variant="titleMedium">Identificação</Text>
           <RadioButton.Group
             value={String(estrategia)}
             onValueChange={valor => setEstrategia(Number(valor))}>
@@ -94,59 +94,43 @@ const InformativoEtapas = () => {
             ))}
           </RadioButton.Group>
         </VStack>
-        <ListaPassos passos={PASSOS} />
+        <Text variant="bodySmall">
+          {estrategia === EnumEstrategiasNFC.UID
+            ? 'Usa o número da tag, sem gravar NDEF.'
+            : 'Substitui o NDEF atual por uma referência do pedido.'}
+        </Text>
         {state.session?.user.perfil === 'ADMINISTRADOR' && (
+          <ActionButton
+            mode="outlined"
+            icon="shield-check-outline"
+            onPress={() => navigation.navigate('Administracao')}>
+            Configurar NTAG 424
+          </ActionButton>
+        )}
+        <Details title="Como vincular">
+          <ListaPassos passos={PASSOS} />
+          <Aviso>
+            O fluxo simples não bloqueia a escrita. Confira a configuração
+            física e o bloqueio do ensaio antes de ativar.
+          </Aviso>
+        </Details>
+        <Details title="Outras opções">
           <VStack gap={8}>
-            <Text variant="titleMedium">
-              Configuração protegida · NTAG 424 DNA
-            </Text>
-            <Text>
-              Prepare o plano, configure a etiqueta e confira a ativação. Inclui
-              UID, NDEF estático e SDM; exige inventário de credenciais na API.
-            </Text>
             <ActionButton
-              mode="outlined"
-              icon="shield-check-outline"
-              onPress={() => navigation.navigate('Administracao')}>
-              Configurar NTAG 424 DNA
+              icon="tag-outline"
+              onPress={() => navigation.navigate('Gerenciar')}>
+              Gerenciar etiqueta
             </ActionButton>
           </VStack>
-        )}
-        <VStack gap={8}>
-          <Text variant="titleMedium">
-            Já existe um vínculo nesta etiqueta?
-          </Text>
-          <Text variant="bodyMedium">
-            Consulte o pedido e encerre o vínculo quando precisar reutilizar a
-            etiqueta. O histórico será preservado.
-          </Text>
-          <ActionButton
-            mode="outlined"
-            icon="tag-outline"
-            onPress={() => navigation.navigate('Gerenciar')}>
-            Gerenciar etiqueta
-          </ActionButton>
-        </VStack>
 
-        <VStack gap={8}>
-          <Text variant="titleMedium">Não sabe qual é a sua etiqueta?</Text>
-          <Text>
-            Consulte o chip, a capacidade NDEF e os dados técnicos antes de
-            vincular. Nenhum pedido será alterado.
-          </Text>
-          <ActionButton
-            mode="outlined"
-            icon="nfc-search-variant"
-            onPress={() => navigation.navigate('Diagnostico')}>
-            Diagnosticar etiqueta
-          </ActionButton>
-        </VStack>
-
-        <Aviso>
-          A gravação NDEF substitui o conteúdo atual. O fluxo simples não altera
-          chaves nem bloqueia a escrita. A ativação exige conferir externamente
-          a configuração física e o bloqueio definidos para o ensaio.
-        </Aviso>
+          <VStack gap={8}>
+            <ActionButton
+              icon="nfc-search-variant"
+              onPress={() => navigation.navigate('Diagnostico')}>
+              Diagnosticar etiqueta
+            </ActionButton>
+          </VStack>
+        </Details>
       </VStack>
     </Tela>
   );

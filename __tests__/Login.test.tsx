@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
@@ -5,12 +6,14 @@ import {PaperProvider, Text, TextInput} from 'react-native-paper';
 import {SessionProvider} from '../src/components/Auth/SessionProvider';
 import {SessionGate} from '../src/components/Auth/SessionGate';
 import {SessionManager} from '../src/appplication/auth/session-manager';
-import {SessionError, Transport} from '../src/domain/auth/types';
+import {SessionError} from '../src/appplication/auth/session-error';
+import {Transport} from '../src/appplication/auth/ports/transport';
 import {defaultApiUrl} from '../src/infra/auth/default-api-url';
 
 jest.mock('../src/infra/auth/default-api-url', () => ({
   defaultApiUrl: jest.fn(),
 }));
+const services = createTestServices({});
 
 describe('Login and session gate UI', () => {
   let tree: TestRenderer.ReactTestRenderer;
@@ -32,13 +35,16 @@ describe('Login and session gate UI', () => {
     const manager = new SessionManager(storage, {send} as Transport, true);
     await act(async () => {
       tree = TestRenderer.create(
-        <PaperProvider>
-          <SessionProvider manager={manager}>
-            <SessionGate>
-              <Text>Área autenticada</Text>
-            </SessionGate>
-          </SessionProvider>
-        </PaperProvider>,
+        withServices(
+          <PaperProvider>
+            <SessionProvider manager={manager}>
+              <SessionGate>
+                <Text>Área autenticada</Text>
+              </SessionGate>
+            </SessionProvider>
+          </PaperProvider>,
+          services,
+        ),
       );
     });
     return {manager, send, storage};

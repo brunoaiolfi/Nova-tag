@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import {AppState} from 'react-native';
@@ -8,7 +9,9 @@ import {SessionGate} from '../src/components/Auth/SessionGate';
 import Leitor from '../src/components/Nfc/Leitor';
 import TagDetails from '../src/components/Nfc/TagDetails';
 import {SessionManager} from '../src/appplication/auth/session-manager';
-import {Session, SessionError, Transport} from '../src/domain/auth/types';
+import {Session} from '../src/domain/auth/session';
+import {SessionError} from '../src/appplication/auth/session-error';
+import {Transport} from '../src/appplication/auth/ports/transport';
 import {readPhysicalTag} from '../src/infra/nfc/reader';
 
 jest.mock('../src/infra/nfc/reader', () => ({
@@ -16,6 +19,8 @@ jest.mock('../src/infra/nfc/reader', () => ({
   readPhysicalTag: jest.fn(),
   cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
 }));
+const services = createTestServices({});
+
 const session: Session = {
   baseUrl: 'http://127.0.0.1:3000/api/v1',
   token: 'nfc_' + 'a'.repeat(43),
@@ -37,11 +42,13 @@ async function render(
   send = jest.fn().mockResolvedValue(verification),
   now: () => number = Date.now,
 ) {
+  const listeners = new Set<Parameters<typeof AppState.addEventListener>[1]>();
+  change = next => listeners.forEach(listener => listener(next));
   jest
     .spyOn(AppState, 'addEventListener')
     .mockImplementation((_event, listener) => {
-      change = listener;
-      return {remove: jest.fn()};
+      listeners.add(listener);
+      return {remove: jest.fn(() => listeners.delete(listener))};
     });
   const storage = {
     load: jest.fn().mockResolvedValue(session),
@@ -51,13 +58,19 @@ async function render(
   const manager = new SessionManager(storage, {send} as Transport, true, now);
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <SessionProvider manager={manager}>
-          <SessionGate>
-            <Leitor onLeituraRealizada={jest.fn()} onErroLeitura={jest.fn()} />
-          </SessionGate>
-        </SessionProvider>
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <SessionProvider manager={manager}>
+            <SessionGate>
+              <Leitor
+                onLeituraRealizada={jest.fn()}
+                onErroLeitura={jest.fn()}
+              />
+            </SessionGate>
+          </SessionProvider>
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   return {manager, send, storage};

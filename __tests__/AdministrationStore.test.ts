@@ -3,7 +3,8 @@ import {mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve, sep} from 'node:path';
 import {SqliteAdministrationStore} from '../src/infra/administration/sqlite-store';
-import {assertReply, commandBytes} from '../src/domain/administration/types';
+import {assertSessionReply} from '../src/appplication/administration/rf-session-policy';
+import {commandBytes} from '../src/domain/nfc/administrative-command';
 import {
   localDatabase,
   context,
@@ -188,7 +189,7 @@ test.each([
 });
 test('completion requires all five authenticated slots', () => {
   expect(() =>
-    assertReply(
+    assertSessionReply(
       {
         ...reply(session.id, null),
         resultado: {

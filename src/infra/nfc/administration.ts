@@ -1,5 +1,5 @@
 import * as Crypto from 'expo-crypto';
-import type {AdminOperation} from '../../domain/administration/types';
+import type {AdminOperation} from '../../domain/administration/operation';
 import type {
   AdministrativeNfc,
   AdministrativeRf,
@@ -19,8 +19,8 @@ async function identify(
   port: {transceive(bytes: number[]): Promise<number[]>},
   uid: string,
 ) {
-  const exchange = async (b: number[], sw: string) =>
-    apduPayload(await port.transceive(b), sw);
+  const exchange = async (apduBytes: number[], sw: string) =>
+    apduPayload(await port.transceive(apduBytes), sw);
   await exchange([...SELECT_NDEF], '9000');
   const hardware = await exchange([0x90, 0x60, 0, 0, 0], '91AF');
   if (hardware.length !== 7)
@@ -53,8 +53,8 @@ export async function identifyAdministrativeTag() {
       uid = normalizedUid(tag?.id);
     return identify(
       {
-        transceive: b =>
-          scope.step(() => module.default.isoDepHandler.transceive(b)),
+        transceive: apduBytes =>
+          scope.step(() => module.default.isoDepHandler.transceive(apduBytes)),
       },
       uid,
     );
@@ -80,8 +80,10 @@ export class NativeAdministrativeNfc implements AdministrativeNfc {
             );
           await identify(
             {
-              transceive: b =>
-                scope.step(() => module.default.isoDepHandler.transceive(b)),
+              transceive: apduBytes =>
+                scope.step(() =>
+                  module.default.isoDepHandler.transceive(apduBytes),
+                ),
             },
             uid,
           );
@@ -93,8 +95,8 @@ export class NativeAdministrativeNfc implements AdministrativeNfc {
               scope.checkpoint();
               try {
                 return await module.default.isoDepHandler.transceive(bytes);
-              } catch (e) {
-                throw nativeFailure(e, module);
+              } catch (error) {
+                throw nativeFailure(error, module);
               }
             },
           }).catch(error => {
@@ -109,10 +111,10 @@ export class NativeAdministrativeNfc implements AdministrativeNfc {
             'Configurando a etiqueta. Mantenha-a imóvel junto à antena até terminar.',
         },
       );
-    } catch (e) {
+    } catch (error) {
       // Once the job starts, retain ownership until a late NFC response is durably saved.
       if (pending) await pending.catch(() => {});
-      throw jobError ?? e;
+      throw jobError ?? error;
     }
   }
   cancel(): Promise<void> {

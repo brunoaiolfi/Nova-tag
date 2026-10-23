@@ -312,10 +312,20 @@ test.each([
   [new NfcError.TagConnectionLost(), 'NFC_TAG_LOST'],
   [new NfcError.RadioDisabled(), 'NFC_DISABLED'],
   [new NfcError.UnsupportedFeature(), 'NFC_UNSUPPORTED_TAG'],
+  [new NfcError.SecurityViolation(), 'NFC_SECURITY_VIOLATION'],
+  [new NfcError.TagResponseError(), 'NFC_TAG_RESPONSE_ERROR'],
+  [new NfcError.InvalidParameter(), 'NFC_INVALID_COMMAND'],
+  [new NfcError.InvalidParameterLength(), 'NFC_INVALID_COMMAND'],
+  [new NfcError.ParameterOutOfBound(), 'NFC_INVALID_COMMAND'],
+  [new NfcError.PacketTooLong(), 'NFC_INVALID_COMMAND'],
+  [new NfcError.SessionInvalidated(), 'NFC_SESSION_INVALIDATED'],
+  [new NfcError.SystemBusy(), 'NFC_SYSTEM_BUSY'],
+  [new NfcError.RetryExceeded(), 'NFC_RETRY_EXCEEDED'],
 ])('native error %p receives a stable code %s', (error, code) => {
-  expect(
-    nativeFailure(error, require('react-native-nfc-manager')),
-  ).toMatchObject({code});
+  error.message = 'Raw APDU or internal native details must not be exposed';
+  const failure = nativeFailure(error, require('react-native-nfc-manager'));
+  expect(failure).toMatchObject({code});
+  expect(failure.message).not.toContain(error.message);
 });
 
 test('unknown native errors never expose internal error text to the operator', () => {

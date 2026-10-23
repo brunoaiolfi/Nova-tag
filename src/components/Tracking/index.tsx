@@ -1,104 +1,55 @@
-import React from 'react';
-import {StyleSheet, View, StyleProp, ViewStyle} from 'react-native';
-import {
-  ActivityIndicator,
-  Button as PaperButton,
-  Icon,
-  Text,
-  TouchableRipple,
-} from 'react-native-paper';
-import {useAppTheme} from '../../theme';
-import type {OrderDetails} from '../../appplication/traceability/workflow';
-import {stateLabel} from '../../views/traceability-labels';
+import React, {useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {Icon, Text, TouchableRipple} from 'react-native-paper';
+import type {OrderDetails} from '../../appplication/traceability/contracts/order.types';
+import {stateLabel} from './labels';
 import {palette} from '../../theme/tokens';
 
 export const trackingColors = palette;
 
-export function ActionButton({
-  contentStyle,
-  labelStyle,
-  style,
+/** Secondary information stays available without competing with the next action. */
+export function Details({
+  title,
   children,
-  mode = 'text',
-  disabled,
-  loading,
-  icon,
-  buttonColor,
-  textColor,
-  accessibilityLabel,
-  accessibilityHint,
-  onPress,
-  onLongPress,
-  testID,
-}: Omit<React.ComponentProps<typeof PaperButton>, 'style'> & {
-  style?: StyleProp<ViewStyle>;
+}: {
+  title: string;
+  children: React.ReactNode;
 }) {
-  const theme = useAppTheme();
-  const contained = mode === 'contained' || mode === 'contained-tonal';
-  const backgroundColor =
-    disabled && contained
-      ? '#E2E8F0'
-      : contained
-      ? buttonColor ?? theme.colors.primary
-      : 'transparent';
-  const color = disabled
-    ? '#68798A'
-    : textColor ?? (contained ? theme.colors.onPrimary : theme.colors.primary);
-  const borderColor = disabled ? trackingColors.line : theme.colors.outline;
+  const [expanded, setExpanded] = useState(false);
   return (
-    <TouchableRipple
-      onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{disabled: !!disabled, busy: !!loading}}
-      accessibilityLabel={
-        accessibilityLabel ??
-        (typeof children === 'string' ? children : undefined)
-      }
-      accessibilityHint={accessibilityHint}
-      testID={testID}
-      style={[
-        styles.button,
-        {backgroundColor, borderColor},
-        mode === 'outlined' && styles.outlinedButton,
-        style,
-      ]}>
-      <View
-        style={[
-          styles.buttonContent,
-          mode === 'text' && styles.textButtonContent,
-          contentStyle,
-        ]}>
-        {loading ? (
-          <ActivityIndicator size={20} color={color} />
-        ) : icon ? (
-          <Icon source={icon} size={22} color={color} />
-        ) : null}
-        <Text
-          style={[
-            styles.buttonLabel,
-            mode === 'text' && styles.textButtonLabel,
-            {color},
-            labelStyle,
-          ]}>
-          {children}
-        </Text>
-      </View>
-    </TouchableRipple>
+    <View style={styles.disclosure}>
+      <TouchableRipple
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        aria-expanded={expanded}
+        accessibilityState={{expanded}}
+        onPress={() => setExpanded(value => !value)}>
+        <View style={styles.disclosureHeading}>
+          <Text style={styles.disclosureTitle}>{title}</Text>
+          <Icon
+            source={expanded ? 'chevron-up' : 'chevron-down'}
+            size={22}
+            color={trackingColors.muted}
+          />
+        </View>
+      </TouchableRipple>
+      {expanded && <View style={styles.disclosureBody}>{children}</View>}
+    </View>
   );
 }
+
+export {ActionButton} from '../ui/ActionButton';
 
 export function PageHero({
   title,
   description,
   icon = 'package-variant-closed',
-  eyebrow = 'NFC TRACE · RASTREAMENTO',
+  eyebrow,
   fullBleed = false,
   compact = false,
 }: {
   title: string;
-  description: string;
+  description?: string;
   icon?: string;
   eyebrow?: string;
   fullBleed?: boolean;
@@ -112,7 +63,7 @@ export function PageHero({
         compact && styles.compactHero,
         fullBleed && styles.fullBleed,
       ]}>
-      {!compact && (
+      {!compact && !!eyebrow && (
         <View style={styles.heroBrand}>
           <Icon source={icon} size={26} color={trackingColors.yellow} />
           <Text style={styles.eyebrow}>{eyebrow}</Text>
@@ -123,13 +74,15 @@ export function PageHero({
         style={[styles.heroTitle, compact && styles.compactHeroTitle]}>
         {title}
       </Text>
-      <Text
-        style={[
-          styles.heroDescription,
-          compact && styles.compactHeroDescription,
-        ]}>
-        {description}
-      </Text>
+      {!!description && (
+        <Text
+          style={[
+            styles.heroDescription,
+            compact && styles.compactHeroDescription,
+          ]}>
+          {description}
+        </Text>
+      )}
     </View>
   );
 }
@@ -420,26 +373,21 @@ export function StatusPanel({
 }
 
 const styles = StyleSheet.create({
-  button: {borderRadius: 18, overflow: 'hidden'},
-  outlinedButton: {borderWidth: 1},
-  buttonContent: {
-    minHeight: 60,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
+  disclosure: {borderTopWidth: 1, borderTopColor: trackingColors.line},
+  disclosureHeading: {
+    minHeight: 48,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+    gap: 12,
   },
-  buttonLabel: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '700',
-    flexShrink: 1,
-    textAlign: 'center',
+  disclosureTitle: {
+    flex: 1,
+    color: trackingColors.muted,
+    fontSize: 15,
+    lineHeight: 22,
   },
-  textButtonContent: {minHeight: 44, paddingVertical: 10},
-  textButtonLabel: {fontSize: 15, lineHeight: 22},
+  disclosureBody: {gap: 12, paddingBottom: 12},
   hero: {
     backgroundColor: trackingColors.blue,
     borderRadius: 26,

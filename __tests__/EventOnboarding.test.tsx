@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {PaperProvider} from 'react-native-paper';
@@ -6,20 +7,20 @@ import EtapasEvento from '../src/views/Eventos/Etapas';
 import SelecionarEvento from '../src/views/Eventos/Etapas/SelecionarEvento';
 import Leitor from '../src/components/Nfc/Leitor';
 import {EnumTipoEvento} from '../src/domain/enums/tipoEvento';
-import type {QueuedCapture} from '../src/domain/offline/types';
+import type {QueuedCapture} from '../src/domain/offline/capture';
 const mockNavigate = jest.fn();
 const mockCapture = jest.fn();
 const mockSynchronize = jest.fn().mockResolvedValue(undefined);
 let mockItems: QueuedCapture[] = [];
 jest.mock('@react-navigation/native', () => ({
+  NavigationContext: jest.requireActual('@react-navigation/native')
+    .NavigationContext,
   useNavigation: () => ({getParent: () => ({navigate: mockNavigate})}),
 }));
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
-jest.mock('../src/infra/traceability/runtime', () => ({
-  installationId: jest.fn().mockResolvedValue('ios-device'),
-}));
+
 jest.mock('../src/components/Offline/OfflineProvider', () => ({
   useOffline: () => ({
     items: mockItems,
@@ -28,21 +29,31 @@ jest.mock('../src/components/Offline/OfflineProvider', () => ({
     manager: {capture: mockCapture, synchronize: mockSynchronize},
   }),
 }));
-jest.mock('../src/infra/auth/runtime', () => ({
-  sessionManager: {
-    getSnapshot: () => ({
-      status: 'authenticated',
-      session: {
-        user: {id: 'operator'},
-        baseUrl: 'http://localhost:3000/api/v1',
-      },
-    }),
-  },
-}));
+
 jest.mock('../src/infra/nfc/reader', () => ({
   physicalNfcAvailable: true,
   cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
 }));
+const services = createTestServices({
+  installationId: jest.fn().mockResolvedValue('ios-device'),
+  session: {
+    getSnapshot: () => ({
+      status: 'authenticated' as const,
+      session: {
+        user: {
+          id: 'operator',
+          login: 'operator',
+          nome: 'Operador',
+          perfil: 'OPERADOR' as const,
+        },
+        token: 'nfc_' + 'a'.repeat(43),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        baseUrl: 'http://localhost:3000/api/v1',
+      },
+    }),
+  },
+});
+
 let tree: TestRenderer.ReactTestRenderer;
 const button = (label: string) =>
   tree.root.findAllByType(Button).find(item => item.props.children === label)!;
@@ -54,9 +65,12 @@ afterEach(async () => {
 test('confirms only after durable storage and retains scan time/UUID when a local save fails', async () => {
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <EtapasEvento />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <EtapasEvento />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   await act(async () => {
@@ -138,11 +152,9 @@ test('confirms only after durable storage and retains scan time/UUID when a loca
   expect(JSON.stringify(tree.toJSON())).toContain(
     'Captura salva neste aparelho',
   );
-  expect(JSON.stringify(tree.toJSON())).toContain(
-    'Você já pode sair desta tela',
-  );
+  expect(JSON.stringify(tree.toJSON())).toContain('Pode sair desta tela');
   await act(async () => {
-    button('Acompanhar em Envios').props.onPress();
+    button('Ver envios').props.onPress();
   });
   expect(mockNavigate).toHaveBeenCalledWith('Envios');
 });
@@ -150,9 +162,12 @@ test('confirms only after durable storage and retains scan time/UUID when a loca
 test('changing the selected stage returns to the choices without saving a capture', async () => {
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <EtapasEvento />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <EtapasEvento />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   await act(async () => {

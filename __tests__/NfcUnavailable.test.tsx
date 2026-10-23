@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
@@ -10,13 +11,18 @@ jest.mock('expo-constants', () => ({
   default: {executionEnvironment: 'storeClient'},
   ExecutionEnvironment: {StoreClient: 'storeClient'},
 }));
+const services = createTestServices({});
+
 test('Expo Go prevents physical operations without importing native NFC', async () => {
   let tree!: TestRenderer.ReactTestRenderer;
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <Leitor onLeituraRealizada={jest.fn()} onErroLeitura={jest.fn()} />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <Leitor onLeituraRealizada={jest.fn()} onErroLeitura={jest.fn()} />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   expect(

@@ -3,24 +3,19 @@ import {
   experimentSchema,
   insertExperimentalRecord,
 } from '../experimentation/sqlite-journal';
-import type {
-  Observation,
-  Provisioning,
-  Decision,
-  Reading,
-} from '../../domain/traceability/types';
+import type {Observation} from '../../domain/traceability/observation';
+import type {Provisioning} from '../../domain/traceability/provisioning';
+import type {Decision} from '../../domain/traceability/decision';
+import type {Reading} from '../../domain/traceability/reading';
 import {
   assertSdmReading,
   sdmProvisioningId,
 } from '../../domain/traceability/sdm-reading';
-import {
-  CaptureOwner,
-  CaptureStore,
-  CaptureMetadata,
-  QueuedCapture,
-  Settlement,
-  OfflineError,
-} from '../../domain/offline/types';
+import {CaptureOwner} from '../../domain/offline/owner';
+import {CaptureStore} from '../../appplication/offline/ports/capture-store';
+import {CaptureMetadata, QueuedCapture} from '../../domain/offline/capture';
+import {Settlement} from '../../appplication/offline/settlement.types';
+import {OfflineError} from '../../appplication/offline/offline-error';
 
 export type SqlValue = string | number | null;
 export interface SqlConnection {
@@ -314,16 +309,17 @@ export class SqliteCaptureStore implements CaptureStore {
     );
     if (!row || row.verified_at > now || now - row.verified_at > maxAge)
       return null;
-    const p = JSON.parse(row.snapshot) as Provisioning;
+    const cachedProvisioning = JSON.parse(row.snapshot) as Provisioning;
     if (
-      p.status !== 'ATIVA' ||
+      cachedProvisioning.status !== 'ATIVA' ||
       (reference &&
         !sdm &&
-        (p.estrategia !== 'NDEF_ESTATICO' || p.referenciaNdef !== reading.ndef))
+        (cachedProvisioning.estrategia !== 'NDEF_ESTATICO' ||
+          cachedProvisioning.referenciaNdef !== reading.ndef))
     )
       return null;
-    assertSdmReading(p, reading);
-    return freeze(p);
+    assertSdmReading(cachedProvisioning, reading);
+    return freeze(cachedProvisioning);
   }
   async updateDecision(owner: CaptureOwner, id: string, result: Decision) {
     const db = await this.db();

@@ -16,6 +16,21 @@ Android candidato 0.4.0/4 com bundle embutido e identificação de fonte/artefat
 Veja também a [revisão de navegação e espaçamento](docs/17-navegacao-e-espacamento.md):
 retornos padronizados, cabeçalhos compactos e área inferior sem margens duplicadas.
 
+## Validar uma alteração
+
+Execute `npm run verify`: fronteiras arquiteturais, lint sem warnings, tipos e
+testes precisam passar. `npm run lint` e `npm test` também executam as proteções
+de arquitetura. Veja [regras, exceções legadas e limites do bloqueio](docs/architecture-checks.md).
+As 31 exceções arquiteturais iniciais do Expo foram corrigidas; o inventário atual
+é vazio. A CI compara o inventário com a base Git e rejeita seu crescimento, e um
+teste mantém a exigência de zero exceções. O job `architecture-and-quality` está
+configurado para PRs, sem build EAS/nativo.
+
+Contratos, decoders, portas e políticas foram separados por responsabilidade. Os
+fluxos de apresentação usam transições explícitas onde os estados são relacionados;
+regras adicionais de hooks e nomes fazem parte de `verify`. Veja a execução e os
+limites de validação na [seção 19 da análise arquitetural](docs/18-analise-arquitetural-comparativa.md).
+
 ## Instalar no iPhone usando Windows
 
 É necessário instalar um **development build próprio**. Expo Go não contém o

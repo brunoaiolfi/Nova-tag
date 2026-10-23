@@ -1,8 +1,10 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {PaperProvider, TouchableRipple} from 'react-native-paper';
 import {stackScreenOptions} from '../src/navigation/stack-screen-options';
 import {tema} from '../src/theme';
+const services = createTestServices({});
 
 test('the header returns through navigation using a clear Portuguese control', async () => {
   const goBack = jest.fn();
@@ -10,12 +12,15 @@ test('the header returns through navigation using a clear Portuguese control', a
   let tree: TestRenderer.ReactTestRenderer;
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        {options.headerLeft!({
-          canGoBack: true,
-          tintColor: tema.colors.onPrimary,
-        })}
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          {options.headerLeft!({
+            canGoBack: true,
+            tintColor: tema.colors.onPrimary,
+          })}
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   const control = tree!.root.findByType(TouchableRipple);

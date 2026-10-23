@@ -93,11 +93,13 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
             <Text variant="titleMedium" style={styles.optionTitle}>
               {descricaoEnumTipoEvento[tipo]}
             </Text>
-            <Text
-              variant="bodySmall"
-              style={{color: theme.colors.onSurfaceVariant}}>
-              {descricao}
-            </Text>
+            {selecionada && (
+              <Text
+                variant="bodySmall"
+                style={{color: theme.colors.onSurfaceVariant}}>
+                {descricao}
+              </Text>
+            )}
           </VStack>
 
           {selecionada && (
@@ -134,8 +136,7 @@ const SelecionarEvento = ({
         <PageHero
           fullBleed
           compact
-          title="O que aconteceu com o pedido?"
-          description="Escolha a etapa antes de aproximar a etiqueta."
+          title="Escolher etapa"
           icon="timeline-plus-outline"
           eyebrow="PASSO 1 · ESCOLHER ETAPA"
         />

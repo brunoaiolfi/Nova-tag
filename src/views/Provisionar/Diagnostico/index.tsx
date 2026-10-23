@@ -1,3 +1,8 @@
+import {useAppServices} from '../../../components/Services/AppServicesProvider';
+import {
+  diagnosticJson,
+  PhysicalTagReport,
+} from '../../../appplication/nfc/physical-report';
 import React, {useEffect, useRef, useState} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import {List, Text} from 'react-native-paper';
@@ -9,22 +14,15 @@ import {
   StatusPanel,
   trackingColors as colors,
 } from '../../../components/Tracking';
-import {
-  cancelPhysicalRead,
-  physicalNfcAvailable,
-} from '../../../infra/nfc/reader';
-import {
-  diagnosePhysicalTag,
-  diagnosticJson,
-  PhysicalTagReport,
-} from '../../../infra/nfc/diagnostics';
 import {hex} from '../../../domain/nfc/type4';
 import {
   accessDescription,
   writeAccessSummary,
-} from '../../../domain/nfc/file-settings';
+} from '../../../components/Nfc/file-access-labels';
 
 export default function Diagnostico() {
+  const {nfc} = useAppServices();
+  const {cancelPhysicalRead, physicalNfcAvailable, diagnosePhysicalTag} = nfc;
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<PhysicalTagReport>();
   const [error, setError] = useState('');
@@ -39,7 +37,7 @@ export default function Diagnostico() {
         void cancelPhysicalRead();
       }
     };
-  }, []);
+  }, [cancelPhysicalRead]);
   async function read() {
     if (running.current) {
       return;
@@ -81,7 +79,7 @@ export default function Diagnostico() {
           eyebrow="DIAGNÓSTICO NFC"
           icon="nfc-search-variant"
           title="Conheça sua etiqueta."
-          description="Consulte o chip e o conteúdo antes de configurar. O resultado permanece aqui até a próxima leitura."
+          description="Consulte o chip e o conteúdo da etiqueta."
         />
       }
       footer={
@@ -92,18 +90,15 @@ export default function Diagnostico() {
           onPress={() => {
             void read();
           }}>
-          {report ? 'Diagnosticar outra etiqueta' : 'Diagnosticar etiqueta'}
+          {report ? 'Outra etiqueta' : 'Diagnosticar'}
         </ActionButton>
       }>
       <VStack gap={16}>
         <Text variant="bodyMedium">
-          Toque no botão e mantenha a etiqueta próxima à parte superior do
-          iPhone até terminar. Esta consulta não grava referências, não muda
-          chaves e não ativa vínculos.
+          Aproxime da parte superior do iPhone. Nenhum pedido será alterado.
         </Text>
         <Text variant="bodyMedium">
-          Se a etiqueta tiver SDM configurado, a leitura pode avançar o contador
-          do chip. Nenhuma movimentação será registrada.
+          Em etiquetas SDM, esta leitura pode avançar o contador.
         </Text>
         {!physicalNfcAvailable && (
           <StatusPanel tone="warning">

@@ -1,308 +1,73 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {AppState} from 'react-native';
-import {
-  RouteProp,
-  useFocusEffect,
-  useNavigation,
-  useRoute,
-} from '@react-navigation/native';
+import {useAdministrationFlow} from './use-administration-flow';
+import {stageLabel, administrationStatusLabel} from './labels';
+export {stageLabel} from './labels';
+import React from 'react';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {
-  ActivityIndicator,
-  Checkbox,
-  Dialog,
-  List,
-  Portal,
-  RadioButton,
-  Text,
-} from 'react-native-paper';
+import {ActivityIndicator, Dialog, Portal, Text} from 'react-native-paper';
 import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
-import type {
-  OrderSummary,
-  Provisioning,
-  Strategy,
-} from '../../../appplication/traceability/workflow';
-import type {
-  AdminOperation,
-  Material,
-} from '../../../domain/administration/types';
-import type {AdministrationProgress} from '../../../appplication/administration/coordinator';
-import {administration} from '../../../infra/administration/runtime';
-import {identifyAdministrativeTag} from '../../../infra/nfc/administration';
-import {physicalNfcAvailable} from '../../../infra/nfc/reader';
-import {traceability} from '../../../infra/traceability/runtime';
-import {useSession} from '../../../components/Auth/SessionProvider';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
 import OrderSelect from '../../../components/Nfc/OrderSelect';
+import BlockingFailure, {
+  describeFailure,
+} from '../../../components/Nfc/BlockingFailure';
 import {
   ActionButton,
-  PageHero,
+  Details,
+  FlowSteps,
   StatusPanel,
 } from '../../../components/Tracking';
 
-export function stageLabel(stage: string): string {
-  if (
-    stage.includes('AUTH') ||
-    stage.includes('AUTENTICAR') ||
-    stage.includes('DESAFIO') ||
-    stage.includes('CONFIRMAR_AUTH')
-  )
-    return 'Autenticando a etiqueta';
-  if (stage.includes('TROCAR_CHAVE'))
-    return `Atualizando a chave ${stage.at(-1)}`;
-  if (stage.startsWith('GRAVAR_NDEF'))
-    return 'Gravando a identificação do pedido';
-  if (stage === 'GRAVAR_CC') return 'Protegendo a escrita pública';
-  if (stage.includes('CONFIG')) return 'Conferindo as permissões dos arquivos';
-  if (stage.includes('CONFERIR')) return 'Conferindo os dados gravados';
-  if (stage.includes('UID')) return 'Conferindo a identidade autenticada';
-  if (stage.includes('VERSAO')) return 'Conferindo as versões das chaves';
-  return 'Conferindo a configuração da etiqueta';
-}
-const treatment = (s: Strategy) =>
-  s === 'UID'
-    ? 'Número da etiqueta (UID)'
-    : s === 'SDM'
-    ? 'Leitura autenticada (SDM)'
-    : 'Referência gravada (NDEF estático)';
-const status = (op: AdminOperation) =>
-  op.status === 'ENCERRADA'
-    ? 'Operação encerrada'
-    : op.alteracaoFisica === 'CONFERIDA'
-    ? 'Configuração conferida'
-    : op.status === 'INTERROMPIDA'
-    ? 'Configuração interrompida'
-    : op.status === 'PERSONALIZANDO'
-    ? 'Sessão NFC em andamento'
-    : 'Plano pronto para configurar';
+import {
+  Confirmation,
+  Choice,
+  SetupSummary,
+  SetupState,
+  SetupHeading,
+  OutcomeRow,
+  RecoverySlots,
+} from '../../../components/Nfc/SetupControls';
 
 export default function Administracao() {
   const params =
     useRoute<RouteProp<RotasProvisionar, 'Administracao'>>().params;
   const navigation =
     useNavigation<NativeStackNavigationProp<RotasProvisionar>>();
-  const {state} = useSession();
-  const canManage =
-    state.status === 'authenticated' &&
-    state.session.user.perfil === 'ADMINISTRADOR';
-  const scope = state.session
-    ? [state.session.baseUrl, state.session.user.id, state.session.token].join(
-        '\u0000',
-      )
-    : state.status;
-  const scopeRef = useRef(scope);
-  const [order, setOrder] = useState<OrderSummary>();
-  const [uid, setUid] = useState('');
-  const [strategy, setStrategy] = useState<Strategy>('UID');
-  const [policy, setPolicy] = useState<'ESTRITA' | 'REGISTRO_TARDIO'>(
-    'ESTRITA',
-  );
-  const [link, setLink] = useState<Provisioning>();
-  const [operation, setOperation] = useState<AdminOperation>();
-  const [materials, setMaterials] = useState<(Material | null)[]>([]);
-  const [confirmed, setConfirmed] = useState(false);
-  const [activationConfirmed, setActivationConfirmed] = useState(false);
-  const [pendingActivation, setPendingActivation] = useState(false);
-  const [progress, setProgress] = useState<AdministrationProgress>();
-  const [journal, setJournal] = useState<
-    Awaited<ReturnType<typeof administration.localJournal>>
-  >([]);
-  const [activity, setActivity] = useState<{
-    label: string;
-    nfc: boolean;
-  } | null>(null);
-  const busy = activity?.label ?? '';
-  const [endDialogOpen, setEndDialogOpen] = useState(false);
-  const [message, setMessage] = useState('');
-  const generation = useRef(0),
-    working = useRef(false);
-  const requestedPlan = useRef('');
-  const opRef = useRef(operation);
-  opRef.current = operation;
-
-  const install = useCallback(async (op: AdminOperation, token: number) => {
-    const choices = await administration.suggestions(op),
-      entries = await administration.localJournal(op),
-      pending = await administration.activationPending(op);
-    if (token === generation.current) {
-      setOperation(op);
-      setMaterials(choices);
-      setJournal(entries);
-      setPendingActivation(pending);
-      setConfirmed(false);
-    }
-  }, []);
-  const run = useCallback(
-    async (
-      label: string,
-      job: (token: number) => Promise<void>,
-      nfc = false,
-    ) => {
-      if (
-        working.current ||
-        !canManage ||
-        !physicalNfcAvailable ||
-        scopeRef.current !== scope
-      )
-        return;
-      const token = generation.current;
-      working.current = true;
-      setActivity({label, nfc});
-      setMessage('');
-      try {
-        await job(token);
-      } catch (e) {
-        if (token === generation.current) {
-          setMessage(
-            e instanceof Error
-              ? e.message
-              : 'Operação não confirmada. Atualize a operação para recuperar.',
-          );
-          const current = opRef.current;
-          if (current)
-            try {
-              await install(await administration.refresh(current.id), token);
-            } catch {
-              /* Preserve the last visible checkpoint while offline. */
-            }
-        }
-      } finally {
-        working.current = false;
-        setActivity(null);
-      }
-    },
-    [canManage, install, scope],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!canManage) void administration.cancel().catch(() => {});
-      generation.current++;
-      if (scopeRef.current !== scope) {
-        scopeRef.current = scope;
-        setOrder(undefined);
-        setUid('');
-        setLink(undefined);
-        setOperation(undefined);
-        setMaterials([]);
-        setConfirmed(false);
-        setActivationConfirmed(false);
-        setPendingActivation(false);
-        setProgress(undefined);
-        setJournal([]);
-        setMessage('');
-        setEndDialogOpen(false);
-      }
-      setActivity(
-        working.current
-          ? {
-              label: 'Aguardando o encerramento da operação anterior',
-              nfc: false,
-            }
-          : null,
-      );
-      return () => {
-        generation.current++;
-        void administration.cancel().catch(() => {});
-      };
-    }, [canManage, scope]),
-  );
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', value => {
-      // iOS NFC sheets report inactive. Only background ends the RF session.
-      if (value === 'background') void administration.cancel().catch(() => {});
-    });
-    return () => subscription.remove();
-  }, []);
-  useEffect(() => {
-    if (!params?.provisioningId || !canManage || !physicalNfcAvailable) return;
-    const requestKey = scope + '\u0000' + params.provisioningId;
-    if (working.current || requestedPlan.current === requestKey) return;
-    requestedPlan.current = requestKey;
-    void run('Consultando o plano', async token => {
-      const p = await traceability.provisioning(params.provisioningId!);
-      const o = await traceability.order(p.pedidoId);
-      if (token !== generation.current) return;
-      setLink(p);
-      setOrder(o);
-      setUid(p.uid);
-      setStrategy(p.estrategia);
-      await install(await administration.prepare(p), token);
-    });
-  }, [params?.provisioningId, canManage, run, install, scope, busy]);
-
-  async function identify(token: number) {
-    const tag = await identifyAdministrativeTag();
-    if (token === generation.current) {
-      setUid(tag.uid);
-      setMessage(
-        'NTAG 424 DNA identificada. Nenhuma configuração foi alterada.',
-      );
-    }
-  }
-  async function prepare(token: number) {
-    if (!order || !uid) return;
-    const p =
-      link ?? (await administration.register(order.id, uid, strategy, policy));
-    if (token !== generation.current) return;
-    setLink(p);
-    await install(await administration.prepare(p), token);
-  }
-  async function refresh(token: number) {
-    if (!operation) return;
-    const op = await administration.restore(
-      await administration.refresh(operation.id),
-    );
-    await install(op, token);
-    if (link) {
-      const p = await traceability.provisioning(link.id);
-      if (token === generation.current) setLink(p);
-    }
-  }
-  async function execute(token: number) {
-    if (
-      !operation ||
-      !confirmed ||
-      materials.length !== 5 ||
-      materials.some(x => x === null)
-    )
-      return;
-    const op = await administration.execute(
-      operation,
-      materials as Material[],
-      p => {
-        if (token === generation.current) setProgress(p);
-      },
-    );
-    await install(op, token);
-    if (token === generation.current)
-      setMessage(
-        'Configuração conferida pela API. Afaste a etiqueta antes da leitura de ativação.',
-      );
-  }
-  async function activate(token: number) {
-    if (!operation || !link || !activationConfirmed) return;
-    const p = await administration.activate(operation, link, true);
-    if (token === generation.current) {
-      setLink(p);
-      setPendingActivation(false);
-      setMessage(
-        'Vínculo ativo. A etiqueta está pronta para registrar coleta e acompanhar o pedido.',
-      );
-    }
-  }
-  async function end(token: number) {
-    if (!operation) return;
-    const wasVerified = operation.alteracaoFisica === 'CONFERIDA';
-    await install(await administration.end(operation), token);
-    if (token === generation.current)
-      setMessage(
-        wasVerified
-          ? 'Operação administrativa encerrada. A configuração conferida e o vínculo foram preservados.'
-          : 'Plano encerrado sem configurar a etiqueta. Em Gerenciar, encerre o vínculo registrado e crie uma nova época quando quiser configurar.',
-      );
-  }
+  const {
+    order,
+    uid,
+    setupStep,
+    strategy,
+    policy,
+    link,
+    operation,
+    materials,
+    confirmed,
+    activationConfirmed,
+    pendingActivation,
+    progress,
+    journal,
+    activity,
+    endDialogOpen,
+    message,
+    failureOpen,
+    blockingOperation,
+    lookupError,
+    canManage,
+    physicalNfcAvailable,
+    busy,
+    run,
+    identify,
+    prepare,
+    refresh,
+    execute,
+    activate,
+    end,
+    resolvePending,
+    dispatch,
+    cancel,
+  } = useAdministrationFlow(params?.provisioningId);
   const recovery = operation?.status === 'INTERROMPIDA';
   const verified = operation?.alteracaoFisica === 'CONFERIDA';
   const enabled = canManage && physicalNfcAvailable && !busy;
@@ -314,83 +79,188 @@ export default function Administracao() {
     !!operation &&
     ['PREPARADA', 'INTERROMPIDA'].includes(operation.status);
   const active = link?.status === 'ATIVA';
-  return (
-    <Tela
-      scroll
-      insetTop={false}
-      header={
-        <PageHero
-          fullBleed
-          compact
-          icon="shield-check-outline"
-          eyebrow="CONFIGURAÇÃO ADMINISTRATIVA"
-          title={
-            active
-              ? 'Etiqueta pronta para rastrear.'
-              : 'Configure a NTAG 424 DNA.'
+  const closed = operation?.status === 'ENCERRADA';
+  const unknown = materials.filter(value => value === null).length;
+  const showConfigure = !!operation && !verified && !closed;
+  const tagInUse = describeFailure(message).code === 'NFC_ETIQUETA_EM_USO';
+  const manage = () =>
+    navigation.navigate(
+      'Gerenciar',
+      link ? {provisioningId: link.id} : undefined,
+    );
+  const blocked =
+    operation && !['PREPARADA', 'INTERROMPIDA'].includes(operation.status)
+      ? 'Atualize o plano para consultar a sessão em andamento.'
+      : materials.length !== 5
+      ? 'Atualize o plano para carregar as cinco chaves.'
+      : unknown
+      ? unknown === 1
+        ? 'Escolha Atual ou Alvo na chave pendente.'
+        : 'Escolha Atual ou Alvo nas ' + unknown + ' chaves pendentes.'
+      : !confirmed
+      ? 'Marque a confirmação acima para continuar.'
+      : '';
+  const footer =
+    !canManage || !physicalNfcAvailable ? undefined : busy ? (
+      <VStack gap={8}>
+        <ActivityIndicator />
+        <Text accessibilityLiveRegion="polite">
+          {busy}.{' '}
+          {activity?.nfc
+            ? 'Mantenha a etiqueta próxima até a conclusão da sessão NFC.'
+            : 'Aguarde o resultado na tela.'}
+        </Text>
+        {activity?.nfc && (
+          <ActionButton
+            mode="outlined"
+            onPress={() => {
+              void cancel();
+            }}>
+            Cancelar leitura
+          </ActionButton>
+        )}
+      </VStack>
+    ) : tagInUse ? (
+      <ActionButton
+        mode="contained"
+        buttonColor="#B42318"
+        icon="alert-circle-outline"
+        disabled={!enabled}
+        onPress={() => dispatch({type: 'failure-visibility', open: true})}>
+        Resolver pendência
+      </ActionButton>
+    ) : active ? (
+      <ActionButton
+        mode="contained"
+        icon="check-circle-outline"
+        onPress={manage}>
+        Ver vínculo
+      </ActionButton>
+    ) : verified ? (
+      <VStack gap={8}>
+        <Confirmation
+          label="Quero ativar o rastreio deste pedido"
+          checked={activationConfirmed}
+          onPress={() =>
+            dispatch({
+              type: 'activation-confirmed',
+              confirmed: !activationConfirmed,
+            })
           }
-          description="Pedido → plano → configuração → ativação. As chaves permanecem no cofre da API."
         />
-      }
-      footer={
-        busy ? (
-          <VStack gap={8}>
-            <Text>
-              {busy}.{' '}
-              {activity?.nfc
-                ? 'Mantenha a etiqueta próxima até a conclusão da sessão NFC.'
-                : 'Aguarde o resultado na tela. O diário será preservado.'}
+        <ActionButton
+          mode="contained"
+          icon={pendingActivation ? 'cloud-upload-outline' : 'nfc-tap'}
+          disabled={!enabled || !activationConfirmed}
+          onPress={() => {
+            void run(
+              pendingActivation
+                ? 'Confirmando leitura salva'
+                : 'Lendo em nova sessão para ativar',
+              activate,
+              !pendingActivation,
+            );
+          }}>
+          {pendingActivation ? 'Reenviar ativação' : 'Ler e ativar'}
+        </ActionButton>
+      </VStack>
+    ) : showConfigure ? (
+      <VStack gap={8}>
+        <Confirmation
+          label={
+            recovery
+              ? 'Conferi as chaves e autorizo retomar'
+              : 'Autorizo gravar e proteger esta etiqueta'
+          }
+          checked={confirmed}
+          onPress={() =>
+            dispatch({type: 'configuration-confirmed', confirmed: !confirmed})
+          }
+        />
+        {!!blocked && (
+          <Text variant="bodySmall" accessibilityLiveRegion="polite">
+            {blocked}
+          </Text>
+        )}
+        <ActionButton
+          mode="contained"
+          icon="nfc-tap"
+          disabled={!canExecute}
+          onPress={() => {
+            void run('Configurando a etiqueta', execute, true);
+          }}>
+          {recovery ? 'Recuperar configuração' : 'Configurar etiqueta'}
+        </ActionButton>
+      </VStack>
+    ) : closed ? (
+      <ActionButton mode="contained" icon="tag-outline" onPress={manage}>
+        Gerenciar vínculo
+      </ActionButton>
+    ) : link ? (
+      <ActionButton
+        mode="contained"
+        icon="refresh"
+        disabled={!enabled}
+        onPress={() => {
+          void run('Preparando o plano', prepare);
+        }}>
+        Consultar plano
+      </ActionButton>
+    ) : (
+      <VStack gap={4}>
+        {setupStep === 0 ? (
+          <ActionButton
+            mode="contained"
+            icon="arrow-right"
+            disabled={!enabled || !order}
+            onPress={() => dispatch({type: 'step-changed', step: 1})}>
+            Continuar
+          </ActionButton>
+        ) : setupStep === 1 ? (
+          <ActionButton
+            mode="contained"
+            icon={uid ? 'arrow-right' : 'nfc-tap'}
+            disabled={!enabled}
+            onPress={() => {
+              if (uid) dispatch({type: 'step-changed', step: 2});
+              else void run('Identificando a etiqueta', identify, true);
+            }}>
+            {uid ? 'Continuar' : 'Identificar NTAG 424 DNA'}
+          </ActionButton>
+        ) : (
+          <>
+            <Text variant="bodySmall">
+              {strategy
+                ? 'O plano será salvo. A gravação exige outra confirmação.'
+                : 'Escolha uma identificação para continuar.'}
             </Text>
-            {activity?.nfc && (
-              <ActionButton
-                mode="outlined"
-                onPress={() => {
-                  void administration.cancel().catch(() => {});
-                }}>
-                Cancelar sessão NFC
-              </ActionButton>
-            )}
-          </VStack>
-        ) : verified && !active ? (
-          <ActionButton
-            mode="contained"
-            disabled={!enabled || !activationConfirmed}
-            onPress={() => {
-              void run(
-                pendingActivation
-                  ? 'Confirmando leitura salva'
-                  : 'Lendo em nova sessão para ativar',
-                activate,
-                !pendingActivation,
-              );
-            }}>
-            {pendingActivation
-              ? 'Reenviar leitura de ativação'
-              : 'Ler novamente e ativar'}
-          </ActionButton>
-        ) : operation && !verified && operation.status !== 'ENCERRADA' ? (
-          <ActionButton
-            mode="contained"
-            disabled={!canExecute}
-            onPress={() => {
-              void run('Configurando a etiqueta', execute, true);
-            }}>
-            {recovery
-              ? 'Recuperar com nova sessão NFC'
-              : 'Aproximar e configurar'}
-          </ActionButton>
-        ) : !operation ? (
-          <ActionButton
-            mode="contained"
-            disabled={!enabled || !order || !uid}
-            onPress={() => {
-              void run('Preparando o plano', prepare);
-            }}>
-            Preparar plano de configuração
-          </ActionButton>
-        ) : undefined
-      }>
-      <VStack gap={24}>
+            <ActionButton
+              mode="contained"
+              icon="arrow-right"
+              disabled={!enabled || !order || !uid || !strategy}
+              onPress={() => {
+                void run('Preparando o plano', prepare);
+              }}>
+              Preparar plano
+            </ActionButton>
+          </>
+        )}
+      </VStack>
+    );
+  if (!order && !params?.provisioningId && canManage && physicalNfcAvailable)
+    return (
+      <OrderSelect
+        insetTop={false}
+        pickerFooter={footer}
+        disabled={!!busy}
+        onSelect={selectedOrder =>
+          dispatch({type: 'order-selected', order: selectedOrder})
+        }
+      />
+    );
+  return (
+    <Tela scroll insetTop={false} footer={footer}>
+      <VStack gap={16}>
         {!canManage ? (
           <StatusPanel tone="warning">
             <Text>
@@ -407,297 +277,410 @@ export default function Administracao() {
           </StatusPanel>
         ) : (
           <>
-            <VStack gap={8}>
-              <Text variant="labelLarge">1 · PEDIDO E ETIQUETA</Text>
-              {operation || link ? (
-                <>
-                  <Text variant="headlineSmall">
-                    {order?.codigo ?? 'Pedido associado'}
-                  </Text>
-                  <Text>{order?.descricao}</Text>
-                  <Text selectable>NTAG 424 DNA · {uid}</Text>
-                  <Text>
-                    Época {link?.epoca} ·{' '}
-                    {treatment(link?.estrategia ?? strategy)}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <OrderSelect
-                    selected={order}
-                    disabled={!!busy}
-                    onSelect={setOrder}
-                  />
-                  <Text>
-                    {uid
-                      ? `NTAG 424 DNA · ${uid}`
-                      : 'O modelo e o número serão preenchidos pela leitura.'}
-                  </Text>
-                  <ActionButton
-                    mode="outlined"
-                    icon="nfc-search-variant"
-                    disabled={!enabled}
-                    onPress={() => {
-                      void run('Identificando a etiqueta', identify, true);
-                    }}>
-                    {uid
-                      ? 'Ler outra NTAG 424 DNA'
-                      : 'Identificar NTAG 424 DNA'}
-                  </ActionButton>
-                  <Text variant="titleMedium">Tratamento do ensaio</Text>
-                  <RadioButton.Group
-                    value={strategy}
-                    onValueChange={s => setStrategy(s as Strategy)}>
-                    {(['UID', 'NDEF_ESTATICO', 'SDM'] as Strategy[]).map(s => (
-                      <RadioButton.Item
-                        key={s}
-                        label={treatment(s)}
-                        value={s}
-                        disabled={!!busy}
-                        position="leading"
-                      />
-                    ))}
-                  </RadioButton.Group>
-                  {strategy === 'SDM' && (
-                    <>
-                      <Text variant="titleMedium">
-                        Política para leituras fora de ordem
-                      </Text>
-                      <RadioButton.Group
-                        value={policy}
-                        onValueChange={p => setPolicy(p as typeof policy)}>
-                        <RadioButton.Item
-                          label="Estrita · exige contador crescente"
-                          value="ESTRITA"
-                          disabled={!!busy}
-                        />
-                        <RadioButton.Item
-                          label="Registro tardio · preserva leituras anteriores inéditas"
-                          value="REGISTRO_TARDIO"
-                          disabled={!!busy}
-                        />
-                      </RadioButton.Group>
-                    </>
-                  )}
-                  <Text>
-                    Para sua etiqueta Feiju, use o vínculo simples na tela
-                    anterior. Este fluxo exige NTAG 424 DNA e inventário de
-                    credenciais importado pelo administrador na API.
-                  </Text>
-                </>
-              )}
-            </VStack>
-            {operation && (
-              <>
-                <VStack gap={8}>
-                  <Text variant="labelLarge">2 · PLANO DE CONFIGURAÇÃO</Text>
-                  <StatusPanel tone={verified ? 'success' : 'warning'}>
-                    <Text variant="titleMedium">{status(operation)}</Text>
-                    <Text>
-                      {operation.status === 'ENCERRADA' && !verified
-                        ? 'O plano foi encerrado sem configuração. Em Gerenciar, encerre este vínculo registrado e crie uma nova época para configurar a etiqueta.'
-                        : verified
-                        ? 'Os dados, as permissões e os cinco slots foram conferidos pela API.'
-                        : operation.alteracaoEmitida
-                        ? 'Uma alteração já foi transmitida. Preserve o plano original e recupere antes de reutilizar a etiqueta.'
-                        : 'O plano está salvo. A configuração só começa ao aproximar e confirmar abaixo.'}
-                    </Text>
-                  </StatusPanel>
-                  <Text>
-                    A configuração substitui o NDEF, protege a escrita pública e
-                    atualiza as chaves dos slots 0 a 4. O tratamento será{' '}
-                    {treatment(operation.plano.estrategia)}.
-                  </Text>
-                  <Text>
-                    Versões atuais: {operation.plano.versoesChaves.join(' · ')}
-                    {'\n'}Versões do alvo:{' '}
-                    {operation.plano.personalizacao.versoesAlvo.join(' · ')}
-                  </Text>
-                  <Text>
-                    Use rede estável e mantenha a etiqueta imóvel junto à
-                    antena. Se a sessão parar, afaste a etiqueta e atualize o
-                    plano antes de recuperar.
-                  </Text>
-                  {recovery && (
-                    <VStack gap={8}>
-                      <Text variant="titleMedium">
-                        Recuperação · confirme os cinco slots
-                      </Text>
-                      <Text>
-                        Atual = credencial anterior ao plano. Alvo = credencial
-                        definida neste plano. As sugestões vêm do diário local;
-                        uma tentativa sem recibo exige escolha explícita. A API
-                        não testa uma chave alternativa após falha.
-                      </Text>
-                      {materials.map((choice, i) => (
-                        <VStack key={i} gap={4}>
-                          <Text variant="titleMedium">
-                            Slot {i}
-                            {choice === null
-                              ? ' · resultado da troca desconhecido'
-                              : ''}
-                          </Text>
-                          <RadioButton.Group
-                            value={choice ?? ''}
-                            onValueChange={value =>
-                              setMaterials(old =>
-                                old.map((x, j) =>
-                                  j === i ? (value as Material) : x,
-                                ),
-                              )
-                            }>
-                            <RadioButton.Item
-                              value="ATUAL"
-                              label={`Slot ${i}: Atual`}
-                              disabled={!!busy}
-                            />
-                            <RadioButton.Item
-                              value="ALVO"
-                              label={`Slot ${i}: Alvo`}
-                              disabled={!!busy}
-                            />
-                          </RadioButton.Group>
-                        </VStack>
-                      ))}
-                    </VStack>
-                  )}
-                  {!verified && operation.status !== 'ENCERRADA' && (
-                    <Checkbox.Item
-                      label={
-                        recovery
-                          ? 'Conferi o plano e o material selecionado em cada slot'
-                          : 'Conferi o pedido e autorizo esta configuração física'
+            {!recovery && !message && (
+              <FlowSteps
+                labels={
+                  operation
+                    ? ['Preparar', 'Configurar', 'Ativar']
+                    : ['Pedido', 'Etiqueta', 'Identificação']
+                }
+                current={
+                  operation ? (active ? 3 : verified ? 3 : 2) : setupStep + 1
+                }
+              />
+            )}
+            {!!message && (
+              <BlockingFailure
+                message={message}
+                visible={failureOpen}
+                onShow={() =>
+                  dispatch({type: 'failure-visibility', open: true})
+                }
+                onDismiss={() => {
+                  if (!busy)
+                    dispatch({type: 'failure-visibility', open: false});
+                }}
+                loading={!!busy}
+                actionLabel={
+                  tagInUse
+                    ? blockingOperation
+                      ? blockingOperation.alteracaoEmitida
+                        ? 'Abrir configuração anterior'
+                        : 'Encerrar e continuar'
+                      : 'Consultar pendência'
+                    : undefined
+                }
+                onAction={
+                  tagInUse
+                    ? () => {
+                        void run(
+                          'Resolvendo a configuração anterior',
+                          resolvePending,
+                        );
                       }
-                      status={confirmed ? 'checked' : 'unchecked'}
-                      disabled={!!busy}
-                      onPress={() => setConfirmed(x => !x)}
-                    />
-                  )}
-                </VStack>
-                <VStack gap={8}>
-                  <Text variant="labelLarge">
-                    3 · CONFIGURAÇÃO E CONFERÊNCIA
-                  </Text>
-                  {busy && <ActivityIndicator accessibilityLabel={busy} />}
-                  <Text accessibilityLiveRegion="polite">
-                    {progress
-                      ? `${stageLabel(progress.stage)} · comando ${
-                          progress.sequence
-                        }`
-                      : verified
-                      ? 'Conferência concluída.'
-                      : 'O progresso aparecerá aqui e permanecerá visível se houver uma falha.'}
-                  </Text>
-                  <ActionButton
-                    mode="outlined"
-                    disabled={!enabled}
-                    onPress={() => {
-                      void run('Atualizando e recuperando o diário', refresh);
-                    }}>
-                    Atualizar operação e diário
-                  </ActionButton>
-                  <List.Accordion
-                    title={`Diário de comandos · ${journal.length}`}>
-                    <Text>
-                      Tentativa = envio NFC iniciado. Resposta salva = evidência
-                      local. Recibo API = resposta processada pelo servidor.
-                    </Text>
-                    {journal.map((entry, i) => (
-                      <Text key={i}>
-                        #{entry.sequence} · {stageLabel(entry.stage)} ·{' '}
-                        {entry.state === 'ACKNOWLEDGED'
-                          ? 'Recibo API'
-                          : entry.state === 'RESPONSE'
-                          ? 'Resposta salva'
-                          : entry.state === 'ATTEMPTED'
-                          ? 'Tentativa'
-                          : 'Aguardando envio'}
-                        {entry.code ? ` · ${entry.code}` : ''}
-                      </Text>
-                    ))}
-                  </List.Accordion>
-                </VStack>
-                {verified && (
-                  <VStack gap={8}>
-                    <Text variant="labelLarge">4 · ATIVAÇÃO DO RASTREIO</Text>
-                    <StatusPanel tone={active ? 'success' : 'warning'}>
-                      <Text variant="titleMedium">
-                        {active ? 'Vínculo ativo' : 'Falta ativar o vínculo'}
-                      </Text>
+                    : undefined
+                }>
+                {tagInUse && (
+                  <>
+                    {busy ? (
+                      <Text>Consultando a configuração anterior…</Text>
+                    ) : blockingOperation ? (
+                      <>
+                        <Text variant="titleMedium">
+                          Época {blockingOperation.plano.epoca} ·{' '}
+                          {blockingOperation.plano.uid}
+                        </Text>
+                        <Text>
+                          {blockingOperation.alteracaoEmitida
+                            ? 'A configuração já enviou alterações à etiqueta. Abra o plano original para verificar a recuperação necessária.'
+                            : 'Nenhuma alteração física foi emitida. Confirmar encerra este plano e prepara o atual. A etiqueta só será gravada com sua autorização.'}
+                        </Text>
+                      </>
+                    ) : (
                       <Text>
-                        {active
-                          ? 'Registre coleta, recebimento e as demais etapas. O histórico estará na aba Rastreio.'
-                          : pendingActivation
-                          ? 'A leitura da nova sessão está salva. O reenvio usa essa mesma evidência, sem transmitir os comandos de configuração novamente.'
-                          : 'Afaste a etiqueta após a configuração. A próxima leitura abrirá uma nova sessão NFC; no SDM a API validará a evidência antes da ativação.'}
+                        {lookupError ||
+                          'Consulte a configuração anterior para conferir como resolver.'}
                       </Text>
-                    </StatusPanel>
-                    {!active && (
-                      <Checkbox.Item
-                        label="Conferi a conclusão e quero ativar este vínculo"
-                        status={activationConfirmed ? 'checked' : 'unchecked'}
-                        disabled={!!busy}
-                        onPress={() => setActivationConfirmed(x => !x)}
-                      />
                     )}
-                    {active && (
+                  </>
+                )}
+              </BlockingFailure>
+            )}
+            {operation || link ? (
+              <SetupSummary
+                compact
+                order={order?.codigo ?? 'Pedido associado'}
+                uid={uid}
+                detail={
+                  'Época ' +
+                  (link?.epoca ?? '—') +
+                  ' · ' +
+                  (link?.estrategia ?? operation!.plano.estrategia)
+                }
+              />
+            ) : (
+              <>
+                {setupStep === 0 && (
+                  <>
+                    <SetupHeading
+                      title="Qual pedido?"
+                      description="Selecione o volume que receberá a etiqueta."
+                    />
+                    <OrderSelect
+                      selected={order}
+                      disabled={!!busy}
+                      onSelect={selectedOrder =>
+                        dispatch({type: 'order-selected', order: selectedOrder})
+                      }
+                    />
+                  </>
+                )}
+                {setupStep === 1 && (
+                  <>
+                    <SetupState
+                      icon={uid ? 'check-circle-outline' : 'nfc-tap'}
+                      title={
+                        uid ? 'Etiqueta identificada' : 'Aproxime a NTAG 424'
+                      }
+                      description={
+                        uid
+                          ? 'Número preenchido pela leitura. Nenhuma configuração foi alterada.'
+                          : 'Encoste a etiqueta na parte superior do iPhone.'
+                      }
+                      tone={uid ? 'success' : 'info'}
+                    />
+                    <SetupSummary
+                      order={order?.codigo ?? 'Pedido'}
+                      uid={uid}
+                      detail="NTAG 424 DNA"
+                    />
+                    {!!uid && (
                       <ActionButton
                         mode="outlined"
                         disabled={!enabled}
-                        onPress={() =>
-                          navigation.navigate('Gerenciar', {
-                            provisioningId: link?.id,
-                          })
-                        }>
-                        Ver vínculo da etiqueta
+                        onPress={() => {
+                          void run('Identificando a etiqueta', identify, true);
+                        }}>
+                        Ler outra etiqueta
                       </ActionButton>
                     )}
-                  </VStack>
+                  </>
                 )}
-                {operation.status !== 'ENCERRADA' &&
-                  (!operation.alteracaoEmitida || verified) && (
-                    <ActionButton
-                      mode="outlined"
-                      disabled={!enabled}
-                      onPress={() => {
-                        setEndDialogOpen(true);
-                      }}>
-                      {verified
-                        ? 'Finalizar operação administrativa'
-                        : 'Encerrar plano sem configurar'}
-                    </ActionButton>
-                  )}
-                <List.Accordion title="Identificadores do plano">
-                  <Text selectable>
-                    Operação: {operation.id}
-                    {'\n'}Alvo: {operation.plano.personalizacao.referenciaAlvo}
-                    {'\n'}Hash: {operation.hashPlano}
-                  </Text>
-                </List.Accordion>
+                {setupStep === 2 && (
+                  <>
+                    <SetupHeading
+                      title="Como identificar?"
+                      description="O tratamento ficará fixo neste vínculo."
+                    />
+                    <Choice
+                      title="Leitura autenticada · SDM"
+                      description="Valida a autenticidade e o contador no servidor."
+                      icon="shield-check-outline"
+                      selected={strategy === 'SDM'}
+                      disabled={!!busy}
+                      onPress={() =>
+                        dispatch({type: 'strategy-selected', strategy: 'SDM'})
+                      }
+                    />
+                    <Choice
+                      title="Número da etiqueta · UID"
+                      description="Identifica pelo número físico da etiqueta."
+                      icon="fingerprint"
+                      selected={strategy === 'UID'}
+                      disabled={!!busy}
+                      onPress={() =>
+                        dispatch({type: 'strategy-selected', strategy: 'UID'})
+                      }
+                    />
+                    <Choice
+                      title="Referência gravada · NDEF"
+                      description="Identifica pela referência salva na memória."
+                      icon="link-variant"
+                      selected={strategy === 'NDEF_ESTATICO'}
+                      disabled={!!busy}
+                      onPress={() =>
+                        dispatch({
+                          type: 'strategy-selected',
+                          strategy: 'NDEF_ESTATICO',
+                        })
+                      }
+                    />
+                    {strategy === 'SDM' && (
+                      <Details title="Política de leituras · regras do contador">
+                        <VStack gap={8}>
+                          <Choice
+                            title="Estrita"
+                            description="Aceita apenas contadores crescentes."
+                            icon="shield-lock-outline"
+                            selected={policy === 'ESTRITA'}
+                            disabled={!!busy}
+                            onPress={() =>
+                              dispatch({
+                                type: 'policy-selected',
+                                policy: 'ESTRITA',
+                              })
+                            }
+                          />
+                          <Choice
+                            title="Registro tardio"
+                            description="Preserva também leituras anteriores inéditas."
+                            icon="history"
+                            selected={policy === 'REGISTRO_TARDIO'}
+                            disabled={!!busy}
+                            onPress={() =>
+                              dispatch({
+                                type: 'policy-selected',
+                                policy: 'REGISTRO_TARDIO',
+                              })
+                            }
+                          />
+                        </VStack>
+                      </Details>
+                    )}
+                    {strategy === 'SDM' && (
+                      <Text variant="bodySmall">
+                        Política:{' '}
+                        {policy === 'ESTRITA'
+                          ? 'Estrita · contador crescente'
+                          : 'Registro tardio'}
+                      </Text>
+                    )}
+                  </>
+                )}
+                {setupStep > 0 && (
+                  <ActionButton
+                    disabled={!!busy}
+                    onPress={() =>
+                      dispatch({type: 'step-changed', step: setupStep - 1})
+                    }>
+                    Etapa anterior
+                  </ActionButton>
+                )}
               </>
             )}
-            <ActionButton
-              disabled={!!busy}
-              onPress={() =>
-                navigation.navigate(
-                  'Gerenciar',
-                  link ? {provisioningId: link.id} : undefined,
-                )
-              }>
-              Gerenciar ou retomar um vínculo
-            </ActionButton>
+            {operation && (
+              <>
+                {closed && verified && (
+                  <Text variant="bodySmall">
+                    Operação encerrada · configuração preservada
+                  </Text>
+                )}
+                <SetupState
+                  compact={!active}
+                  icon={
+                    active
+                      ? 'check-decagram-outline'
+                      : verified
+                      ? 'shield-check-outline'
+                      : closed
+                      ? 'archive-outline'
+                      : recovery
+                      ? 'restart-alert'
+                      : 'nfc-tap'
+                  }
+                  title={
+                    busy
+                      ? progress && activity?.nfc
+                        ? stageLabel(progress.stage)
+                        : busy
+                      : active
+                      ? 'Vínculo ativo'
+                      : verified
+                      ? 'Configuração conferida'
+                      : administrationStatusLabel(operation)
+                  }
+                  tone={
+                    busy
+                      ? 'info'
+                      : active || verified
+                      ? 'success'
+                      : recovery
+                      ? 'warning'
+                      : 'info'
+                  }
+                  description={
+                    busy
+                      ? activity?.nfc
+                        ? 'Mantenha a etiqueta imóvel junto ao iPhone.'
+                        : 'Consultando o servidor. Nenhuma leitura NFC é necessária.'
+                      : active
+                      ? 'Pronto para registrar coleta e acompanhar o pedido.'
+                      : verified
+                      ? pendingActivation
+                        ? 'A mesma evidência de leitura está salva. Basta reenviar a ativação.'
+                        : 'Falta ativar o vínculo. Afaste a etiqueta e faça uma nova leitura.'
+                      : closed
+                      ? 'Plano encerrado sem configurar. Libere o vínculo para criar uma nova época.'
+                      : recovery
+                      ? 'O plano está salvo. Confira as chaves antes de retomar.'
+                      : 'Confira o pedido. A gravação começa somente com sua autorização.'
+                  }
+                />
+                {showConfigure && (
+                  <>
+                    {recovery ? (
+                      <RecoverySlots
+                        materials={materials}
+                        disabled={!!busy}
+                        onChange={(index, value) =>
+                          dispatch({
+                            type: 'material-selected',
+                            index,
+                            material: value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <VStack gap={0}>
+                        <OutcomeRow
+                          icon="link-variant"
+                          text="Grava a identificação deste pedido"
+                        />
+                        <OutcomeRow
+                          icon="lock-outline"
+                          text="Protege a escrita pública"
+                        />
+                        <OutcomeRow
+                          icon="key-outline"
+                          text="Atualiza e confere as cinco chaves"
+                        />
+                      </VStack>
+                    )}
+                    <Text variant="bodySmall">
+                      {recovery
+                        ? 'As seleções vêm do diário salvo. Resultados desconhecidos exigem sua escolha; nenhuma chave alternativa será testada.'
+                        : 'O conteúdo NDEF atual será substituído. Mantenha rede estável durante a configuração.'}
+                    </Text>
+                  </>
+                )}
+                {verified && !active && (
+                  <OutcomeRow
+                    icon={
+                      pendingActivation ? 'cloud-upload-outline' : 'nfc-tap'
+                    }
+                    text={
+                      pendingActivation
+                        ? 'Reenvio pela internet · sem nova sessão NFC'
+                        : 'Nova leitura NFC · sem repetir a configuração'
+                    }
+                  />
+                )}
+                {!!progress && (
+                  <Text accessibilityLiveRegion="polite">
+                    {stageLabel(progress.stage)} · comando {progress.sequence}
+                  </Text>
+                )}
+                <ActionButton
+                  mode="outlined"
+                  icon="refresh"
+                  disabled={!enabled}
+                  onPress={() => {
+                    void run('Atualizando e recuperando o diário', refresh);
+                  }}>
+                  Atualizar plano
+                </ActionButton>
+                <Details title="Detalhes técnicos">
+                  <VStack gap={12}>
+                    <Details title="Versões das chaves">
+                      <Text>
+                        Versões atuais:{' '}
+                        {operation.plano.versoesChaves.join(' · ')}
+                        {'\n'}Versões do alvo:{' '}
+                        {operation.plano.personalizacao.versoesAlvo.join(' · ')}
+                      </Text>
+                    </Details>
+                    <Details title={'Diário de comandos · ' + journal.length}>
+                      <Text>
+                        Tentativa: envio iniciado · Resposta salva: evidência
+                        local · Recibo API: resposta processada.
+                      </Text>
+                      {journal.map((entry, i) => (
+                        <Text key={i}>
+                          #{entry.sequence} · {stageLabel(entry.stage)} ·{' '}
+                          {entry.state === 'ACKNOWLEDGED'
+                            ? 'Recibo API'
+                            : entry.state === 'RESPONSE'
+                            ? 'Resposta salva'
+                            : entry.state === 'ATTEMPTED'
+                            ? 'Tentativa'
+                            : 'Aguardando envio'}
+                          {entry.code ? ' · ' + entry.code : ''}
+                        </Text>
+                      ))}
+                    </Details>
+                    <Text selectable>
+                      Operação: {operation.id}
+                      {'\n'}Alvo:{' '}
+                      {operation.plano.personalizacao.referenciaAlvo}
+                      {'\n'}Hash: {operation.hashPlano}
+                    </Text>
+                  </VStack>
+                </Details>
+                {!closed && (!operation.alteracaoEmitida || verified) && (
+                  <ActionButton
+                    disabled={!enabled}
+                    onPress={() =>
+                      dispatch({type: 'dialog-visibility', open: true})
+                    }>
+                    {verified ? 'Finalizar configuração' : 'Encerrar plano'}
+                  </ActionButton>
+                )}
+                {!active && !closed && (
+                  <ActionButton disabled={!!busy} onPress={manage}>
+                    Gerenciar vínculo
+                  </ActionButton>
+                )}
+              </>
+            )}
           </>
-        )}
-        {!!message && (
-          <StatusPanel tone="warning">
-            <Text accessibilityRole="alert" selectable>
-              {message}
-            </Text>
-          </StatusPanel>
         )}
         {endDialogOpen && operation && (
           <Portal>
-            <Dialog visible onDismiss={() => setEndDialogOpen(false)}>
+            <Dialog
+              visible
+              onDismiss={() =>
+                dispatch({type: 'dialog-visibility', open: false})
+              }>
               <Dialog.Title>
                 {verified
                   ? 'Finalizar a administração?'
@@ -714,13 +697,16 @@ export default function Administracao() {
                 <Text>O plano e o diário permanecerão no histórico.</Text>
               </Dialog.Content>
               <Dialog.Actions>
-                <ActionButton onPress={() => setEndDialogOpen(false)}>
+                <ActionButton
+                  onPress={() =>
+                    dispatch({type: 'dialog-visibility', open: false})
+                  }>
                   Voltar ao plano
                 </ActionButton>
                 <ActionButton
                   mode="contained"
                   onPress={() => {
-                    setEndDialogOpen(false);
+                    dispatch({type: 'dialog-visibility', open: false});
                     void run('Finalizando a operação administrativa', end);
                   }}>
                   Confirmar encerramento

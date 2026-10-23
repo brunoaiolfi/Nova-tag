@@ -1,24 +1,18 @@
 import {TraceabilityWorkflow} from '../traceability/workflow';
-import type {Api} from '../traceability/workflow';
-import type {
-  Provisioning,
-  Strategy,
-  Reading,
-} from '../../domain/traceability/types';
-import {
-  AdministrationError,
-  AdminContext,
-  AdminOperation,
-  AdminReply,
-  AdminRfSession,
-  AdminStore,
-  Material,
-  assertOperation,
-  assertReply,
-  commandBytes,
-  errorCode,
-  sameOwner,
-} from '../../domain/administration/types';
+import type {Api} from '../auth/ports/authenticated-api';
+import type {Provisioning} from '../../domain/traceability/provisioning';
+import type {Strategy, Reading} from '../../domain/traceability/reading';
+import {AdministrationError} from '../../domain/administration/error';
+import {AdminContext} from './operation-context.types';
+import {AdminOperation, Material} from '../../domain/administration/operation';
+import {AdminReply} from './contracts/admin-reply.types';
+import {AdminRfSession} from './recovery.types';
+import {AdminStore} from './ports/admin-store';
+import {assertOperation} from './operation-owner-policy';
+import {assertSessionReply} from './rf-session-policy';
+import {commandBytes} from '../../domain/nfc/administrative-command';
+import {errorCode} from './failure';
+import {sameOwner} from '../../domain/administration/owner';
 
 export interface AdministrativeRf {
   id: string;
@@ -39,9 +33,12 @@ export interface AdministrationProgress {
   outcome: string;
 }
 const root = '/administracao-nfc';
-const retryable = (e: unknown) =>
-  ['API_INDISPONIVEL', 'RESPOSTA_INVALIDA'].includes(errorCode(e)) ||
-  (e && typeof e === 'object' && 'status' in e && Number(e.status) >= 500);
+const retryable = (error: unknown) =>
+  ['API_INDISPONIVEL', 'RESPOSTA_INVALIDA'].includes(errorCode(error)) ||
+  (error &&
+    typeof error === 'object' &&
+    'status' in error &&
+    Number(error.status) >= 500);
 
 export class AdministrationCoordinator {
   private running = false;
@@ -82,20 +79,22 @@ export class AdministrationCoordinator {
     strategy: Strategy,
     policy: 'ESTRITA' | 'REGISTRO_TARDIO',
   ): Promise<Provisioning> {
-    const c = await this.context();
-    await this.guard(c);
+    const operationContext = await this.context();
+    await this.guard(operationContext);
     const query = () =>
       this.api.request<Provisioning>(`/etiquetas/${uid}`, {
-        expectedBaseUrl: c.baseUrl,
-        expectedUserId: c.userId,
+        expectedBaseUrl: operationContext.baseUrl,
+        expectedUserId: operationContext.userId,
       });
-    const matches = (p: Provisioning) =>
-      p.pedidoId === orderId &&
-      p.uid === uid &&
-      p.estrategia === strategy &&
-      p.modelo?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === 'NTAG424DNA' &&
-      p.status !== 'DESPROVISIONADA' &&
-      (strategy !== 'SDM' || p.sdm?.politica === policy);
+    const matches = (administrationProgress: Provisioning) =>
+      administrationProgress.pedidoId === orderId &&
+      administrationProgress.uid === uid &&
+      administrationProgress.estrategia === strategy &&
+      administrationProgress.modelo
+        ?.replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase() === 'NTAG424DNA' &&
+      administrationProgress.status !== 'DESPROVISIONADA' &&
+      (strategy !== 'SDM' || administrationProgress.sdm?.politica === policy);
     try {
       const previous = await query();
       if (previous.status !== 'DESPROVISIONADA') {
@@ -106,14 +105,14 @@ export class AdministrationCoordinator {
           );
         return previous;
       }
-    } catch (e) {
-      if (errorCode(e) !== 'ETIQUETA_NAO_ENCONTRADA') throw e;
+    } catch (error) {
+      if (errorCode(error) !== 'ETIQUETA_NAO_ENCONTRADA') throw error;
     }
     try {
       return await this.api.request<Provisioning>('/etiquetas', {
         method: 'POST',
-        expectedUserId: c.userId,
-        expectedBaseUrl: c.baseUrl,
+        expectedUserId: operationContext.userId,
+        expectedBaseUrl: operationContext.baseUrl,
         body: {
           pedidoId: orderId,
           uid,
@@ -122,46 +121,49 @@ export class AdministrationCoordinator {
           ...(strategy === 'SDM' ? {politicaSdm: policy} : {}),
         },
       });
-    } catch (e) {
-      if (retryable(e)) {
-        await this.guard(c);
+    } catch (error) {
+      if (retryable(error)) {
+        await this.guard(operationContext);
         try {
-          const p = await query();
-          if (matches(p)) return p;
+          const administrationProgress = await query();
+          if (matches(administrationProgress)) return administrationProgress;
         } catch {
           /* Preserve the original uncertain response. */
         }
       }
-      throw e;
+      throw error;
     }
   }
   async prepare(provisioning: Provisioning): Promise<AdminOperation> {
-    const c = await this.context();
+    const operationContext = await this.context();
     let operation: AdminOperation;
     try {
       operation = await this.request(
-        c,
+        operationContext,
         `/provisionamentos/${provisioning.id}/personalizacao`,
       );
-    } catch (e) {
-      if (errorCode(e) !== 'NFC_PERSONALIZACAO_INEXISTENTE') throw e;
-      let draft = await this.store.draft(provisioning.id, c);
+    } catch (error) {
+      if (errorCode(error) !== 'NFC_PERSONALIZACAO_INEXISTENTE') throw error;
+      let draft = await this.store.draft(provisioning.id, operationContext);
       if (!draft) {
         draft = {
           id: this.ids(),
-          owner: {baseUrl: c.baseUrl, userId: c.userId},
-          station: c.station,
+          owner: {
+            baseUrl: operationContext.baseUrl,
+            userId: operationContext.userId,
+          },
+          station: operationContext.station,
           provisioningId: provisioning.id,
         };
         await this.store.saveDraft(draft);
       }
-      operation = await this.request(c, '/personalizacoes', {
+      operation = await this.request(operationContext, '/personalizacoes', {
         id: draft.id,
         provisionamentoId: provisioning.id,
         estacao: draft.station,
       });
     }
-    assertOperation(operation, c);
+    assertOperation(operation, operationContext);
     if (
       operation.plano.provisionamentoId !== provisioning.id ||
       operation.plano.uid !== provisioning.uid ||
@@ -171,15 +173,47 @@ export class AdministrationCoordinator {
         'ADMIN_PLANO_DIVERGENTE',
         'O plano não corresponde ao vínculo selecionado.',
       );
-    await this.store.saveOperation(operation, c);
+    await this.store.saveOperation(operation, operationContext);
     return this.restore(operation);
   }
   async refresh(id: string): Promise<AdminOperation> {
-    const c = await this.context(),
-      op = await this.request<AdminOperation>(c, `/operacoes/${id}`);
-    assertOperation(op, c);
-    await this.store.saveOperation(op, c);
-    return op;
+    const operationContext = await this.context(),
+      operationSnapshot = await this.request<AdminOperation>(
+        operationContext,
+        `/operacoes/${id}`,
+      );
+    assertOperation(operationSnapshot, operationContext);
+    await this.store.saveOperation(operationSnapshot, operationContext);
+    return operationSnapshot;
+  }
+  async pending(uid: string): Promise<AdminOperation> {
+    const operationContext = await this.context();
+    const normalized = uid.replace(/[:\s-]/g, '').toUpperCase();
+    if (!/^[0-9A-F]{14}$/.test(normalized))
+      throw new AdministrationError(
+        'ADMIN_UID_INVALIDO',
+        'Leia novamente a etiqueta para identificar seu número.',
+      );
+    const operationSnapshot = await this.request<AdminOperation>(
+      operationContext,
+      '/etiquetas/' + normalized + '/operacao-pendente',
+    );
+    if (
+      typeof operationSnapshot?.administradorId === 'string' &&
+      operationSnapshot.administradorId !== operationContext.userId
+    )
+      throw new AdministrationError(
+        'ADMIN_OPERACAO_OUTRA_CONTA',
+        'A configuração anterior pertence a outro administrador. Peça que ele a encerre ou recupere pela própria conta.',
+      );
+    assertOperation(operationSnapshot, operationContext);
+    if (operationSnapshot.plano.uid !== normalized)
+      throw new AdministrationError(
+        'ADMIN_PLANO_DIVERGENTE',
+        'A configuração encontrada não pertence à etiqueta lida.',
+      );
+    await this.store.saveOperation(operationSnapshot, operationContext);
+    return operationSnapshot;
   }
   /** HTTP-only restoration. Old RF frames can never be transported from this path. */
   async restore(operation: AdminOperation): Promise<AdminOperation> {
@@ -188,15 +222,20 @@ export class AdministrationCoordinator {
         'ADMIN_EM_ANDAMENTO',
         'Aguarde o encerramento da sessão NFC.',
       );
-    const c = await this.context();
-    assertOperation(operation, c);
-    for (const session of await this.store.sessions(operation.id, c)) {
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
+    for (const session of await this.store.sessions(
+      operation.id,
+      operationContext,
+    )) {
       if (session.ended) continue;
-      const commands = await this.store.commands(session.id, c);
-      const pending = commands.find(x => x.state === 'RESPONSE');
-      if (pending && session.sessionMarker === c.sessionMarker) {
+      const commands = await this.store.commands(session.id, operationContext);
+      const pending = commands.find(
+        localCommand => localCommand.state === 'RESPONSE',
+      );
+      if (pending && session.sessionMarker === operationContext.sessionMarker) {
         const reply = await this.submit(
-          c,
+          operationContext,
           session,
           pending.frame,
           pending.responseHex!,
@@ -205,31 +244,34 @@ export class AdministrationCoordinator {
         session.reply = reply;
       }
       if (session.reply?.status !== 'CONCLUIDA')
-        await this.interrupt(c, session);
-      await this.store.endSession(session.id, c);
+        await this.interrupt(operationContext, session);
+      await this.store.endSession(session.id, operationContext);
     }
     // Server lookup also finds a RF session after loss of local SQLite/identity login.
-    const op = await this.refresh(operation.id);
-    if (op.sessaoAtivaId) {
+    const operationSnapshot = await this.refresh(operation.id);
+    if (operationSnapshot.sessaoAtivaId) {
       // Session RF id is intentionally not guessed: local journal must identify it to interrupt early.
       throw new AdministrationError(
         'ADMIN_RF_EM_USO',
         'A operação ainda possui uma sessão NFC de outra instalação. Feche-a na estação de origem ou aguarde o prazo da API e atualize.',
       );
     }
-    return op;
+    return operationSnapshot;
   }
   async suggestions(operation: AdminOperation): Promise<(Material | null)[]> {
-    const c = await this.context();
-    assertOperation(operation, c);
-    const sessions = await this.store.sessions(operation.id, c),
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
+    const sessions = await this.store.sessions(operation.id, operationContext),
       last = sessions.at(-1);
     if (!last)
       return operation.alteracaoEmitida
         ? [null, null, null, null, null]
         : Array<Material>(5).fill('ATUAL');
     const choices: (Material | null)[] = [...last.materials];
-    for (const command of await this.store.commands(last.id, c)) {
+    for (const command of await this.store.commands(
+      last.id,
+      operationContext,
+    )) {
       const key = /^TROCAR_CHAVE_([0-4])$/.exec(command.frame.etapa);
       if (!key || command.state === 'READY') continue;
       choices[Number(key[1])] =
@@ -240,52 +282,55 @@ export class AdministrationCoordinator {
     return choices;
   }
   private async submit(
-    c: AdminContext,
-    s: AdminRfSession,
+    operationContext: AdminContext,
+    rfSession: AdminRfSession,
     frame: {id: string},
     hex: string,
   ): Promise<AdminReply> {
     const reply = await this.request<AdminReply>(
-      c,
-      `/operacoes/${s.operationId}/sessoes/${s.id}/respostas`,
+      operationContext,
+      `/operacoes/${rfSession.operationId}/sessoes/${rfSession.id}/respostas`,
       {
         comandoId: frame.id,
-        sessaoRfId: s.rfId,
-        estacao: s.station,
+        sessaoRfId: rfSession.rfId,
+        estacao: rfSession.station,
         respostaHex: hex,
       },
     );
-    assertReply(reply, s.id);
+    assertSessionReply(reply, rfSession.id);
     return reply;
   }
-  private async interrupt(c: AdminContext, s: AdminRfSession): Promise<void> {
+  private async interrupt(
+    operationContext: AdminContext,
+    rfSession: AdminRfSession,
+  ): Promise<void> {
     try {
       await this.request(
-        c,
-        `/operacoes/${s.operationId}/sessoes/${s.id}/interrupcao`,
-        {sessaoRfId: s.rfId, estacao: s.station},
+        operationContext,
+        `/operacoes/${rfSession.operationId}/sessoes/${rfSession.id}/interrupcao`,
+        {sessaoRfId: rfSession.rfId, estacao: rfSession.station},
       );
-    } catch (e) {
-      if (errorCode(e) !== 'NFC_SESSAO_INEXISTENTE') throw e;
+    } catch (error) {
+      if (errorCode(error) !== 'NFC_SESSAO_INEXISTENTE') throw error;
     }
   }
   async execute(
     operation: AdminOperation,
     materials: Material[],
-    progress: (p: AdministrationProgress) => void,
+    progress: (administrationProgress: AdministrationProgress) => void,
   ): Promise<AdminOperation> {
     if (this.running)
       throw new AdministrationError(
         'ADMIN_EM_ANDAMENTO',
         'A sessão NFC já está em andamento.',
       );
-    const c = await this.context();
-    assertOperation(operation, c);
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
     const recovery = operation.status === 'INTERROMPIDA';
     if (
       !['PREPARADA', 'INTERROMPIDA'].includes(operation.status) ||
       materials.length !== 5 ||
-      materials.some(x => !['ATUAL', 'ALVO'].includes(x))
+      materials.some(material => !['ATUAL', 'ALVO'].includes(material))
     )
       throw new AdministrationError(
         'ADMIN_MATERIAIS_INVALIDOS',
@@ -301,14 +346,17 @@ export class AdministrationCoordinator {
     let replied = false;
     try {
       await this.nfc.run(operation, async rf => {
-        await this.guard(c);
+        await this.guard(operationContext);
         rf.checkpoint();
         session = {
           id: this.ids(),
           operationId: operation.id,
-          owner: {baseUrl: c.baseUrl, userId: c.userId},
+          owner: {
+            baseUrl: operationContext.baseUrl,
+            userId: operationContext.userId,
+          },
           rfId: rf.id,
-          sessionMarker: c.sessionMarker,
+          sessionMarker: operationContext.sessionMarker,
           station: operation.estacao,
           recovery,
           materials: [...materials],
@@ -326,20 +374,20 @@ export class AdministrationCoordinator {
         let reply: AdminReply;
         try {
           reply = await this.request(
-            c,
+            operationContext,
             `/operacoes/${operation.id}/sessoes`,
             body,
           );
-        } catch (e) {
-          if (!retryable(e)) throw e;
+        } catch (error) {
+          if (!retryable(error)) throw error;
           rf.checkpoint();
           reply = await this.request(
-            c,
+            operationContext,
             `/operacoes/${operation.id}/sessoes`,
             body,
           );
         }
-        assertReply(reply, session.id);
+        assertSessionReply(reply, session.id);
         await this.store.saveReply(session, reply);
         session.reply = reply;
         let count = 0;
@@ -351,7 +399,7 @@ export class AdministrationCoordinator {
             );
           const frame = reply.comando!,
             bytes = commandBytes(frame);
-          await this.guard(c);
+          await this.guard(operationContext);
           rf.checkpoint();
           progress({
             stage: frame.etapa,
@@ -360,31 +408,46 @@ export class AdministrationCoordinator {
           });
           // Commit intent before the physical call. A previous ATTEMPTED frame is never resent.
           await this.store.attempt(session, frame);
-          await this.guard(c);
+          await this.guard(operationContext);
           rf.checkpoint();
           const raw = await rf.transceive(bytes);
           if (
             raw.length < 2 ||
             raw.length > 258 ||
-            raw.some(x => !Number.isInteger(x) || x < 0 || x > 255)
+            raw.some(
+              responseByte =>
+                !Number.isInteger(responseByte) ||
+                responseByte < 0 ||
+                responseByte > 255,
+            )
           )
             throw new AdministrationError(
               'ADMIN_RESPOSTA_NFC_INVALIDA',
               'A tag retornou uma resposta incompleta. Confira a etapa antes de recuperar.',
             );
           const responseHex = raw
-            .map(x => x.toString(16).padStart(2, '0'))
+            .map(responseByte => responseByte.toString(16).padStart(2, '0'))
             .join('')
             .toUpperCase();
           // Save a late NFC response even if cancellation/identity change occurred during transceive.
           await this.store.response(session, frame, responseHex);
           rf.checkpoint();
           try {
-            reply = await this.submit(c, session, frame, responseHex);
-          } catch (e) {
-            if (!retryable(e)) throw e;
+            reply = await this.submit(
+              operationContext,
+              session,
+              frame,
+              responseHex,
+            );
+          } catch (error) {
+            if (!retryable(error)) throw error;
             rf.checkpoint();
-            reply = await this.submit(c, session, frame, responseHex);
+            reply = await this.submit(
+              operationContext,
+              session,
+              frame,
+              responseHex,
+            );
           }
           await this.store.acknowledge(session, frame, reply);
           session.reply = reply;
@@ -410,8 +473,8 @@ export class AdministrationCoordinator {
     } finally {
       try {
         if (session) {
-          if (!replied) await this.interrupt(c, session);
-          await this.store.endSession(session.id, c);
+          if (!replied) await this.interrupt(operationContext, session);
+          await this.store.endSession(session.id, operationContext);
         }
       } finally {
         this.running = false;
@@ -423,17 +486,23 @@ export class AdministrationCoordinator {
     return this.nfc.cancel();
   }
   async activationPending(operation: AdminOperation): Promise<boolean> {
-    const c = await this.context();
-    assertOperation(operation, c);
-    const saved = await this.store.activation(operation.id, c);
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
+    const saved = await this.store.activation(operation.id, operationContext);
     return !!saved && !saved.receipt;
   }
   async localJournal(operation: AdminOperation) {
-    const c = await this.context();
-    assertOperation(operation, c);
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
     const entries = [];
-    for (const session of await this.store.sessions(operation.id, c))
-      for (const command of await this.store.commands(session.id, c))
+    for (const session of await this.store.sessions(
+      operation.id,
+      operationContext,
+    ))
+      for (const command of await this.store.commands(
+        session.id,
+        operationContext,
+      ))
         entries.push({
           sessionId: session.id,
           sequence: command.frame.sequencia,
@@ -455,8 +524,8 @@ export class AdministrationCoordinator {
         'ADMIN_EM_ANDAMENTO',
         'Aguarde o encerramento da configuração NFC.',
       );
-    const c = await this.context();
-    assertOperation(operation, c);
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
     if (
       !confirmed ||
       operation.alteracaoFisica !== 'CONFERIDA' ||
@@ -473,12 +542,12 @@ export class AdministrationCoordinator {
       );
     this.running = true;
     try {
-      let saved = await this.store.activation(operation.id, c);
+      let saved = await this.store.activation(operation.id, operationContext);
       if (saved?.receipt) return saved.receipt;
       if (!saved) {
-        await this.guard(c);
+        await this.guard(operationContext);
         const reading = await this.nfc.read(operation);
-        await this.guard(c);
+        await this.guard(operationContext);
         new TraceabilityWorkflow(this.api).validateActivation(
           provisioning,
           reading,
@@ -486,7 +555,10 @@ export class AdministrationCoordinator {
         );
         saved = {
           operationId: operation.id,
-          owner: {baseUrl: c.baseUrl, userId: c.userId},
+          owner: {
+            baseUrl: operationContext.baseUrl,
+            userId: operationContext.userId,
+          },
           reading,
           capturedAt: new Date(this.now()).toISOString(),
           receipt: null,
@@ -498,11 +570,11 @@ export class AdministrationCoordinator {
           path: string,
           options?: Parameters<Api['request']>[1],
         ) => {
-          await this.guard(c);
+          await this.guard(operationContext);
           return this.api.request<T>(path, {
             ...options,
-            expectedUserId: c.userId,
-            expectedBaseUrl: c.baseUrl,
+            expectedUserId: operationContext.userId,
+            expectedBaseUrl: operationContext.baseUrl,
           });
         },
       };
@@ -513,20 +585,24 @@ export class AdministrationCoordinator {
           saved.reading,
           true,
         );
-      } catch (e) {
-        if (errorCode(e) === 'SDM_ATIVACAO_INVALIDA') {
-          await this.store.rejectActivation(operation.id, c, errorCode(e));
-          throw e;
+      } catch (error) {
+        if (errorCode(error) === 'SDM_ATIVACAO_INVALIDA') {
+          await this.store.rejectActivation(
+            operation.id,
+            operationContext,
+            errorCode(error),
+          );
+          throw error;
         }
-        if (!retryable(e)) throw e;
+        if (!retryable(error)) throw error;
         try {
           const persisted = await api.request<Provisioning>(
             `/provisionamentos/${provisioning.id}`,
           );
-          if (persisted.status !== 'ATIVA') throw e;
+          if (persisted.status !== 'ATIVA') throw error;
           result = persisted;
         } catch {
-          throw e;
+          throw error;
         }
       }
       if (
@@ -539,7 +615,11 @@ export class AdministrationCoordinator {
           'ADMIN_ATIVACAO_DIVERGENTE',
           'A API não confirmou a ativação deste vínculo. A leitura foi preservada.',
         );
-      await this.store.completeActivation(operation.id, c, result);
+      await this.store.completeActivation(
+        operation.id,
+        operationContext,
+        result,
+      );
       return result;
     } finally {
       this.running = false;
@@ -551,15 +631,15 @@ export class AdministrationCoordinator {
         'ADMIN_EM_ANDAMENTO',
         'Cancele a sessão NFC e aguarde o encerramento.',
       );
-    const c = await this.context();
-    assertOperation(operation, c);
-    const op = await this.request<AdminOperation>(
-      c,
+    const operationContext = await this.context();
+    assertOperation(operation, operationContext);
+    const operationSnapshot = await this.request<AdminOperation>(
+      operationContext,
       `/operacoes/${operation.id}/encerramento`,
       {estacao: operation.estacao},
     );
-    assertOperation(op, c);
-    await this.store.saveOperation(op, c);
-    return op;
+    assertOperation(operationSnapshot, operationContext);
+    await this.store.saveOperation(operationSnapshot, operationContext);
+    return operationSnapshot;
   }
 }

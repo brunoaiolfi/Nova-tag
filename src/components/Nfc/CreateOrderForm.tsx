@@ -1,11 +1,11 @@
+import {useAppServices} from '../Services/AppServicesProvider';
 import React, {useEffect, useRef, useState} from 'react';
 import {HelperText, Text, TextInput} from 'react-native-paper';
 import Tela from '../Base/Tela';
 import VStack from '../Base/VStack';
 import {ActionButton, PageHero, StatusPanel} from '../Tracking';
 import {useSession} from '../Auth/SessionProvider';
-import {traceability} from '../../infra/traceability/runtime';
-import type {OrderSummary} from '../../appplication/traceability/workflow';
+import type {OrderSummary} from '../../appplication/traceability/contracts/order.types';
 
 export default function CreateOrderForm({
   onCreated,
@@ -14,6 +14,7 @@ export default function CreateOrderForm({
   onCreated(order: OrderSummary): void;
   onCancel(): void;
 }) {
+  const {traceability} = useAppServices();
   const {state} = useSession();
   const canCreate =
     state.status === 'authenticated' &&
@@ -68,6 +69,7 @@ export default function CreateOrderForm({
   }
   return (
     <Tela
+      keyboard
       scroll
       insetTop={false}
       header={
@@ -79,7 +81,7 @@ export default function CreateOrderForm({
           title={
             result ? 'Pedido pronto para vincular.' : 'Comece pelo pedido.'
           }
-          description="Cadastre o volume que você vai rastrear. Depois, escolha e leia sua etiqueta."
+          description="Um pedido identifica um volume."
         />
       }
       footer={
@@ -117,7 +119,7 @@ export default function CreateOrderForm({
             <Text variant="bodyMedium">
               {result.recovered
                 ? 'A resposta do cadastro não chegou, mas encontramos esse código e descrição no servidor. O pedido está disponível para seleção.'
-                : 'Pedido cadastrado no servidor. A etiqueta será vinculada na próxima etapa.'}
+                : 'Cadastrado. Continue para vincular a etiqueta.'}
             </Text>
           </StatusPanel>
         ) : (
@@ -160,7 +162,7 @@ export default function CreateOrderForm({
             </Text>
           </StatusPanel>
         )}
-        <ActionButton mode="outlined" disabled={busy} onPress={onCancel}>
+        <ActionButton disabled={busy} onPress={onCancel}>
           {result ? 'Voltar à lista' : 'Cancelar cadastro'}
         </ActionButton>
       </VStack>

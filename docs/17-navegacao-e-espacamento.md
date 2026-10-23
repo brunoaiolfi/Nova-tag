@@ -27,3 +27,45 @@ A prévia usou respostas HTTP sintéticas apenas para apresentar pedidos e hist�
 Ainda é necessário conferir a renderização nativa no iPhone, especialmente a área segura, o cabeçalho e a ampliação de fontes. Esta revisão não representa aceite físico NFC e não altera as pendências das issues #8, #9 e #12 da API.
 
 Nenhum build EAS, execução do GitHub Actions ou merge na `main` foi realizado para esta revisão.
+
+## Hierarquia das ações e redução de texto
+
+Revisão posterior em 07/10/2026:
+
+- A página inicial destaca **Escanear etiqueta**. Os demais destinos usam linhas de navegação; **Sair** fica diretamente no final da página, sem dropdown.
+- Registro e vínculo apresentam instrução curta e ação principal. O passo a passo completo abre em **Como funciona** ou **Como vincular**.
+- A introdução de vínculo mantém a identificação UID/NDEF em primeiro plano. Gerenciamento, diagnóstico e NTAG ficam em **Outras opções**, com o mesmo controle de acesso.
+- O vínculo simples apresenta uma única ação principal no rodapé, conforme a fase: **Ler etiqueta**, **Vincular**, **Gravar NDEF**/**Reler etiqueta**, **Ativar etiqueta** ou **Novo vínculo**. Sem releitura válida e confirmação explícita, não ativa. A explicação de bloqueio continua visível antes da confirmação.
+- A leitura apresenta uma instrução junto à ilustração. O resultado permanece até uma ação explícita; **Dados da leitura** abre horário e conteúdo técnico. Após salvar uma etapa, a leitura continua acessível em **Comprovante**.
+- **Ver envios**, **Ver histórico**, **Trocar etiqueta**, **Sincronizar** e as ações administrativas usam rótulos curtos. Ações alternativas usam tratamento de texto em vez de competir com o botão principal preenchido.
+- Envios prioriza a fila e a decisão. A preparação do cache está em **Preparar uso offline → Preparar etiqueta**; o ensaio fica após as capturas, com indicação de envios pausados quando selecionado.
+- Pendências, motivos de rejeição e prazos continuam visíveis. Validação SDM, evolução das decisões, comprovantes e versões das chaves podem ser abertos sob demanda. Identificação, armazenamento e autorização continuam separados.
+- Títulos de página não são repetidos em uma segunda faixa de identificação.
+
+Verificação: lint, tipos e **287 testes em 30 suítes**. Os testes existentes foram adaptados aos novos rótulos e à abertura dos detalhes; continuam verificando UID/time/UUID preservados, permissões, revisão de decisão, recuperação administrativa e confirmação. O novo caso NDEF percorre gravação → verificação → confirmação → ativação e verifica a ação principal em cada fase.
+
+Prévia web: **17 telas em 390 × 844 e 320 × 568**, incluindo ajuda e opções offline abertas, sem overflow horizontal ou erros JavaScript. Fixtures HTTP isoladas, sem capturas NFC ou alterações nos dados de laboratório. Evidências em `.tmp/action-hierarchy/`. A conferência nativa no iPhone continua necessária; testes web não validam RF nem o chip.
+
+Mudanças JS/TS: recarregar o development client pelo Metro. Esta revisão não exige outra compilação EAS.
+
+## Configuração e recuperação visual — 23/10/2026
+
+- **Configurar NTAG 424** aparece diretamente em Vincular. O novo fluxo apresenta uma tarefa por etapa: escolher pedido → identificar a etiqueta → escolher identificação. Nenhum tratamento vem selecionado silenciosamente; Estrita continua sendo a política inicial visível quando SDM é escolhido.
+- O plano existente abre na etapa correspondente. Pedido, UID, época e tratamento ficam num resumo compacto. A recuperação apresenta as cinco chaves em linhas com seletores Atual/Alvo; resultados desconhecidos ficam destacados e exigem escolha explícita.
+- A confirmação possui caixa e marca desenhadas pelo app, inclusive no iOS, e semântica de checkbox. Fica junto à ação principal no rodapé. A configuração bloqueada informa o que falta: confirmação, chave pendente, carregamento das cinco chaves ou atualização de sessão em andamento.
+- Configuração física e ativação continuam separadas. A segunda etapa solicita nova leitura NFC; uma evidência de ativação já salva oferece apenas seu reenvio. O progresso diferencia consulta HTTP de sessão NFC.
+- Versões, diário e identificadores ficam em **Detalhes técnicos**. Alertas aparecem no início do conteúdo. Resultados de sucesso são apresentados pelo estado da tela, sem repetir explicações em avisos amarelos.
+- Um vínculo NTAG pendente destaca **Retomar configuração**. Encerrar abre uma confirmação focada, com pedido/UID e consequências resumidas por ícones; o botão destrutivo é vermelho. Um vínculo SDM encerrado oferece **Novo vínculo**, abrindo uma administração nova sem reaproveitar o plano encerrado.
+- A confirmação visível também foi aplicada à ativação do vínculo simples UID/NDEF. Permissões, necessidade de releitura, confirmação explícita e regras de recuperação permanecem obrigatórias.
+
+Verificação visual isolada em **390 × 844** e **320 × 568**: 34 capturas de estados de configuração, seleção de tratamento, recuperação com chaves conhecidas/desconhecidas, erro NFC, ativação e encerramento. As ações principais permanecem dentro da tela, com pelo menos 60 pontos, sem overflow horizontal. Em telas menores, o conteúdo rola acima do rodapé. Evidências em `.tmp/setup-layout/`; cópias temporárias das telas usam adaptadores fictícios, sem alterar o transporte NFC ou os dados do laboratório. A renderização nativa e a operação física ainda precisam ser conferidas no iPhone.
+
+Verificação de código: **303 testes em 31 suítes**, lint e tipos aprovados. A API e o Metro responderam HTTP 200; o bundle iOS também respondeu 200 contendo os novos controles. A revisão continua na branch `codex/issue-12-secure-messaging`, com atualização via Metro, sem necessidade de nova compilação nativa.
+
+### Bloqueios e falhas de configuração
+
+Falhas abrem um modal com cabeçalho vermelho, ícone de erro, motivo e botão de tamanho normal. O código técnico fica em texto secundário. Fechar o modal mantém um aviso vermelho no início da tela, disponível até nova tentativa, sem desaparecer por tempo. O conteúdo do modal permite rolagem em telas pequenas, preservando a ação principal.
+
+`NFC_ETIQUETA_EM_USO` substitui a ação normal por **Resolver pendência**. O app consulta a configuração aberta pelo UID e apresenta sua época/UID. **Encerrar e continuar** exige clique explícito e só aparece sem alteração física emitida: encerra o plano anterior e prepara o atual, sem transmitir NFC ou ativar o vínculo. Planos com alteração emitida oferecem **Abrir configuração anterior**, preservando recuperação e as restrições de encerramento da API. Outra conta, etiqueta divergente ou consulta indisponível não autorizam encerramento.
+
+Verificação: **308 testes do mobile**, **21 testes de integração NFC da API com PostgreSQL real**, lint, tipos, build e contrato OpenAPI. A prévia isolada capturou 14 estados em dois tamanhos, verificando modal e ação principal dentro da tela, permanência do bloqueio, consulta indisponível e recuperação obrigatória. Evidências em `.tmp/blocking-failure/`. API local reiniciada com a rota de consulta; bundle iOS atualizado pelo Metro. Nenhuma configuração real foi encerrada automaticamente.

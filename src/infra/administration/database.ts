@@ -6,9 +6,9 @@ export function openAdministrationDatabase(): Promise<SqlConnection> {
     .then(() => require('expo-sqlite') as typeof import('expo-sqlite'))
     .then(SQLite => SQLite.openDatabaseAsync('nova-tag-administration.db'))
     .then(sqliteConnection)
-    .catch(e => {
+    .catch(error => {
       connection = undefined;
-      throw e;
+      throw error;
     });
   return connection;
 }

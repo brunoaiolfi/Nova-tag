@@ -1,14 +1,16 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {PaperProvider, Searchbar} from 'react-native-paper';
 import OrderSelect, {OrderOption} from '../src/components/Nfc/OrderSelect';
-import {traceability} from '../src/infra/traceability/runtime';
-import type {OrderPage} from '../src/appplication/traceability/workflow';
+import {FlatList, ScrollView} from 'react-native';
 
-jest.mock('../src/infra/traceability/runtime', () => ({
-  traceability: {listOrders: jest.fn()},
-}));
+import type {OrderPage} from '../src/appplication/traceability/contracts/order.types';
+
+const services = createTestServices({traceability: {listOrders: jest.fn()}});
+const {traceability} = services;
+
 const list = jest.mocked(traceability.listOrders);
 let tree: TestRenderer.ReactTestRenderer;
 const order = {
@@ -21,9 +23,12 @@ async function render(purpose: 'provisioning' | 'history' = 'provisioning') {
   const select = jest.fn();
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <OrderSelect onSelect={select} disabled={false} purpose={purpose} />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <OrderSelect onSelect={select} disabled={false} purpose={purpose} />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
   await act(async () => {
@@ -107,4 +112,18 @@ test('history allows selecting delivered orders while provisioning does not', as
     option.props.onPress();
   });
   expect(select).toHaveBeenCalledWith(delivered);
+});
+
+test('a large loaded result keeps all data while mounting only a window of order rows', async () => {
+  const orders = Array.from({length: 500}, (_, index) => ({
+    ...order,
+    id: String(index),
+  }));
+  list.mockResolvedValueOnce({itens: orders, total: 500});
+  await render();
+  const virtualizedList = tree.root.findByType(FlatList);
+  expect(virtualizedList.props.data).toHaveLength(500);
+  expect(tree.root.findAllByType(OrderOption).length).toBeLessThan(500);
+  for (let parent = virtualizedList.parent; parent; parent = parent.parent)
+    expect(parent.type).not.toBe(ScrollView);
 });

@@ -1,3 +1,4 @@
+import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {Share} from 'react-native';
@@ -21,6 +22,8 @@ jest.mock('../src/infra/nfc/diagnostics', () => ({
   ...jest.requireActual('../src/infra/nfc/diagnostics'),
   diagnosePhysicalTag: jest.fn(),
 }));
+const services = createTestServices({});
+
 const fixture: PhysicalTagReport = {
   reportVersion: 2,
   capturedAt: '2026-10-06T12:00:00.000Z',
@@ -61,9 +64,12 @@ const text = () =>
 async function mount() {
   await act(async () => {
     tree = TestRenderer.create(
-      <PaperProvider>
-        <Diagnostico />
-      </PaperProvider>,
+      withServices(
+        <PaperProvider>
+          <Diagnostico />
+        </PaperProvider>,
+        services,
+      ),
     );
   });
 }
@@ -81,7 +87,7 @@ test('scan is explicit, unknown hardware stays visible and sharing uses original
   await mount();
   expect(diagnosePhysicalTag).not.toHaveBeenCalled();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
+    button('Diagnosticar').props.onPress();
   });
   expect(text()).toContain('NTAG 424 DNA não confirmada');
   expect(text()).toContain(fixture.uid);
@@ -110,14 +116,14 @@ test('a failed second scan preserves the previous dated result and shows the err
     .mockRejectedValueOnce(new Error('Conexão perdida'));
   await mount();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
+    button('Diagnosticar').props.onPress();
   });
   await act(async () => {
-    button('Diagnosticar outra etiqueta').props.onPress();
+    button('Outra etiqueta').props.onPress();
   });
   expect(text()).toContain('Conexão perdida');
   expect(text()).toContain(fixture.uid);
-  expect(button('Diagnosticar outra etiqueta').props.disabled).toBe(false);
+  expect(button('Outra etiqueta').props.disabled).toBe(false);
 });
 
 test('native permissions remain declarations and never mark SDM or protection as verified', async () => {
@@ -128,7 +134,7 @@ test('native permissions remain declarations and never mark SDM or protection as
   });
   await mount();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
+    button('Diagnosticar').props.onPress();
   });
   expect(text()).toContain('As rotas de escrita disponíveis exigem chave');
   expect(text()).toContain('SDM declarado como habilitado');
@@ -152,7 +158,7 @@ test('a free ReadWrite path is visible even when the Write permission requires a
     .mockResolvedValue({...fixture, fileSettings: {value}});
   await mount();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
+    button('Diagnosticar').props.onPress();
   });
   expect(text()).toContain('uma rota de escrita livre');
   expect(text()).toContain('SDM declarado como desabilitado');
@@ -167,7 +173,7 @@ test('an older report retained by Fast Refresh remains readable without native s
   jest.mocked(diagnosePhysicalTag).mockResolvedValue(oldReport);
   await mount();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
+    button('Diagnosticar').props.onPress();
   });
   expect(text()).toContain(fixture.uid);
   expect(text()).toContain('Permissões nativas não disponíveis');
@@ -184,9 +190,9 @@ test('leaving an active diagnosis cancels it and discards its late result', asyn
   );
   await mount();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
+    button('Diagnosticar').props.onPress();
   });
-  expect(button('Diagnosticar etiqueta').props.disabled).toBe(true);
+  expect(button('Diagnosticar').props.disabled).toBe(true);
   await act(async () => {
     tree.unmount();
   });

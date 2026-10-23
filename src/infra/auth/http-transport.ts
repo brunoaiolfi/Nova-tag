@@ -1,4 +1,5 @@
-import {SessionError, Transport} from '../../domain/auth/types';
+import {SessionError} from '../../appplication/auth/session-error';
+import {Transport} from '../../appplication/auth/ports/transport';
 
 export class HttpTransport implements Transport {
   constructor(

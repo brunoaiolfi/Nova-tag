@@ -1,3 +1,4 @@
+import {useAppServices} from '../../components/Services/AppServicesProvider';
 import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
 import {
@@ -10,12 +11,12 @@ import {
 } from 'react-native';
 import {HelperText, Icon, Text, TextInput} from 'react-native-paper';
 import {useSession} from '../../components/Auth/SessionProvider';
-import {defaultApiUrl} from '../../infra/auth/default-api-url';
-import {SessionError} from '../../domain/auth/types';
+import {SessionError} from '../../appplication/auth/session-error';
 import {RouteMotif, trackingColors as colors} from '../../components/Tracking';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export default function Login() {
+  const {defaultApiUrl} = useAppServices();
   const {manager, state} = useSession();
   const [server, setServer] = useState(defaultApiUrl);
   const [login, setLogin] = useState('');

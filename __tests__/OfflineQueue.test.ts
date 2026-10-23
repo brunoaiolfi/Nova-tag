@@ -7,18 +7,16 @@ import {
   SqlConnection,
 } from '../src/infra/offline/sqlite-store';
 import {OfflineCoordinator} from '../src/appplication/offline/coordinator';
-import type {CaptureContext} from '../src/domain/offline/types';
+import type {CaptureContext} from '../src/appplication/offline/capture-context.types';
 import {
   createSdmBenchPlan,
   SDM_BENCH_PROFILE,
 } from '../src/domain/nfc/sdm-profile';
 import {bytesBase64} from '../src/domain/nfc/ndef';
-import type {
-  Api,
-  Observation,
-  Provisioning,
-  Decision,
-} from '../src/appplication/traceability/workflow';
+import type {Api} from '../src/appplication/auth/ports/authenticated-api';
+import type {Observation} from '../src/domain/traceability/observation';
+import type {Provisioning} from '../src/domain/traceability/provisioning';
+import type {Decision} from '../src/domain/traceability/decision';
 
 const owner = {baseUrl: 'http://127.0.0.1:3110/api/v1', userId: 'operator-a'};
 const p: Provisioning = {
