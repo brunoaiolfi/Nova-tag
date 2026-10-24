@@ -1,7 +1,7 @@
 export interface Transport {
-  send<T>(
+  send(
     baseUrl: string,
     path: string,
     options?: {token?: string; body?: unknown; method?: string},
-  ): Promise<T>;
+  ): Promise<unknown>;
 }

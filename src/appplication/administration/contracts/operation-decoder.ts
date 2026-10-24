@@ -70,6 +70,17 @@ export function decodeOperation(value: unknown): AdminOperation {
     (value.sessaoAtivaId !== null && !uuid(value.sessaoAtivaId))
   )
     invalid();
-  // All fields consumed by the operation contract were checked above.
-  return value as unknown as AdminOperation;
+  return {
+    id: value.id,
+    plano: value.plano,
+    hashPlano: value.hashPlano,
+    administradorId: value.administradorId,
+    estacao: value.estacao,
+    criadaEm: value.criadaEm,
+    sessaoAtivaId: value.sessaoAtivaId,
+    status: value.status,
+    alteracaoEmitida: value.alteracaoEmitida,
+    conteudoConferido: value.conteudoConferido,
+    alteracaoFisica: value.alteracaoFisica,
+  };
 }

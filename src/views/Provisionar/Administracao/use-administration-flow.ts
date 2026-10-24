@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useCallback, useEffect, useReducer, useRef} from 'react';
 import {AppState} from 'react-native';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
@@ -176,7 +177,7 @@ export function useAdministrationFlow(provisioningId?: string) {
       if (!canManage) void administration.cancel().catch(() => {});
       if (provisioningId && canManage) {
         const loadRequestedPlan = () => {
-          void run('Consultando o plano', async () => {
+          run('Consultando o plano', async () => {
             const provisioning = await traceability.provisioning(
               provisioningId,
             );
@@ -189,7 +190,7 @@ export function useAdministrationFlow(provisioningId?: string) {
               await administration.prepare(provisioning),
               requestGeneration,
             );
-          });
+          }).catch(showCommandFailure);
         };
         if (working.current) pendingRouteLoad.current = loadRequestedPlan;
         else loadRequestedPlan();
@@ -264,7 +265,13 @@ export function useAdministrationFlow(provisioningId?: string) {
       return;
     const operation = await administration.execute(
       state.operation,
-      state.materials as Material[],
+      state.materials.map((material): Material => {
+        if (material === null)
+          throw new Error(
+            'Confira o material de todas as chaves antes de continuar.',
+          );
+        return material;
+      }),
       progress => {
         if (requestGeneration === generation.current)
           dispatch({type: 'progress', progress});

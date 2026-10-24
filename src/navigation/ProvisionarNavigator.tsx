@@ -15,11 +15,11 @@ export type RotasProvisionar = {
   EtapasProvisionamento: {
     estrategia: EnumEstrategiasNFC;
     expectedUid?: string;
-    registeredModel?: string;
+    registeredModel?: string | undefined;
   };
   Diagnostico: undefined;
-  Gerenciar: {provisioningId?: string} | undefined;
-  Administracao: {provisioningId?: string} | undefined;
+  Gerenciar: {provisioningId?: string | undefined} | undefined;
+  Administracao: {provisioningId?: string | undefined} | undefined;
 };
 
 const Stack = createNativeStackNavigator<RotasProvisionar>();

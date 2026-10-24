@@ -1,3 +1,4 @@
+import {requiredItem} from '../../test-support/required-item';
 import React, {useEffect, useState, useSyncExternalStore} from 'react';
 import {ScrollView, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import Constants from 'expo-constants';
@@ -74,11 +75,11 @@ function Content() {
   }, []);
   const reading = (index: number): Reading => {
     const value: Reading = {
-      uid: fixture.tags[index].uid,
+      uid: requiredItem(fixture.tags, index).uid,
       bytesBase64: '0QEDVQBh',
       tecnologias: ['IsoDep', 'NfcA'],
     };
-    const reference = fixture.tags[index].reference;
+    const reference = requiredItem(fixture.tags, index).reference;
     if (typeof reference === 'string') value.ndef = reference;
     return value;
   };

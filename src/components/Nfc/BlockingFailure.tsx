@@ -36,10 +36,10 @@ export default function BlockingFailure({
   visible: boolean;
   onShow: () => void;
   onDismiss: () => void;
-  actionLabel?: string;
-  onAction?: () => void;
-  loading?: boolean;
-  children?: React.ReactNode;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
+  loading?: boolean | undefined;
+  children?: React.ReactNode | undefined;
 }) {
   const failure = describeFailure(message);
   const {height} = useWindowDimensions();
@@ -139,11 +139,12 @@ const styles = StyleSheet.create({
   dialog: {
     backgroundColor: 'white',
     borderRadius: 20,
-    overflow: 'hidden',
     marginHorizontal: 16,
   },
   heading: {
     backgroundColor: palette.red,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 20,
     gap: 12,
     marginTop: 0,

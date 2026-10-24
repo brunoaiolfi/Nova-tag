@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../Base/Toast/service';
 import {useAppServices} from '../Services/AppServicesProvider';
 import React, {useEffect, useRef, useState} from 'react';
 import {HelperText, Text, TextInput} from 'react-native-paper';
@@ -53,7 +54,7 @@ export default function CreateOrderForm({
     } catch (failure) {
       if (mounted.current) {
         setError(
-          (failure as {code?: string})?.code === 'CODIGO_PEDIDO_DUPLICADO'
+          errorDetails(failure).code === 'CODIGO_PEDIDO_DUPLICADO'
             ? 'Esse código já existe. Volte à lista para selecionar o pedido ou informe outro código.'
             : failure instanceof Error
             ? failure.message
@@ -98,7 +99,7 @@ export default function CreateOrderForm({
             disabled={busy || !canCreate || !code.trim()}
             loading={busy}
             onPress={() => {
-              void submit();
+              submit().catch(showCommandFailure);
             }}>
             Cadastrar pedido
           </ActionButton>
@@ -127,6 +128,7 @@ export default function CreateOrderForm({
             <TextInput
               mode="outlined"
               label="Código do pedido"
+              accessibilityLabel="Código do pedido"
               placeholder="Ex.: TCC-001"
               value={code}
               onChangeText={setCode}
@@ -142,6 +144,7 @@ export default function CreateOrderForm({
             <TextInput
               mode="outlined"
               label="Descrição (opcional)"
+              accessibilityLabel="Descrição (opcional)"
               placeholder="Ex.: Caixa de materiais do laboratório"
               value={description}
               onChangeText={setDescription}
@@ -169,3 +172,4 @@ export default function CreateOrderForm({
     </Tela>
   );
 }
+import {errorDetails} from '../../domain/validation/error-details';

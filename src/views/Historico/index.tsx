@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../components/Base/Toast/service';
 import {useHistory} from './use-history';
 import {FlatList, StyleSheet} from 'react-native';
 import {ActionButton as Button} from '../../components/Tracking';
@@ -202,7 +203,7 @@ export default function Historico() {
                     disabled={busy}
                     onPress={() => {
                       if (nextPage !== null) {
-                        void more();
+                        more().catch(showCommandFailure);
                       } else {
                         reload();
                       }
@@ -235,7 +236,7 @@ export default function Historico() {
                 <Button
                   disabled={busy}
                   onPress={() => {
-                    void more();
+                    more().catch(showCommandFailure);
                   }}>
                   Carregar mais registros
                 </Button>

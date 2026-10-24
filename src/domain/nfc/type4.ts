@@ -1,3 +1,4 @@
+import {byteAt} from './byte';
 import {NfcFailure} from './failure';
 
 export function hex(bytes: readonly number[]): string {
@@ -13,7 +14,9 @@ export function response(bytes: readonly number[]): {
 } {
   if (
     bytes.length < 2 ||
-    bytes.some(byte => !Number.isInteger(byte) || byte < 0 || byte > 255)
+    Array.from(bytes).some(
+      byte => !Number.isInteger(byte) || byte < 0 || byte > 255,
+    )
   ) {
     throw new NfcFailure(
       'NFC_INVALID_RESPONSE',
@@ -39,6 +42,9 @@ export function tagVersion(frames: readonly number[][]): TagVersion {
   }
   const [hardware, software, production] = frames;
   if (
+    !hardware ||
+    !software ||
+    !production ||
     hardware.length !== 7 ||
     software.length !== 7 ||
     ![14, 15].includes(production.length)
@@ -58,7 +64,7 @@ export function tagVersion(frames: readonly number[][]): TagVersion {
       software[1] === 0x04 &&
       software[2] === 0x02 &&
       software[3] === 0x01 &&
-      [0x01, 0x02].includes(software[4]) &&
+      (software[4] === 0x01 || software[4] === 0x02) &&
       software[5] === 0x11 &&
       software[6] === 0x05,
     hardwareHex: hex(hardware),
@@ -93,7 +99,7 @@ export function capabilityContainer(bytes: readonly number[]): NdefFile {
   if (bytes.length < 15 || word(bytes, 0) !== bytes.length) {
     throw invalid();
   }
-  if (Math.floor(bytes[2] / 16) !== 2) {
+  if (Math.floor(byteAt(bytes, 2) / 16) !== 2) {
     throw new NfcFailure(
       'NFC_UNSUPPORTED_TAG',
       'Este diagnóstico suporta o mapeamento NDEF Type 4 versão 2.',
@@ -105,7 +111,7 @@ export function capabilityContainer(bytes: readonly number[]): NdefFile {
   }
   let file: NdefFile | undefined;
   for (let offset = 7; offset < bytes.length; ) {
-    const type = bytes[offset++];
+    const type = byteAt(bytes, offset++);
     if (type === 0x00) {
       continue;
     }
@@ -115,7 +121,7 @@ export function capabilityContainer(bytes: readonly number[]): NdefFile {
     if (offset >= bytes.length) {
       throw invalid();
     }
-    const length = bytes[offset++];
+    const length = byteAt(bytes, offset++);
     if (length === 0xff || offset + length > bytes.length) {
       throw invalid();
     }
@@ -127,8 +133,8 @@ export function capabilityContainer(bytes: readonly number[]): NdefFile {
         fileId: word(bytes, offset),
         maximumFileSize: word(bytes, offset + 2),
         maximumReadSize,
-        readAccess: bytes[offset + 4],
-        writeAccess: bytes[offset + 5],
+        readAccess: byteAt(bytes, offset + 4),
+        writeAccess: byteAt(bytes, offset + 5),
       };
       if (
         file.maximumFileSize < 2 ||
@@ -150,5 +156,5 @@ export function capabilityContainer(bytes: readonly number[]): NdefFile {
 }
 
 export function word(bytes: readonly number[], offset: number): number {
-  return bytes[offset] * 256 + bytes[offset + 1];
+  return byteAt(bytes, offset) * 256 + byteAt(bytes, offset + 1);
 }

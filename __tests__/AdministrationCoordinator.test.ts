@@ -1,3 +1,4 @@
+import {requiredItem} from '../test-support/required-item';
 import {
   AdministrationCoordinator,
   AdministrativeNfc,
@@ -128,14 +129,20 @@ test('intent is committed before NFC, response before HTTP, and a lost HTTP resp
   const h = harness();
   h.setFailures(1);
   h.transceive.mockImplementation(async () => {
-    const row = (await local.store.commands(h.getSessionId(), context))[0];
+    const row = requiredItem(
+      await local.store.commands(h.getSessionId(), context),
+      0,
+    );
     expect(row.state).toBe('ATTEMPTED');
     return [0x91, 0];
   });
   const original = h.request.getMockImplementation()!;
   h.request.mockImplementation(async (path, options) => {
     if (path.endsWith('/respostas')) {
-      const row = (await local.store.commands(h.getSessionId(), context))[0];
+      const row = requiredItem(
+        await local.store.commands(h.getSessionId(), context),
+        0,
+      );
       expect(row.state).toBe('RESPONSE');
       expect(row.responseHex).toBe('9100');
     }
@@ -148,9 +155,10 @@ test('intent is committed before NFC, response before HTTP, and a lost HTTP resp
   expect(h.transceive).toHaveBeenCalledTimes(1);
   expect(h.responseBodies).toHaveLength(2);
   expect(h.responseBodies[1]).toEqual(h.responseBodies[0]);
-  expect((await local.store.commands(h.getSessionId(), context))[0].state).toBe(
-    'ACKNOWLEDGED',
-  );
+  expect(
+    requiredItem(await local.store.commands(h.getSessionId(), context), 0)
+      .state,
+  ).toBe('ACKNOWLEDGED');
 });
 test('a SQLite intent failure stops before the physical transmission', async () => {
   const h = harness();
@@ -172,9 +180,10 @@ test('response persistence failure leaves an unknown attempt and no HTTP submiss
   ).rejects.toThrow('Disk full');
   expect(h.transceive).toHaveBeenCalledTimes(1);
   expect(h.responseBodies).toHaveLength(0);
-  expect((await local.store.commands(h.getSessionId(), context))[0].state).toBe(
-    'ATTEMPTED',
-  );
+  expect(
+    requiredItem(await local.store.commands(h.getSessionId(), context), 0)
+      .state,
+  ).toBe('ATTEMPTED');
 });
 test('a login change during NFC still preserves the late physical response', async () => {
   const h = harness();
@@ -187,7 +196,8 @@ test('a login change during NFC still preserves the late physical response', asy
   ).rejects.toMatchObject({code: 'ADMIN_SESSAO_ALTERADA'});
   expect(h.responseBodies).toHaveLength(0);
   expect(
-    (await local.store.commands(h.getSessionId(), context))[0].responseHex,
+    requiredItem(await local.store.commands(h.getSessionId(), context), 0)
+      .responseHex,
   ).toBe('9100');
 });
 test('cancellation after NFC preserves the response and sends no next command', async () => {
@@ -204,7 +214,8 @@ test('cancellation after NFC preserves the response and sends no next command', 
     h.coordinator.execute(operation, materials, () => {}),
   ).rejects.toThrow('NFC cancelled');
   expect(
-    (await local.store.commands(h.getSessionId(), context))[0].responseHex,
+    requiredItem(await local.store.commands(h.getSessionId(), context), 0)
+      .responseHex,
   ).toBe('9100');
   expect(h.responseBodies).toHaveLength(0);
 });
@@ -225,9 +236,9 @@ test('restoration submits only the saved response, without opening NFC or transm
   );
   expect(native).not.toHaveBeenCalled();
   expect(h.transceive).not.toHaveBeenCalled();
-  expect((await local.store.sessions(operation.id, context))[0].ended).toBe(
-    true,
-  );
+  expect(
+    requiredItem(await local.store.sessions(operation.id, context), 0).ended,
+  ).toBe(true);
 });
 test('unknown key 0 attempt is never replayed and requires an explicit material choice', async () => {
   const key: AdminCommand = {
@@ -294,7 +305,10 @@ test('network and restart retain original RF identifiers and response content', 
   await expect(
     h.coordinator.execute(operation, materials, () => {}),
   ).rejects.toThrow('Rede indisponível');
-  const old = (await local.store.sessions(operation.id, context))[0];
+  const old = requiredItem(
+    await local.store.sessions(operation.id, context),
+    0,
+  );
   expect(old.ended).toBe(false);
   h.setFailures(0);
   const native = jest.spyOn(h.nfc, 'run');

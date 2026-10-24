@@ -365,3 +365,24 @@ describe('HTTP transport', () => {
     ).rejects.toMatchObject({code: 'CREDENCIAIS_INVALIDAS', status: 401});
   });
 });
+
+test('published session snapshots are stable, immutable and stop notifying after unsubscribe', async () => {
+  const {manager, send} = setup();
+  const initial = manager.getSnapshot();
+  expect(manager.getSnapshot()).toBe(initial);
+  expect(Object.isFrozen(initial)).toBe(true);
+  const listener = jest.fn();
+  const unsubscribe = manager.subscribe(listener);
+  send.mockResolvedValueOnce(result());
+  await manager.login(baseUrl, 'operator', 'password');
+  const authenticated = manager.getSnapshot();
+  expect(manager.getSnapshot()).toBe(authenticated);
+  expect(authenticated).not.toBe(initial);
+  expect(Object.isFrozen(authenticated)).toBe(true);
+  expect(Object.isFrozen(authenticated.session?.user)).toBe(true);
+  expect(listener).toHaveBeenCalledTimes(1);
+  unsubscribe();
+  send.mockResolvedValueOnce({encerrada: true});
+  await manager.logout();
+  expect(listener).toHaveBeenCalledTimes(1);
+});

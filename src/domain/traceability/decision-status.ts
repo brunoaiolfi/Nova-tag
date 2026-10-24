@@ -9,12 +9,16 @@ export function decisionStatus(decision: Decision['decisao']) {
   if (decision.sdm?.temporalidade === 'TARDIA') return 'TARDIA';
   return 'REJEITADA';
 }
+const businessOutcomes = {
+  AUTORIZADA: 'ACCEPTED',
+  PENDENTE: 'PENDING',
+  REJEITADA: 'REJECTED',
+  TARDIA: 'REJECTED',
+} as const satisfies Record<
+  ReturnType<typeof decisionStatus>,
+  'ACCEPTED' | 'PENDING' | 'REJECTED'
+>;
+
 export function businessOutcome(result: Decision) {
-  const outcomes = {
-    AUTORIZADA: 'ACCEPTED',
-    PENDENTE: 'PENDING',
-    REJEITADA: 'REJECTED',
-    TARDIA: 'REJECTED',
-  } as const;
-  return outcomes[decisionStatus(result.decisao)];
+  return businessOutcomes[decisionStatus(result.decisao)];
 }

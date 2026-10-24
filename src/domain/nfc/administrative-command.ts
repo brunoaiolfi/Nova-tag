@@ -1,3 +1,4 @@
+import {byteAt} from './byte';
 import type {AdminCommand} from './administrative-command.types';
 import {record, integer, matches} from '../validation/values';
 import {uuid} from '../administration/contract-values';
@@ -16,12 +17,12 @@ export function commandBytes(command: unknown): number[] {
   const apduBytes = command.apduHex
     .match(/../g)!
     .map(hexByte => parseInt(hexByte, 16));
-  const instruction = apduBytes[1],
-    length = apduBytes[4];
+  const instruction = byteAt(apduBytes, 1),
+    length = byteAt(apduBytes, 4);
   if (
-    apduBytes[0] !== 0x90 ||
-    apduBytes[2] !== 0 ||
-    apduBytes[3] !== 0 ||
+    byteAt(apduBytes, 0) !== 0x90 ||
+    byteAt(apduBytes, 2) !== 0 ||
+    byteAt(apduBytes, 3) !== 0 ||
     apduBytes.at(-1) !== 0 ||
     length !== apduBytes.length - 6
   )
@@ -30,10 +31,15 @@ export function commandBytes(command: unknown): number[] {
   if (command.alteraTag !== mutates) invalid();
   switch (instruction) {
     case 0x71:
-      if (length !== 2 || apduBytes[5] > 4 || apduBytes[6] !== 0) invalid();
+      if (
+        length !== 2 ||
+        byteAt(apduBytes, 5) > 4 ||
+        byteAt(apduBytes, 6) !== 0
+      )
+        invalid();
       break;
     case 0x77:
-      if (length !== 1 || apduBytes[5] > 4) invalid();
+      if (length !== 1 || byteAt(apduBytes, 5) > 4) invalid();
       break;
     case 0xaf:
       if (length !== 32) invalid();
@@ -42,21 +48,21 @@ export function commandBytes(command: unknown): number[] {
       if (length !== 8) invalid();
       break;
     case 0xf5:
-      if (length !== 9 || ![1, 2].includes(apduBytes[5])) invalid();
+      if (length !== 9 || ![1, 2].includes(byteAt(apduBytes, 5))) invalid();
       break;
     case 0x64:
-      if (length !== 9 || apduBytes[5] > 4) invalid();
+      if (length !== 9 || byteAt(apduBytes, 5) > 4) invalid();
       break;
     case 0xad:
     case 0x8d:
       assertFileRange(apduBytes, instruction, length);
       break;
     case 0x5f:
-      if (![25, 41].includes(length) || ![1, 2].includes(apduBytes[5]))
+      if (![25, 41].includes(length) || ![1, 2].includes(byteAt(apduBytes, 5)))
         invalid();
       break;
     case 0xc4:
-      if (length !== 41 || apduBytes[5] > 4) invalid();
+      if (length !== 41 || byteAt(apduBytes, 5) > 4) invalid();
       break;
     default:
       invalid();
@@ -69,9 +75,11 @@ function assertFileRange(
   instruction: number,
   length: number,
 ): void {
-  const file = bytes[5];
-  const offset = bytes[6] + bytes[7] * 256 + bytes[8] * 65536;
-  const count = bytes[9] + bytes[10] * 256 + bytes[11] * 65536;
+  const file = byteAt(bytes, 5);
+  const offset =
+    byteAt(bytes, 6) + byteAt(bytes, 7) * 256 + byteAt(bytes, 8) * 65536;
+  const count =
+    byteAt(bytes, 9) + byteAt(bytes, 10) * 256 + byteAt(bytes, 11) * 65536;
   if (
     ![1, 2].includes(file) ||
     count < 1 ||
@@ -84,6 +92,21 @@ function assertFileRange(
   if (length !== expectedLength) invalid();
 }
 export function decodeCommand(value: unknown): AdminCommand {
+  if (
+    !record(value) ||
+    !uuid(value.id) ||
+    !integer(value.sequencia, 1) ||
+    typeof value.etapa !== 'string' ||
+    typeof value.apduHex !== 'string' ||
+    typeof value.alteraTag !== 'boolean'
+  )
+    invalid();
   commandBytes(value);
-  return value as AdminCommand;
+  return {
+    id: value.id,
+    sequencia: value.sequencia,
+    etapa: value.etapa,
+    apduHex: value.apduHex,
+    alteraTag: value.alteraTag,
+  };
 }

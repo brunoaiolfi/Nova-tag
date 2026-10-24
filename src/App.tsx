@@ -14,15 +14,19 @@ import {AppServicesProvider} from './components/Services/AppServicesProvider';
 import {createAppServices} from './bootstrap/create-app-services';
 import type {AppServices} from './appplication/ports/app-services';
 
+function isIconName(
+  name: string,
+): name is keyof typeof MaterialCommunityIcons.glyphMap {
+  return Object.prototype.hasOwnProperty.call(
+    MaterialCommunityIcons.glyphMap,
+    name,
+  );
+}
 const settings = {
   icon: (props: {name: string; size: number; color?: string}) => (
     <MaterialCommunityIcons
       {...props}
-      name={
-        props.name as React.ComponentProps<
-          typeof MaterialCommunityIcons
-        >['name']
-      }
+      name={isIconName(props.name) ? props.name : 'help-circle-outline'}
     />
   ),
 };

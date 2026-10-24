@@ -21,7 +21,7 @@ const sameCaptureOwner = (
   expectedOwner.userId === actualOwner.userId &&
   expectedOwner.baseUrl === actualOwner.baseUrl;
 export class ExperimentJournal {
-  private flushWork?: Promise<void>;
+  private flushWork: Promise<void> | undefined;
   constructor(
     private readonly storage: ExperimentStorage,
     private readonly context: () => CaptureContext | null,
@@ -258,7 +258,7 @@ export class ExperimentJournal {
     );
     if (result) await this.decision(item, result);
   }
-  async release(items: QueuedCapture[]) {
+  async release(items: readonly QueuedCapture[]) {
     const owner = this.owner();
     const releasedAt = this.clock.nowMs();
     for (const item of items.filter(
@@ -372,7 +372,7 @@ export class ExperimentJournal {
         });
         await this.storage.sent(owner, record.id);
       } catch (error) {
-        const status = (error as {status?: number})?.status;
+        const status = errorDetails(error).status;
         await this.storage.retry(
           owner,
           record.id,
@@ -384,3 +384,4 @@ export class ExperimentJournal {
     }
   }
 }
+import {errorDetails} from '../../domain/validation/error-details';

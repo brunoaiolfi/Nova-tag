@@ -24,7 +24,7 @@ export type RotasTab = {
   Provisionar: NavigatorScreenParams<RotasProvisionar> | undefined;
   Home: undefined;
   Eventos: undefined;
-  Historico: {reading?: Reading} | undefined;
+  Historico: {reading?: Reading | undefined} | undefined;
   Envios: undefined;
 };
 

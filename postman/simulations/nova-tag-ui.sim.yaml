@@ -1,0 +1,13 @@
+# Simulation scaffold. Add fault-injection scenarios under each mock, e.g.:
+#   scenarios:
+#     - overrides:
+#         conditions:
+#           latency: { delay_ms: 500 }
+# Then serve it with: postman simulation run <this file>
+
+simulation: Nova tag UI
+routing: path
+mocks:
+  - name: nova-tag-ui
+    routeKey: api
+    path: ../mocks/nova-tag-ui/config.yaml

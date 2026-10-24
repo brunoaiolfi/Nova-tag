@@ -1,3 +1,4 @@
+import {requiredItem} from './required-item';
 import {hex} from '../src/domain/nfc/type4';
 
 // Synthetic protocol simulator for tests only. No physical tag or SDM proof.
@@ -36,17 +37,17 @@ export function type4Fixture(
     if (options.failAfter !== undefined && commands.length > options.failAfter)
       throw new Error('fixture: connection interrupted');
     if (hex(command) === '00A4040C07D276000085010100') return [0x90, 0];
-    if (command[1] === 0xa4 && command[2] === 0) {
-      selected = command[5] * 256 + command[6];
+    if (command[1] === 0xa4 && requiredItem(command, 2) === 0) {
+      selected = requiredItem(command, 5) * 256 + requiredItem(command, 6);
       return [0x90, 0];
     }
     if (command[1] === 0xb0) {
       const source = selected === 0xe103 ? cc : file;
-      const offset = command[2] * 256 + command[3];
+      const offset = requiredItem(command, 2) * 256 + requiredItem(command, 3);
       return [
         ...source.slice(
           offset,
-          offset + command[4] - (options.shortRead ? 1 : 0),
+          offset + requiredItem(command, 4) - (options.shortRead ? 1 : 0),
         ),
         0x90,
         0,

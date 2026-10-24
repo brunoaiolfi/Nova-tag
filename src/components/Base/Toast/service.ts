@@ -18,12 +18,12 @@ class ToastImplementation implements IToast {
     ToastMessage.show({
       type: tipo,
       text1: mensagem,
-      text2: opcoes.descricao,
+      ...(opcoes.descricao !== undefined ? {text2: opcoes.descricao} : {}),
       position: opcoes.posicao ?? 'top',
       visibilityTime: opcoes.duracao ?? duracaoPorTipo[tipo],
       autoHide: opcoes.esconderAutomaticamente ?? true,
-      onPress: opcoes.aoPressionar,
-      onHide: opcoes.aoEsconder,
+      ...(opcoes.aoPressionar ? {onPress: opcoes.aoPressionar} : {}),
+      ...(opcoes.aoEsconder ? {onHide: opcoes.aoEsconder} : {}),
     });
   }
 
@@ -49,6 +49,15 @@ class ToastImplementation implements IToast {
 }
 
 export const toast: IToast = new ToastImplementation();
+
+/** Last-resort UI boundary; expected errors belong to the flow's own state. */
+export function showCommandFailure(error: unknown): void {
+  toast.erro(
+    error instanceof Error
+      ? error.message
+      : 'Não foi possível concluir a ação. Tente novamente.',
+  );
+}
 
 export type {
   ExibirToastParams,

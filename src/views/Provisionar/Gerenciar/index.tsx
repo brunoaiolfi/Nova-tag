@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useProvisioningManagement} from './use-provisioning-management';
 import React from 'react';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
@@ -111,7 +112,7 @@ export default function Gerenciar() {
               disabled={busy || !canManage || !confirmed}
               loading={busy}
               onPress={() => {
-                void close();
+                close().catch(showCommandFailure);
               }}>
               Confirmar encerramento
             </ActionButton>

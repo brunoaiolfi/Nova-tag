@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useCallback, useMemo, useReducer, useRef} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {useAppServices} from '../../../components/Services/AppServicesProvider';
@@ -72,7 +73,7 @@ export function useProvisioningManagement(provisioningId?: string) {
             });
         }
       }
-      void load();
+      load().catch(showCommandFailure);
       return () => {
         generation.current = requestGeneration + 1;
       };

@@ -1,5 +1,5 @@
 export interface Api {
-  request<T>(
+  request(
     path: string,
     options?: {
       method?: string;
@@ -7,5 +7,5 @@ export interface Api {
       expectedUserId?: string;
       expectedBaseUrl?: string;
     },
-  ): Promise<T>;
+  ): Promise<unknown>;
 }

@@ -49,12 +49,12 @@ export function PageHero({
   compact = false,
 }: {
   title: string;
-  description?: string;
-  icon?: string;
-  eyebrow?: string;
-  fullBleed?: boolean;
+  description?: string | undefined;
+  icon?: string | undefined;
+  eyebrow?: string | undefined;
+  fullBleed?: boolean | undefined;
   /** Inner screens already have a navigation header; avoid a second large banner. */
-  compact?: boolean;
+  compact?: boolean | undefined;
 }) {
   return (
     <View
@@ -98,7 +98,7 @@ export function ActionTile({
   description: string;
   icon: string;
   onPress: () => void;
-  accent?: boolean;
+  accent?: boolean | undefined;
 }) {
   return (
     <TouchableRipple
@@ -191,7 +191,7 @@ export function FlowSteps({
 }: {
   labels: string[];
   current: number;
-  complete?: boolean;
+  complete?: boolean | undefined;
 }) {
   return (
     <View
@@ -258,7 +258,7 @@ export function OrderJourney({
   fullBleed = false,
 }: {
   order: OrderDetails;
-  fullBleed?: boolean;
+  fullBleed?: boolean | undefined;
 }) {
   const current = milestones.findIndex(item => item.state === order.estado);
   return (
@@ -347,7 +347,7 @@ export function StatusPanel({
   tone = 'info',
 }: {
   children: React.ReactNode;
-  tone?: 'info' | 'success' | 'warning' | 'error';
+  tone?: ('info' | 'success' | 'warning' | 'error') | undefined;
 }) {
   const color =
     tone === 'success'

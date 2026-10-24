@@ -31,6 +31,12 @@ fluxos de apresentação usam transições explícitas onde os estados são rela
 regras adicionais de hooks e nomes fazem parte de `verify`. Veja a execução e os
 limites de validação na [seção 19 da análise arquitetural](docs/18-analise-arquitetural-comparativa.md).
 
+A [pesquisa de padrões React Native e código limpo](docs/19-padroes-react-native-e-codigo-limpo.md)
+reúne 23 diretrizes com fontes dos mantenedores, compara as versões do original
+e do Expo e distingue implementação local, validação e propostas adicionais.
+Inclui lint com tipos, decoders, estado/efeitos, identidade, navegação, testes,
+acessibilidade e desempenho, com critérios de adoção e aceite.
+
 ## Instalar no iPhone usando Windows
 
 É necessário instalar um **development build próprio**. Expo Go não contém o

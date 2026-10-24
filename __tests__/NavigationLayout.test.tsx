@@ -1,7 +1,14 @@
 import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
-import {PaperProvider, TouchableRipple} from 'react-native-paper';
+import {
+  render as renderProbe,
+  act,
+  screen,
+  fireEvent,
+} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
+import {Dimensions} from 'react-native';
+import {PaperProvider} from 'react-native-paper';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Navigator from '../src/navigation';
 
@@ -20,24 +27,41 @@ jest.mock('../src/navigation/EventosNavigator', () => 'EventsScreen');
 jest.mock('../src/navigation/ProvisionarNavigator', () => 'ProvisionScreen');
 const services = createTestServices({});
 
+afterEach(() => jest.restoreAllMocks());
+
+test('large system text keeps all five tabs named, reachable and gives their labels more width', async () => {
+  jest
+    .spyOn(Dimensions, 'get')
+    .mockReturnValue({width: 411, height: 900, scale: 2.625, fontScale: 2});
+  await renderProbe(
+    withServices(
+      <PaperProvider>
+        <Navigator />
+      </PaperProvider>,
+      services,
+    ),
+  );
+  const historyTab = screen.getByRole('tab', {name: 'Rastreio'});
+  expect(screen.getAllByRole('tab')).toHaveLength(5);
+  expect(historyTab).toHaveStyle({flexBasis: `${100 / 3}%`});
+  await fireEvent.press(screen.getByRole('tab', {name: 'Vincular'}));
+  expect(screen.getByRole('tab', {name: 'Vincular'})).toBeSelected();
+  expect(screen.getByText('Registrar')).toBeOnTheScreen();
+});
+
 test('mounts the custom tab bar inside React and navigates between authenticated tabs', async () => {
-  let tree: TestRenderer.ReactTestRenderer;
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <SafeAreaProvider>
-          <PaperProvider>
-            <Navigator />
-          </PaperProvider>
-        </SafeAreaProvider>,
-        services,
-      ),
-    );
-  });
-  const tabs = () =>
-    tree!.root
-      .findAllByType(TouchableRipple)
-      .filter(item => item.props.accessibilityRole === 'tab');
+  let tree: RenderResult;
+  tree = await renderProbe(
+    withServices(
+      <SafeAreaProvider>
+        <PaperProvider>
+          <Navigator />
+        </PaperProvider>
+      </SafeAreaProvider>,
+      services,
+    ),
+  );
+  const tabs = () => screen.getAllByRole('tab');
   expect(tabs().map(item => item.props.accessibilityLabel)).toEqual([
     'Início',
     'Rastreio',
@@ -45,10 +69,8 @@ test('mounts the custom tab bar inside React and navigates between authenticated
     'Registrar',
     'Vincular',
   ]);
-  await act(async () =>
-    tabs()
-      .find(item => item.props.accessibilityLabel === 'Rastreio')!
-      .props.onPress(),
+  await fireEvent.press(
+    tabs().find(item => item.props.accessibilityLabel === 'Rastreio')!,
   );
   expect(
     tabs().find(item => item.props.accessibilityState.selected)?.props

@@ -1,10 +1,16 @@
+import {requiredItem} from '../test-support/required-item';
 import {createTestServices, withServices} from '../test-support/app-services';
-import {ActionButton as Button} from '../src/components/Tracking';
+
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {
+  render as renderProbe,
+  screen,
+  fireEvent,
+  act,
+} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {PaperProvider} from 'react-native-paper';
 import Leitor from '../src/components/Nfc/Leitor';
-import TagDetails from '../src/components/Nfc/TagDetails';
 import {readPhysicalTag, cancelPhysicalRead} from '../src/infra/nfc/reader';
 
 import type {Attempt} from '../src/domain/experimentation/attempt';
@@ -17,69 +23,65 @@ jest.mock('../src/infra/nfc/reader', () => ({
 const services = createTestServices({});
 const {experiment: experimentJournal} = services;
 
-let tree: TestRenderer.ReactTestRenderer;
+let tree: RenderResult;
 const read = jest.mocked(readPhysicalTag);
-const button = (label: string) =>
-  tree.root.findAllByType(Button).find(item => item.props.children === label)!;
+const button = (label: string) => screen.getByRole('button', {name: label});
 async function render(experimentType?: string) {
   const next = jest.fn();
   const error = jest.fn();
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <PaperProvider>
-          <Leitor
-            onLeituraRealizada={next}
-            onErroLeitura={error}
-            experimentType={experimentType}
-          />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
+  tree = await renderProbe(
+    withServices(
+      <PaperProvider>
+        <Leitor
+          onLeituraRealizada={next}
+          onErroLeitura={error}
+          experimentType={experimentType}
+        />
+      </PaperProvider>,
+      services,
+    ),
+  );
   return {next, error};
 }
 beforeEach(() => {
   jest.restoreAllMocks();
   jest.clearAllMocks();
 });
-afterEach(async () => {
-  await act(async () => tree?.unmount());
-});
 
 test('keeps the scanned tag visible until explicit continuation and retains scan time', async () => {
   const {next} = await render();
   const reading = {uid: '53721F76950001', tecnologias: ['iso7816']};
   read.mockResolvedValueOnce(reading);
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Ler etiqueta'));
+
   expect(next).not.toHaveBeenCalled();
-  expect(tree.root.findByType(TagDetails).props.reading).toEqual(reading);
-  const capturedAt = tree.root.findByType(TagDetails).props.capturedAt;
-  expect(Date.parse(capturedAt)).not.toBeNaN();
+  expect(screen.getByText('53:72:1F:76:95:00:01')).toBeVisible();
+  const scanFinished = Date.now();
   expect(JSON.stringify(tree.toJSON())).toContain('Etiqueta lida');
-  await act(async () => {
-    button('Continuar').props.onPress();
-  });
-  expect(next).toHaveBeenCalledWith(reading, capturedAt, null);
+
+  await fireEvent.press(button('Continuar'));
+
+  expect(next).toHaveBeenCalledWith(reading, expect.any(String), null);
+  const capturedAt = Date.parse(requiredItem(next.mock.calls, 0)[1]);
+  expect(Number.isFinite(capturedAt)).toBe(true);
+  expect(capturedAt).toBeLessThanOrEqual(scanFinished);
 });
 
 test('a failed scan keeps the reader open and permits another attempt', async () => {
   const {next, error} = await render();
   read.mockRejectedValueOnce(new Error('Etiqueta fora de alcance'));
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Ler etiqueta'));
+
   expect(error).toHaveBeenCalledWith('Etiqueta fora de alcance');
   expect(next).not.toHaveBeenCalled();
   expect(JSON.stringify(tree.toJSON())).toContain('Etiqueta fora de alcance');
   read.mockResolvedValueOnce({uid: '53721F76950001'});
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
-  });
-  expect(tree.root.findAllByType(TagDetails)).toHaveLength(1);
+
+  await fireEvent.press(button('Ler etiqueta'));
+
+  expect(screen.getByText('Etiqueta encontrada')).toBeVisible();
   expect(JSON.stringify(tree.toJSON())).not.toContain(
     'Etiqueta fora de alcance',
   );
@@ -94,20 +96,20 @@ test('ignores a late NFC result after cancellation and blocks concurrent taps', 
         finish = resolve;
       }),
   );
-  await act(async () => {
-    const press = button('Ler etiqueta').props.onPress;
-    press();
-    press();
-  });
+
+  const control = button('Ler etiqueta');
+  await fireEvent.press(control);
+  await fireEvent.press(control);
+
   expect(read).toHaveBeenCalledTimes(1);
-  await act(async () => {
-    button('Cancelar leitura').props.onPress();
-    finish({uid: '53721F76950001'});
-  });
+
+  await fireEvent.press(button('Cancelar leitura'));
+  await act(async () => finish({uid: '53721F76950001'}));
+
   expect(cancelPhysicalRead).toHaveBeenCalled();
   expect(next).not.toHaveBeenCalled();
-  expect(tree.root.findAllByType(TagDetails)).toHaveLength(0);
-  expect(button('Ler etiqueta').props.disabled).toBe(false);
+  expect(screen.queryByText('Etiqueta encontrada')).not.toBeOnTheScreen();
+  expect(button('Ler etiqueta')).toBeEnabled();
 });
 test('does not start NFC until the experimental beginning has committed, and does not read after cancellation during that commit', async () => {
   let resolve!: (value: Attempt | null) => void;
@@ -124,14 +126,14 @@ test('does not start NFC until the experimental beginning has committed, and doe
   );
   const finish = jest.spyOn(experimentJournal, 'finish').mockResolvedValue();
   await render('COLETA');
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Ler etiqueta'));
+
   expect(read).not.toHaveBeenCalled();
-  await act(async () => {
-    button('Cancelar leitura').props.onPress();
-    resolve(attempt);
-  });
+
+  await fireEvent.press(button('Cancelar leitura'));
+  await act(async () => resolve(attempt));
+
   expect(read).not.toHaveBeenCalled();
   expect(finish).toHaveBeenCalledWith(
     attempt,
@@ -152,9 +154,9 @@ test('records native NFC timeout without exposing a successful result or droppin
     Object.assign(new Error('Tempo esgotado'), {code: 'NFC_TIMEOUT'}),
   );
   const {next} = await render('COLETA');
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Ler etiqueta'));
+
   expect(finish).toHaveBeenCalledWith(
     attempt,
     expect.any(Number),
@@ -162,5 +164,5 @@ test('records native NFC timeout without exposing a successful result or droppin
     'NFC_TIMEOUT',
   );
   expect(next).not.toHaveBeenCalled();
-  expect(tree.root.findAllByType(TagDetails)).toHaveLength(0);
+  expect(screen.queryByText('Etiqueta encontrada')).not.toBeOnTheScreen();
 });

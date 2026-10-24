@@ -1,3 +1,5 @@
+import {decodeProvisioning} from '../traceability/contracts/provisioning-decoder';
+import {record} from '../../domain/validation/values';
 import {TraceabilityWorkflow} from '../traceability/workflow';
 import type {Api} from '../auth/ports/authenticated-api';
 import type {Provisioning} from '../../domain/traceability/provisioning';
@@ -61,13 +63,13 @@ export class AdministrationCoordinator {
         'A conta, a API ou o login mudou. Reconecte-se e retome a operação com outra sessão NFC.',
       );
   }
-  private async request<T>(
+  private async request(
     context: AdminContext,
     path: string,
     body?: unknown,
-  ): Promise<T> {
+  ): Promise<unknown> {
     await this.guard(context);
-    return this.api.request<T>(root + path, {
+    return this.api.request(root + path, {
       expectedUserId: context.userId,
       expectedBaseUrl: context.baseUrl,
       ...(body !== undefined ? {method: 'POST', body} : {}),
@@ -81,11 +83,13 @@ export class AdministrationCoordinator {
   ): Promise<Provisioning> {
     const operationContext = await this.context();
     await this.guard(operationContext);
-    const query = () =>
-      this.api.request<Provisioning>(`/etiquetas/${uid}`, {
-        expectedBaseUrl: operationContext.baseUrl,
-        expectedUserId: operationContext.userId,
-      });
+    const query = async () =>
+      decodeProvisioning(
+        await this.api.request(`/etiquetas/${uid}`, {
+          expectedBaseUrl: operationContext.baseUrl,
+          expectedUserId: operationContext.userId,
+        }),
+      );
     const matches = (administrationProgress: Provisioning) =>
       administrationProgress.pedidoId === orderId &&
       administrationProgress.uid === uid &&
@@ -109,18 +113,20 @@ export class AdministrationCoordinator {
       if (errorCode(error) !== 'ETIQUETA_NAO_ENCONTRADA') throw error;
     }
     try {
-      return await this.api.request<Provisioning>('/etiquetas', {
-        method: 'POST',
-        expectedUserId: operationContext.userId,
-        expectedBaseUrl: operationContext.baseUrl,
-        body: {
-          pedidoId: orderId,
-          uid,
-          modelo: 'NTAG424DNA',
-          estrategia: strategy,
-          ...(strategy === 'SDM' ? {politicaSdm: policy} : {}),
-        },
-      });
+      return decodeProvisioning(
+        await this.api.request('/etiquetas', {
+          method: 'POST',
+          expectedUserId: operationContext.userId,
+          expectedBaseUrl: operationContext.baseUrl,
+          body: {
+            pedidoId: orderId,
+            uid,
+            modelo: 'NTAG424DNA',
+            estrategia: strategy,
+            ...(strategy === 'SDM' ? {politicaSdm: policy} : {}),
+          },
+        }),
+      );
     } catch (error) {
       if (retryable(error)) {
         await this.guard(operationContext);
@@ -136,7 +142,7 @@ export class AdministrationCoordinator {
   }
   async prepare(provisioning: Provisioning): Promise<AdminOperation> {
     const operationContext = await this.context();
-    let operation: AdminOperation;
+    let operation: unknown;
     try {
       operation = await this.request(
         operationContext,
@@ -178,7 +184,7 @@ export class AdministrationCoordinator {
   }
   async refresh(id: string): Promise<AdminOperation> {
     const operationContext = await this.context(),
-      operationSnapshot = await this.request<AdminOperation>(
+      operationSnapshot = await this.request(
         operationContext,
         `/operacoes/${id}`,
       );
@@ -194,12 +200,13 @@ export class AdministrationCoordinator {
         'ADMIN_UID_INVALIDO',
         'Leia novamente a etiqueta para identificar seu número.',
       );
-    const operationSnapshot = await this.request<AdminOperation>(
+    const operationSnapshot = await this.request(
       operationContext,
       '/etiquetas/' + normalized + '/operacao-pendente',
     );
     if (
-      typeof operationSnapshot?.administradorId === 'string' &&
+      record(operationSnapshot) &&
+      typeof operationSnapshot.administradorId === 'string' &&
       operationSnapshot.administradorId !== operationContext.userId
     )
       throw new AdministrationError(
@@ -287,7 +294,7 @@ export class AdministrationCoordinator {
     frame: {id: string},
     hex: string,
   ): Promise<AdminReply> {
-    const reply = await this.request<AdminReply>(
+    const reply = await this.request(
       operationContext,
       `/operacoes/${rfSession.operationId}/sessoes/${rfSession.id}/respostas`,
       {
@@ -371,9 +378,9 @@ export class AdministrationCoordinator {
           recuperar: recovery,
           materiais: materials,
         };
-        let reply: AdminReply;
+        let initialReply: unknown;
         try {
-          reply = await this.request(
+          initialReply = await this.request(
             operationContext,
             `/operacoes/${operation.id}/sessoes`,
             body,
@@ -381,13 +388,14 @@ export class AdministrationCoordinator {
         } catch (error) {
           if (!retryable(error)) throw error;
           rf.checkpoint();
-          reply = await this.request(
+          initialReply = await this.request(
             operationContext,
             `/operacoes/${operation.id}/sessoes`,
             body,
           );
         }
-        assertSessionReply(reply, session.id);
+        assertSessionReply(initialReply, session.id);
+        let reply: AdminReply = initialReply;
         await this.store.saveReply(session, reply);
         session.reply = reply;
         let count = 0;
@@ -566,12 +574,12 @@ export class AdministrationCoordinator {
         await this.store.saveActivation(saved);
       }
       const api: Api = {
-        request: async <T>(
+        request: async (
           path: string,
           options?: Parameters<Api['request']>[1],
         ) => {
           await this.guard(operationContext);
-          return this.api.request<T>(path, {
+          return this.api.request(path, {
             ...options,
             expectedUserId: operationContext.userId,
             expectedBaseUrl: operationContext.baseUrl,
@@ -596,8 +604,8 @@ export class AdministrationCoordinator {
         }
         if (!retryable(error)) throw error;
         try {
-          const persisted = await api.request<Provisioning>(
-            `/provisionamentos/${provisioning.id}`,
+          const persisted = decodeProvisioning(
+            await api.request(`/provisionamentos/${provisioning.id}`),
           );
           if (persisted.status !== 'ATIVA') throw error;
           result = persisted;
@@ -633,7 +641,7 @@ export class AdministrationCoordinator {
       );
     const operationContext = await this.context();
     assertOperation(operation, operationContext);
-    const operationSnapshot = await this.request<AdminOperation>(
+    const operationSnapshot = await this.request(
       operationContext,
       `/operacoes/${operation.id}/encerramento`,
       {estacao: operation.estacao},

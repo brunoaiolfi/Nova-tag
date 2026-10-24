@@ -1,8 +1,10 @@
+import {showCommandFailure} from '../../components/Base/Toast/service';
 import {useAppServices} from '../../components/Services/AppServicesProvider';
 import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
 import {
   KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -49,7 +51,9 @@ export default function Login() {
     }
   };
   return (
-    <KeyboardAvoidingView style={styles.root} behavior="height">
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="light-content" backgroundColor={colors.blue} />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -77,6 +81,7 @@ export default function Login() {
           <TextInput
             mode="outlined"
             label="Login"
+            accessibilityLabel="Login"
             value={login}
             onChangeText={setLogin}
             autoCapitalize="none"
@@ -88,6 +93,7 @@ export default function Login() {
           <TextInput
             mode="outlined"
             label="Senha"
+            accessibilityLabel="Senha"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -105,7 +111,7 @@ export default function Login() {
             textContentType="password"
             editable={!busy}
             onSubmitEditing={() => {
-              void submit();
+              submit().catch(showCommandFailure);
             }}
           />
           {!!(error || state.message) && (
@@ -123,7 +129,7 @@ export default function Login() {
             loading={busy}
             disabled={busy || !server.trim() || !login.trim() || !password}
             onPress={() => {
-              void submit();
+              submit().catch(showCommandFailure);
             }}>
             Entrar
           </Button>
@@ -136,6 +142,7 @@ export default function Login() {
             <TextInput
               mode="outlined"
               label="Endereço da API"
+              accessibilityLabel="Endereço da API"
               value={server}
               onChangeText={setServer}
               autoCapitalize="none"

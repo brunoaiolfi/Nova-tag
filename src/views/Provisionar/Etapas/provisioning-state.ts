@@ -40,7 +40,7 @@ export interface ProvisioningState {
   message: string;
 }
 export type ProvisioningEvent =
-  | {type: 'order-selected'; order?: OrderSummary}
+  | {type: 'order-selected'; order?: OrderSummary | undefined}
   | {type: 'model-changed'; model: string}
   | {type: 'mode-changed'; mode: ProvisioningState['mode']}
   | {type: 'reading-captured'; evidence: PhysicalEvidence}

@@ -13,13 +13,13 @@ export function Confirmation({
 }: {
   label: string;
   checked: boolean;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   onPress: () => void;
 }) {
   return (
     <TouchableRipple
       onPress={onPress}
-      disabled={disabled}
+      disabled={!!disabled}
       accessibilityRole="checkbox"
       aria-checked={checked}
       accessibilityLabel={label}
@@ -51,13 +51,13 @@ export function Choice({
   description: string;
   icon: string;
   selected: boolean;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   onPress: () => void;
 }) {
   return (
     <TouchableRipple
       onPress={onPress}
-      disabled={disabled}
+      disabled={!!disabled}
       accessibilityRole="radio"
       aria-checked={selected}
       accessibilityLabel={title}
@@ -90,8 +90,8 @@ export function SetupSummary({
 }: {
   order: string;
   uid: string;
-  detail?: string;
-  compact?: boolean;
+  detail?: string | undefined;
+  compact?: boolean | undefined;
 }) {
   if (compact)
     return (
@@ -140,8 +140,8 @@ export function SetupState({
   icon: string;
   title: string;
   description: string;
-  tone?: 'info' | 'warning' | 'success' | 'danger';
-  compact?: boolean;
+  tone?: ('info' | 'warning' | 'success' | 'danger') | undefined;
+  compact?: boolean | undefined;
 }) {
   const color =
     tone === 'warning'
@@ -224,7 +224,7 @@ export function RecoverySlots({
   onChange,
 }: {
   materials: (Material | null)[];
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   onChange: (index: number, value: Material) => void;
 }) {
   return (
@@ -233,13 +233,13 @@ export function RecoverySlots({
       <Text style={styles.small}>
         Atual: antes deste plano · Alvo: nova chave do plano
       </Text>
-      {materials.map((choice, i) => (
+      {materials.map((slotMaterial, i) => (
         <View
           key={i}
-          style={[styles.slotRow, choice === null && styles.unknown]}>
+          style={[styles.slotRow, slotMaterial === null && styles.unknown]}>
           <View style={styles.slotLabel}>
             <Text style={styles.choiceTitle}>Chave {i}</Text>
-            {choice === null && (
+            {slotMaterial === null && (
               <Text style={styles.required}>Seleção pendente</Text>
             )}
           </View>
@@ -251,24 +251,24 @@ export function RecoverySlots({
               <TouchableRipple
                 key={value}
                 accessibilityRole="radio"
-                aria-checked={choice === value}
+                aria-checked={slotMaterial === value}
                 accessibilityLabel={`Chave ${i}: ${
                   value === 'ATUAL' ? 'Atual' : 'Alvo'
                 }`}
                 accessibilityState={{
-                  checked: choice === value,
+                  checked: slotMaterial === value,
                   disabled: !!disabled,
                 }}
-                disabled={disabled}
+                disabled={!!disabled}
                 onPress={() => onChange(i, value)}
                 style={[
                   styles.segmentOption,
-                  choice === value && styles.segmentSelected,
+                  slotMaterial === value && styles.segmentSelected,
                 ]}>
                 <Text
                   style={[
                     styles.segmentText,
-                    choice === value && styles.segmentSelectedText,
+                    slotMaterial === value && styles.segmentSelectedText,
                   ]}>
                   {value === 'ATUAL' ? 'Atual' : 'Alvo'}
                 </Text>

@@ -1,5 +1,6 @@
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {render as renderProbe, act} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {createTestServices, withServices} from '../test-support/app-services';
 import {useExperimentPanel} from '../src/components/Offline/use-experiment-panel';
 import type {AuthSnapshot} from '../src/appplication/auth/session-manager';
@@ -53,7 +54,7 @@ function deferred<T>() {
   return {promise, resolve};
 }
 let panel: ReturnType<typeof useExperimentPanel>;
-let tree: TestRenderer.ReactTestRenderer;
+let tree: RenderResult;
 function Probe() {
   panel = useExperimentPanel();
   return null;
@@ -70,7 +71,6 @@ beforeEach(() => {
   jest.spyOn(services.experimentCatalog, 'plans');
 });
 afterEach(async () => {
-  await act(async () => tree?.unmount());
   jest.restoreAllMocks();
   jest.clearAllMocks();
 });
@@ -84,15 +84,13 @@ test('a query response from account A never appears for account B', async () => 
   jest
     .mocked(services.experimentCatalog.runs)
     .mockReturnValueOnce(response.promise);
-  await act(async () => {
-    tree = TestRenderer.create(render());
-  });
+  tree = await renderProbe(render());
   let query!: Promise<void>;
   await act(async () => {
     query = panel.loadRuns();
   });
   mockAuth = {status: 'authenticated', session: session('B')};
-  await act(async () => tree.update(render()));
+  await tree.rerender(render());
   await act(async () => {
     response.resolve({items: [run], page: 1, total: 1});
     await query;
@@ -106,9 +104,7 @@ test('the latest requested plan page wins when replies arrive out of order', asy
     .mocked(services.experimentCatalog.plans)
     .mockReturnValueOnce(oldPage.promise)
     .mockResolvedValueOnce({items: [], page: 2, total: 40});
-  await act(async () => {
-    tree = TestRenderer.create(render());
-  });
+  tree = await renderProbe(render());
   let oldQuery!: Promise<void>;
   await act(async () => {
     oldQuery = panel.loadPlans(run, 1);
@@ -130,14 +126,12 @@ test('unmount prevents a late query from refreshing or issuing another command',
   jest
     .mocked(services.experimentCatalog.runs)
     .mockReturnValueOnce(response.promise);
-  await act(async () => {
-    tree = TestRenderer.create(render());
-  });
+  tree = await renderProbe(render());
   let query!: Promise<void>;
   await act(async () => {
     query = panel.loadRuns();
   });
-  await act(async () => tree.unmount());
+  await tree.unmount();
   const refreshes = mockExperiment.state.mock.calls.length;
   await act(async () => {
     response.resolve({items: [run], page: 1, total: 1});
@@ -149,13 +143,11 @@ test('unmount prevents a late query from refreshing or issuing another command',
 test('experimental mutations have a synchronous exclusion guard', async () => {
   const completion = deferred<void>();
   mockExperiment.select.mockReturnValueOnce(completion.promise);
-  await act(async () => {
-    tree = TestRenderer.create(render());
-  });
+  tree = await renderProbe(render());
   let first!: Promise<void>;
   await act(async () => {
     first = panel.select(null);
-    void panel.select(null);
+    await panel.select(null);
   });
   expect(mockExperiment.select).toHaveBeenCalledTimes(1);
   await act(async () => {
@@ -167,15 +159,13 @@ test('experimental mutations have a synchronous exclusion guard', async () => {
 test('changing account during release prevents follow-up synchronization under another identity', async () => {
   const completion = deferred<void>();
   mockExperiment.release.mockReturnValueOnce(completion.promise);
-  await act(async () => {
-    tree = TestRenderer.create(render());
-  });
+  tree = await renderProbe(render());
   let release!: Promise<void>;
   await act(async () => {
     release = panel.release();
   });
   mockAuth = {status: 'authenticated', session: session('B')};
-  await act(async () => tree.update(render()));
+  await tree.rerender(render());
   await act(async () => {
     completion.resolve();
     await release;

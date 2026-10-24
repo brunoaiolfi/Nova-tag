@@ -1,0 +1,10 @@
+version: 1
+name: nova-tag-ui
+slug: nova-tag-ui
+protocol: http
+port: 3115
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

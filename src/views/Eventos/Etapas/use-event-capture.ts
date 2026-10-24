@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useEffect, useReducer, useRef} from 'react';
 import {useAppServices} from '../../../components/Services/AppServicesProvider';
 import {useOffline} from '../../../components/Offline/OfflineProvider';
@@ -95,7 +96,7 @@ export function useEventCapture() {
       );
       if (isCurrentIdentity()) {
         dispatch({type: 'saved', captureId: capture.id});
-        void queue.manager.synchronize();
+        queue.manager.synchronize().catch(showCommandFailure);
       }
     } catch (error) {
       if (isCurrentIdentity())

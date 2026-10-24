@@ -51,6 +51,43 @@ Assets estáticos em `assets` são permitidos na apresentação. Caminhos extern
 
 No ESLint, domínio, aplicação e apresentação não podem acessar diretamente `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage` ou `indexedDB`, inclusive via `globalThis`/`window`/`self`/`global`. Referências a esses objetos globais também são restringidas para impedir aliases que escondam I/O. O check não rejeita uma porta injetada por ter métodos de rede; o que importa é evitar o global concreto. `any` explícito é erro em todo o TypeScript de produção. Dados externos devem começar como `unknown`, com validação e conversão adequadas. Eval e construção dinâmica de funções são proibidos fora dos adaptadores/composição pela política adicional de ESLint.
 
+## Lint com tipos, contratos e testes de apresentação
+
+O checkout Expo configura `projectService` no ESLint para produção TS/TSX/MTS/CTS
+e para testes TS/TSX. `no-floating-promises` usa `ignoreVoid: false`;
+`no-misused-promises` rejeita callbacks/condições incompatíveis. Na produção,
+`no-unsafe-type-assertion` e `switch-exhaustiveness-check` impedem estreitamento
+por cast e variantes omitidas. Um `default` não basta para esconder nova variante.
+ARCH011 também proíbe suprimir essas quatro regras na produção.
+
+`strict`, `noUncheckedIndexedAccess` e `exactOptionalPropertyTypes` permanecem
+habilitados no `tsconfig`. HTTP retorna `unknown`; decoders validam o contrato.
+Props opcionais de UI aceitam `undefined` apenas quando o contrato suporta
+omissão/reset. Contratos serializados preservam a distinção entre omissão e null.
+
+Probes executam a configuração real para casos válidos/inválidos, inclusive um
+arquivo novo de produção criado/removido em `try/finally`. Os snippets em memória
+usam oito caminhos de fixture explicitamente permitidos só no engine de teste;
+não há `allowDefaultProject` na configuração de produção. Probes TypeScript
+rejeitam índices sem guarda, payload opcional incorreto, retorno HTTP não validado
+e props não implementadas pelo botão.
+
+Os testes de apresentação usam RNTL 14.1 com `test-renderer` 1.2.0, compatível com
+React 19.2. O import direto de `react-test-renderer` é proibido nesses testes.
+O pacote legado ainda é dependência transitiva de `jest-expo`; a proibição é de
+uso direto no código do projeto. O lint de Testing Library verifica await em
+eventos/queries/utils assíncronos, ausência de act redundante e de cleanup manual,
+queries via screen e ausência de efeitos dentro de waitFor. Regras foram
+selecionadas conforme RNTL 14; não se aplicou cegamente um preset web que assume
+eventos síncronos ou trata o container atual como API insegura.
+
+`npm run verify` executa lint/fronteiras, typecheck, probes arquiteturais,
+`compiler:check` e a suíte Jest completa. Compiler está limitado à UI genérica
+e ao seletor de pedidos; a medição usa transformação Babel real e comprova
+atualização de dados, disabled e callback com/sem otimização. A redução de renders
+nesse host sintético não é um benchmark nativo. O [guia de padrões](19-padroes-react-native-e-codigo-limpo.md)
+distingue configuração, testes e aceite em aparelho.
+
 ## Inventário e eliminação das dívidas
 
 O projeto já possuía dependências que não atendem à matriz proposta. Para adicionar proteção sem misturar uma refatoração funcional com as mudanças locais em andamento, elas foram registradas em `scripts/architecture/exceptions.json`:

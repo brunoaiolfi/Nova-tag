@@ -41,8 +41,8 @@ export function useProvisioningFlow(
   ).session;
   const [snapshot, dispatchEvent] = useReducer(
     (
-      previous: {identity?: Session; flow: ProvisioningState},
-      update: {identity?: Session; event: ProvisioningEvent},
+      previous: {identity?: Session | undefined; flow: ProvisioningState},
+      update: {identity?: Session | undefined; event: ProvisioningEvent},
     ) => ({
       identity: update.identity,
       flow: provisioningReducer(

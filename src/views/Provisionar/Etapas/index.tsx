@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useProvisioningFlow} from './use-provisioning-flow';
 import {ActionButton as Button} from '../../../components/Tracking';
 import React from 'react';
@@ -141,13 +142,13 @@ export default function EtapasProvisionamento() {
                 setMessage('');
                 setMode('read');
               } else if (!provisioning) {
-                void register();
+                register().catch(showCommandFailure);
               } else if (!verified) {
                 setConfirmed(false);
                 setMessage('');
                 setMode(strategy === 'UID' ? 'read' : 'write');
               } else {
-                void activate();
+                activate().catch(showCommandFailure);
               }
             }}>
             {!reading

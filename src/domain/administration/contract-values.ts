@@ -9,6 +9,6 @@ export const uuid = (value: unknown): value is string =>
 export const versions = (value: unknown): value is number[] =>
   Array.isArray(value) &&
   value.length === 5 &&
-  value.every(item => integer(item, 0, 255));
+  Array.from(value).every(item => integer(item, 0, 255));
 export const outcome = (value: unknown): value is PhysicalOutcome =>
   oneOf(value, ['NAO_ALTERADA', 'NAO_CONFIRMADA', 'CONFERIDA']);

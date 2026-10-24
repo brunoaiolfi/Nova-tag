@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../Base/Toast/service';
 import {useNfcReader} from './use-nfc-reader';
 import {StyleSheet} from 'react-native';
 import {ActionButton as Button} from '../../Tracking';
@@ -12,20 +13,20 @@ import {View} from 'react-native';
 import {PageHero, StatusPanel, trackingColors as colors} from '../../Tracking';
 
 type Props = {
-  write?: {uid: string; reference: string};
+  write?: {uid: string; reference: string} | undefined;
   onLeituraRealizada: (
     reading: Reading,
     capturedAt: string,
     attempt?: Attempt | null,
   ) => void;
-  experimentType?: string;
+  experimentType?: string | undefined;
   onErroLeitura: (message: string) => void;
-  onVoltar?: () => void;
-  backLabel?: string;
-  continueLabel?: string;
-  context?: string;
-  onVerHistorico?: (reading: Reading, capturedAt: string) => void;
-  insetTop?: boolean;
+  onVoltar?: (() => void) | undefined;
+  backLabel?: string | undefined;
+  continueLabel?: string | undefined;
+  context?: string | undefined;
+  onVerHistorico?: ((reading: Reading, capturedAt: string) => void) | undefined;
+  insetTop?: boolean | undefined;
 };
 export default function Leitor({
   write,
@@ -84,7 +85,7 @@ export default function Leitor({
             disabled={busy || !physicalNfcAvailable}
             loading={busy}
             onPress={() => {
-              void read();
+              read().catch(showCommandFailure);
             }}>
             {write ? 'Gravar NDEF' : 'Ler etiqueta'}
           </Button>
@@ -135,7 +136,7 @@ export default function Leitor({
             )}
             <Button
               onPress={() => {
-                void read();
+                read().catch(showCommandFailure);
               }}>
               {write ? 'Gravar novamente' : 'Ler outra etiqueta'}
             </Button>

@@ -12,11 +12,11 @@ export type ExperimentSelectionState = Awaited<
   ReturnType<ExperimentJournal['state']>
 >;
 export interface ExperimentPanelState {
-  owner?: Session;
+  owner?: Session | undefined;
   device: string;
   selectionState: ExperimentSelectionState;
   runs: ExperimentRun[];
-  run?: ExperimentRun;
+  run?: ExperimentRun | undefined;
   plans: ExperimentPlan[];
   page: number;
   total: number;
@@ -26,8 +26,8 @@ export interface ExperimentPanelState {
 export type ExperimentTaskResult =
   | {kind: 'runs'; page: CatalogPage<ExperimentRun>}
   | {kind: 'plans'; run: ExperimentRun; device: string; page: PlanPage}
-  | {kind: 'command'; message?: string};
-export type ExperimentPanelEvent = {owner?: Session} & (
+  | {kind: 'command'; message?: string | undefined};
+export type ExperimentPanelEvent = {owner?: Session | undefined} & (
   | {
       type: 'initialized';
       device: string;

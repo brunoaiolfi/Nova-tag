@@ -1,3 +1,4 @@
+import {requiredValue} from '../test-support/required-item';
 import {DatabaseSync} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
 import {
@@ -167,7 +168,7 @@ test('capture and its experiment link commit together, preserve exact bytes and 
   const a = await journal.start('COLETA');
   await journal.finish(a, time, true, 'OK');
   const payload = input();
-  const experiment = await journal.capture(a, payload);
+  const experiment = requiredValue(await journal.capture(a, payload));
   db.exec(
     "CREATE TRIGGER fixture_fail BEFORE INSERT ON experiment_records WHEN json_extract(NEW.input,'$.stage')='CAPTURA_LOCAL' BEGIN SELECT RAISE(ABORT,'fixture failure'); END",
   );
@@ -222,7 +223,7 @@ test('cold start marks unfinished reads censored once and never fabricates a cro
     {
       provisioning: p,
       cacheUsed: true,
-      experiment: await next.capture(a, payload),
+      experiment: requiredValue(await next.capture(a, payload)),
     },
     wall,
   );
@@ -266,7 +267,7 @@ test('holds actual operational dispatch, resumes it and separates server storage
     {
       provisioning: p,
       cacheUsed: true,
-      experiment: await journal.capture(a, payload),
+      experiment: requiredValue(await journal.capture(a, payload)),
     },
     wall,
   );

@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../Base/Toast/service';
 import React from 'react';
 import {List, Text} from 'react-native-paper';
 import {ActionButton as Button, StatusPanel} from '../Tracking';
@@ -77,7 +78,7 @@ export function ExperimentPanel() {
           mode="outlined"
           disabled={busy || !online}
           onPress={() => {
-            void loadRuns();
+            loadRuns().catch(showCommandFailure);
           }}>
           Buscar roteiros
         </Button>
@@ -86,7 +87,7 @@ export function ExperimentPanel() {
             key={experimentRun.id}
             disabled={busy || experimentRun.dataKind !== 'FISICO'}
             onPress={() => {
-              void loadPlans(experimentRun);
+              loadPlans(experimentRun).catch(showCommandFailure);
             }}>
             {experimentRun.name}
             {experimentRun.dataKind === 'SINTETICO'
@@ -105,7 +106,7 @@ export function ExperimentPanel() {
             mode="outlined"
             disabled={busy || syncing}
             onPress={() => {
-              void select(experimentPlan);
+              select(experimentPlan).catch(showCommandFailure);
             }}>
             #{experimentPlan.ordinal} · {experimentPlan.boxLabel} ·{' '}
             {experimentPlan.tagLabel} · {experimentPlan.eventType}
@@ -122,7 +123,9 @@ export function ExperimentPanel() {
             <Button
               disabled={busy || page === 1}
               onPress={() => {
-                void (run ? loadPlans(run, page - 1) : loadRuns(page - 1));
+                (run ? loadPlans(run, page - 1) : loadRuns(page - 1)).catch(
+                  showCommandFailure,
+                );
               }}>
               Página anterior
             </Button>
@@ -132,7 +135,9 @@ export function ExperimentPanel() {
             <Button
               disabled={busy || page * 20 >= total}
               onPress={() => {
-                void (run ? loadPlans(run, page + 1) : loadRuns(page + 1));
+                (run ? loadPlans(run, page + 1) : loadRuns(page + 1)).catch(
+                  showCommandFailure,
+                );
               }}>
               Próxima página
             </Button>
@@ -143,7 +148,7 @@ export function ExperimentPanel() {
             mode="contained"
             disabled={busy || !online}
             onPress={() => {
-              void release();
+              release().catch(showCommandFailure);
             }}>
             Liberar e sincronizar
           </Button>
@@ -152,7 +157,7 @@ export function ExperimentPanel() {
           <Button
             disabled={busy || syncing || selectionState.hold}
             onPress={() => {
-              void select(null);
+              select(null).catch(showCommandFailure);
             }}>
             Encerrar seleção
           </Button>
@@ -160,7 +165,7 @@ export function ExperimentPanel() {
         <Button
           disabled={busy}
           onPress={() => {
-            void refresh();
+            refresh().catch(showCommandFailure);
           }}>
           Atualizar ensaio
         </Button>

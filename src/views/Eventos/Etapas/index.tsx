@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useEventCapture} from './use-event-capture';
 import React from 'react';
 import {useNavigation} from '@react-navigation/native';
@@ -95,7 +96,7 @@ export default function EtapasEvento() {
             loading={busy}
             disabled={busy || queue.loading || !!queue.error}
             onPress={() => {
-              void save();
+              save().catch(showCommandFailure);
             }}>
             {'Confirmar ' + descricaoEnumTipoEvento[type].toLowerCase()}
           </Button>

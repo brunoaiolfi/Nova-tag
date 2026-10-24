@@ -16,6 +16,30 @@ const app = 'src/appplication/probe.ts';
 const adapter = 'src/infra/adapter.ts';
 const value = 'export const value = 1;';
 
+// In-memory snippets deliberately do not exist on disk. Only this test engine
+// admits the eight exact fixture paths to a default project; production does not.
+function lintEngine() {
+  return new ESLint({
+    cwd: root,
+    overrideConfig: {
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: [
+            domain,
+            app,
+            adapter,
+            'src/views/probe.tsx',
+            'src/components/ui/probe.tsx',
+            'src/domain/probe.mts',
+            'src/appplication/probe.cts',
+            'src/components/Probe.tsx',
+          ],
+        },
+      },
+    },
+  });
+}
+
 for (const code of [
   'export function validate() { return true; }',
   'export class Failure extends Error {}',
@@ -358,7 +382,7 @@ test('unrelated lint exceptions and strings documenting suppressions are allowed
 });
 
 test('direct IO is blocked by the actual ESLint configuration, including global aliases', async () => {
-  const eslint = new ESLint({cwd: root});
+  const eslint = lintEngine();
   for (const filename of [
     domain,
     app,
@@ -404,7 +428,7 @@ test('direct IO is blocked by the actual ESLint configuration, including global 
   );
 });
 test('production code cannot hide missing types behind explicit any', async () => {
-  const eslint = new ESLint({cwd: root});
+  const eslint = lintEngine();
   const [result] = await eslint.lintText('export const value: any = 1;', {
     filePath: path.join(root, adapter),
   });
@@ -444,7 +468,7 @@ for (const [rule, code] of [
   ],
 ]) {
   test(`actual ESLint rejects React violation: ${rule}`, async () => {
-    const [result] = await new ESLint({cwd: root}).lintText(code, {
+    const [result] = await lintEngine().lintText(code, {
       filePath: path.join(root, 'src/components/Probe.tsx'),
     });
     assert.ok(
@@ -457,7 +481,7 @@ for (const [rule, code] of [
   });
 }
 test('React guards allow external subscriptions, derived data and explicit user commands', async () => {
-  const [result] = await new ESLint({cwd: root}).lintText(
+  const [result] = await lintEngine().lintText(
     "import React, {useEffect, useState} from 'react'; import {Text, Pressable} from 'react-native'; export function Probe({subscribe}: {subscribe: (listener: (count: number) => void) => () => void}) { const [count, setCount] = useState(0); useEffect(() => subscribe(setCount), [subscribe]); const doubled = count * 2; return <Pressable onPress={() => setCount(count + 1)}><Text>{doubled}</Text></Pressable>; }",
     {filePath: path.join(root, 'src/components/Probe.tsx')},
   );
@@ -470,7 +494,7 @@ test('React guards allow external subscriptions, derived data and explicit user 
 });
 
 test('production rejects opaque one-letter local names without changing external field names', async () => {
-  const eslint = new ESLint({cwd: root});
+  const eslint = lintEngine();
   const filePath = path.join(root, app);
   const [invalid] = await eslint.lintText(
     'export function load(a: string) { return a; }',
@@ -542,3 +566,185 @@ test('the actual repository contains no unregistered architectural violations', 
   const result = applyExceptions(analyze(readProject(root)), exceptions);
   assert.deepEqual(result.errors, []);
 });
+
+for (const [name, invalid, valid] of [
+  [
+    'no-floating-promises',
+    'export function load() { void Promise.resolve(1); }',
+    'export function load() { return Promise.resolve(1); }',
+  ],
+  [
+    'no-misused-promises',
+    'export function load() { return [1].filter(async value => value > 0); }',
+    'export function load() { return [1].filter(value => value > 0); }',
+  ],
+  [
+    'no-unsafe-type-assertion',
+    'export function load(value: unknown) { return value as string; }',
+    'export function load(value: unknown) { if (typeof value !== "string") throw new Error("invalid"); return value; }',
+  ],
+  [
+    'switch-exhaustiveness-check',
+    'export function load(value: "pending" | "sent") { switch(value) {case "pending": return 1;} }',
+    'export function load(value: "pending" | "sent") { switch(value) {case "pending": return 1;case "sent": return 2;} }',
+  ],
+]) {
+  test(
+    'typed ESLint rejects ' + name + ' and accepts a safe equivalent',
+    async () => {
+      const eslint = lintEngine();
+      const options = {filePath: path.join(root, app)};
+      const [failure] = await eslint.lintText(invalid, options);
+      assert.ok(
+        !failure.messages.some(message => message.fatal),
+        JSON.stringify(failure.messages),
+      );
+      assert.ok(
+        failure.messages.some(
+          message =>
+            message.ruleId === '@typescript-eslint/' + name &&
+            message.severity === 2,
+        ),
+        JSON.stringify(failure.messages),
+      );
+      const [success] = await eslint.lintText(valid, options);
+      assert.deepEqual(
+        success.messages.filter(message => message.severity === 2),
+        [],
+      );
+    },
+  );
+  test('typed rule suppression rejected: ' + name, () => {
+    assert.ok(
+      probe(
+        app,
+        '// eslint-disable-next-line @typescript-eslint/' +
+          name +
+          '\nexport const value = 1;',
+      ).some(issue => issue.rule === 'ARCH011'),
+    );
+  });
+}
+test('actual compiler options preserve strict indexed access and exact optional fields', () => {
+  const {compilerOptions} = readProject(root);
+  assert.equal(compilerOptions.strict, true);
+  assert.equal(compilerOptions.noUncheckedIndexedAccess, true);
+  assert.equal(compilerOptions.exactOptionalPropertyTypes, true);
+});
+
+function contractDiagnostics(code) {
+  const filename = path.join(root, 'src/strict-contract-probe.ts');
+  const {compilerOptions} = readProject(root);
+  const options = {...compilerOptions, noEmit: true, skipLibCheck: true};
+  const host = ts.createCompilerHost(options);
+  const original = host.getSourceFile.bind(host);
+  host.getSourceFile = (name, ...args) =>
+    path.resolve(name) === filename
+      ? ts.createSourceFile(name, code, ts.ScriptTarget.Latest, true)
+      : original(name, ...args);
+  const program = ts.createProgram([filename], options, host);
+  return ts
+    .getPreEmitDiagnostics(program)
+    .filter(issue => issue.category === ts.DiagnosticCategory.Error);
+}
+for (const [name, code] of [
+  ['unchecked array index', 'const value: number = [1][0];'],
+  [
+    'explicit undefined in a serialized optional field',
+    'const value: {name?: string} = {name: undefined};',
+  ],
+  [
+    'unvalidated HTTP result',
+    'import type {Api} from "./appplication/auth/ports/authenticated-api"; async function read(api: Api) { const value: string = await api.request("/data"); return value; }',
+  ],
+  [
+    'unsupported button prop',
+    'import type {ActionButtonProps} from "./components/ui/ActionButton"; const value: ActionButtonProps = {children: "Save", compact: true};',
+  ],
+]) {
+  test('actual TypeScript rejects ' + name, () => {
+    assert.ok(
+      contractDiagnostics(code).some(issue =>
+        issue.file?.fileName.endsWith('strict-contract-probe.ts'),
+      ),
+    );
+  });
+}
+test('strict contracts accept guarded indices, omitted payload fields and intentional undefined UI props', () => {
+  const code =
+    'import type {ActionButtonProps} from "./components/ui/ActionButton"; const value: number | undefined = [1][0]; const payload: {name?: string} = {}; const props: ActionButtonProps = {children: "Save", disabled: undefined};';
+  assert.deepEqual(
+    contractDiagnostics(code).map(issue =>
+      ts.flattenDiagnosticMessageText(issue.messageText, '\n'),
+    ),
+    [],
+  );
+});
+
+test('typed lint includes a newly created production file without a default-project escape', async () => {
+  const fs = require('node:fs');
+  const filename = path.join(root, 'src/appplication/strict-new-file-probe.ts');
+  assert.ok(!fs.existsSync(filename));
+  try {
+    fs.writeFileSync(
+      filename,
+      'export function read() { void Promise.resolve(1); }',
+    );
+    const [result] = await new ESLint({cwd: root}).lintFiles([filename]);
+    assert.ok(
+      !result.messages.some(message => message.fatal),
+      JSON.stringify(result.messages),
+    );
+    assert.ok(
+      result.messages.some(
+        message => message.ruleId === '@typescript-eslint/no-floating-promises',
+      ),
+    );
+  } finally {
+    fs.unlinkSync(filename);
+  }
+});
+
+for (const [name, invalid, valid, rule] of [
+  [
+    'awaits RNTL v14 events',
+    'import {fireEvent, screen} from "@testing-library/react-native"; export async function press() { fireEvent.press(screen.getByRole("button")); }',
+    'import {fireEvent, screen} from "@testing-library/react-native"; export async function press() { await fireEvent.press(screen.getByRole("button")); }',
+    '@typescript-eslint/no-floating-promises',
+  ],
+  [
+    'avoids redundant RNTL act',
+    'import {act, fireEvent, screen} from "@testing-library/react-native"; export async function press() { await act(async () => { await fireEvent.press(screen.getByRole("button")); }); }',
+    'import {fireEvent, screen} from "@testing-library/react-native"; export async function press() { await fireEvent.press(screen.getByRole("button")); }',
+    'testing-library/no-unnecessary-act',
+  ],
+  [
+    'rejects the legacy renderer import',
+    'import {create} from "react-test-renderer"; export const renderer = create;',
+    'import {render} from "@testing-library/react-native"; export const renderer = render;',
+    'no-restricted-imports',
+  ],
+]) {
+  test('presentation test policy ' + name, async () => {
+    const eslint = new ESLint({cwd: root});
+    const options = {
+      filePath: path.join(root, '__tests__/ActionButton.test.tsx'),
+    };
+    const [failure] = await eslint.lintText(invalid, options);
+    assert.ok(
+      !failure.messages.some(message => message.fatal),
+      JSON.stringify(failure.messages),
+    );
+    assert.ok(
+      failure.messages.some(
+        message => message.ruleId === rule && message.severity === 2,
+      ),
+      JSON.stringify(failure.messages),
+    );
+    const [success] = await eslint.lintText(valid, options);
+    assert.deepEqual(
+      success.messages.filter(message => message.severity === 2),
+      [],
+    );
+  });
+}

@@ -1,12 +1,15 @@
 import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {
+  render as renderProbe,
+  screen,
+  fireEvent,
+} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {PaperProvider} from 'react-native-paper';
-import {ActionButton as Button} from '../src/components/Tracking';
+
 import EtapasEvento from '../src/views/Eventos/Etapas';
-import SelecionarEvento from '../src/views/Eventos/Etapas/SelecionarEvento';
-import Leitor from '../src/components/Nfc/Leitor';
-import {EnumTipoEvento} from '../src/domain/enums/tipoEvento';
+
 import type {QueuedCapture} from '../src/domain/offline/capture';
 const mockNavigate = jest.fn();
 const mockCapture = jest.fn();
@@ -35,6 +38,11 @@ jest.mock('../src/infra/nfc/reader', () => ({
   cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
 }));
 const services = createTestServices({
+  experiment: {
+    start: jest.fn().mockResolvedValue(null),
+    finish: jest.fn().mockResolvedValue(undefined),
+  },
+  nfc: {readPhysicalTag: jest.fn()},
   installationId: jest.fn().mockResolvedValue('ios-device'),
   session: {
     getSnapshot: () => ({
@@ -54,40 +62,33 @@ const services = createTestServices({
   },
 });
 
-let tree: TestRenderer.ReactTestRenderer;
-const button = (label: string) =>
-  tree.root.findAllByType(Button).find(item => item.props.children === label)!;
+let tree: RenderResult;
+const button = (label: string) => screen.getByRole('button', {name: label});
 afterEach(async () => {
-  await act(async () => tree?.unmount());
+  jest.restoreAllMocks();
   jest.clearAllMocks();
   mockItems = [];
 });
 test('confirms only after durable storage and retains scan time/UUID when a local save fails', async () => {
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <PaperProvider>
-          <EtapasEvento />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
-  await act(async () => {
-    tree.root
-      .findByType(SelecionarEvento)
-      .props.onSelecionarEvento(EnumTipoEvento.COLETA);
-  });
+  tree = await renderProbe(
+    withServices(
+      <PaperProvider>
+        <EtapasEvento />
+      </PaperProvider>,
+      services,
+    ),
+  );
+  await fireEvent.press(screen.getByRole('radio', {name: 'Coleta'}));
+  await fireEvent.press(button('Continuar'));
   const reading = {uid: '53721F76950001'};
   const scanTime = '2026-10-05T12:00:00.000Z';
-  await act(async () => {
-    tree.root.findByType(Leitor).props.onLeituraRealizada(reading, scanTime);
-  });
+  jest.spyOn(Date, 'now').mockReturnValue(Date.parse(scanTime));
+  jest.mocked(services.nfc.readPhysicalTag).mockResolvedValueOnce(reading);
+  await fireEvent.press(button('Ler etiqueta'));
+  await fireEvent.press(button('Continuar'));
   mockCapture.mockRejectedValueOnce(new Error('storage unavailable'));
   expect(mockCapture).not.toHaveBeenCalled();
-  await act(async () => {
-    button('Confirmar coleta').props.onPress();
-  });
+  await fireEvent.press(button('Confirmar coleta'));
   expect(mockSynchronize).not.toHaveBeenCalled();
   expect(JSON.stringify(tree.toJSON())).not.toContain(
     'Captura salva neste aparelho',
@@ -135,9 +136,7 @@ test('confirms only after durable storage and retains scan time/UUID when a loca
       return saved;
     },
   );
-  await act(async () => {
-    button('Confirmar coleta').props.onPress();
-  });
+  await fireEvent.press(button('Confirmar coleta'));
   expect(mockCapture.mock.calls[0]).toEqual(mockCapture.mock.calls[1]);
   expect(mockCapture).toHaveBeenCalledWith(
     reading,
@@ -146,39 +145,34 @@ test('confirms only after durable storage and retains scan time/UUID when a loca
     scanTime,
     'ios-device',
     {userId: 'operator', baseUrl: 'http://localhost:3000/api/v1'},
-    undefined,
+    null,
   );
   expect(mockSynchronize).toHaveBeenCalledTimes(1);
   expect(JSON.stringify(tree.toJSON())).toContain(
     'Captura salva neste aparelho',
   );
   expect(JSON.stringify(tree.toJSON())).toContain('Pode sair desta tela');
-  await act(async () => {
-    button('Ver envios').props.onPress();
-  });
+  await fireEvent.press(button('Ver envios'));
   expect(mockNavigate).toHaveBeenCalledWith('Envios');
 });
 
 test('changing the selected stage returns to the choices without saving a capture', async () => {
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <PaperProvider>
-          <EtapasEvento />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
-  await act(async () => {
-    tree.root
-      .findByType(SelecionarEvento)
-      .props.onSelecionarEvento(EnumTipoEvento.COLETA);
-  });
-  expect(tree.root.findByType(Leitor).props.backLabel).toBe('Trocar etapa');
-  await act(async () => button('Trocar etapa').props.onPress());
-  expect(tree.root.findAllByType(Leitor)).toHaveLength(0);
-  expect(tree.root.findAllByType(SelecionarEvento)).toHaveLength(1);
+  tree = await renderProbe(
+    withServices(
+      <PaperProvider>
+        <EtapasEvento />
+      </PaperProvider>,
+      services,
+    ),
+  );
+  await fireEvent.press(screen.getByRole('radio', {name: 'Coleta'}));
+  await fireEvent.press(button('Continuar'));
+  expect(button('Trocar etapa')).toBeEnabled();
+  await fireEvent.press(button('Trocar etapa'));
+  expect(
+    screen.queryByRole('button', {name: 'Ler etiqueta'}),
+  ).not.toBeOnTheScreen();
+  expect(screen.getByRole('radio', {name: 'Coleta'})).toBeVisible();
   expect(mockCapture).not.toHaveBeenCalled();
   expect(mockSynchronize).not.toHaveBeenCalled();
 });

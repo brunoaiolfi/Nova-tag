@@ -8,7 +8,7 @@ export interface CaptureIntent {
   occurredAt: string;
   owner: CaptureOwner;
   reading: Reading;
-  attempt?: Attempt | null;
+  attempt?: (Attempt | null) | undefined;
 }
 export type EventCaptureState = {message: string} & (
   | {stage: 'select'; type?: undefined; intent?: undefined; savedId?: undefined}
@@ -32,7 +32,7 @@ export type EventCaptureState = {message: string} & (
     }
 );
 export type EventCaptureEvent =
-  | {type: 'event-selected'; eventType?: EnumTipoEvento}
+  | {type: 'event-selected'; eventType?: EnumTipoEvento | undefined}
   | {type: 'captured'; intent: CaptureIntent}
   | {type: 'saving'}
   | {type: 'saved'; captureId: string}

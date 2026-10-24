@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../Base/Toast/service';
 import React, {
   createContext,
   PropsWithChildren,
@@ -15,7 +16,7 @@ export function SessionProvider({
 }: PropsWithChildren<{manager: SessionManager}>) {
   const state = useSyncExternalStore(manager.subscribe, manager.getSnapshot);
   useEffect(() => {
-    void manager.restore();
+    manager.restore().catch(showCommandFailure);
     let backgrounded = AppState.currentState === 'background';
     const subscription = AppState.addEventListener('change', next => {
       if (next === 'background') {
@@ -25,9 +26,9 @@ export function SessionProvider({
         // Native NFC sheets briefly make iOS inactive; they are not a new session.
         if (backgrounded) {
           backgrounded = false;
-          void manager.restore();
+          manager.restore().catch(showCommandFailure);
         } else {
-          void manager.expireIfNeeded();
+          manager.expireIfNeeded().catch(showCommandFailure);
         }
       }
     });
@@ -37,9 +38,22 @@ export function SessionProvider({
     if (state.status !== 'authenticated' && state.status !== 'offline') {
       return;
     }
-    const timer = setTimeout(() => {
-      void manager.expireIfNeeded();
-    }, Math.max(0, Date.parse(state.session.expiresAt) - Date.now()));
+    // JS timers use a signed 32-bit delay. Recheck long sessions in bounded
+    // steps so an overflow cannot turn a future expiration into a 1 ms timer.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expiresAt = Date.parse(state.session.expiresAt);
+    function checkExpiration() {
+      const remainingMilliseconds = expiresAt - Date.now();
+      if (remainingMilliseconds <= 0) {
+        manager.expireIfNeeded().catch(showCommandFailure);
+        return;
+      }
+      timer = setTimeout(
+        checkExpiration,
+        Math.min(remainingMilliseconds, 2147483647),
+      );
+    }
+    checkExpiration();
     return () => clearTimeout(timer);
   }, [manager, state]);
   return <Context.Provider value={manager}>{children}</Context.Provider>;

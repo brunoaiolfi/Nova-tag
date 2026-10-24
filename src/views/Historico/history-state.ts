@@ -14,13 +14,13 @@ export type HistoryTarget =
   | {kind: 'order'; order: OrderSummary};
 interface HistoryContext {
   order: OrderDetails;
-  provisioning?: Provisioning;
+  provisioning?: Provisioning | undefined;
 }
 interface HistoryState {
   sessionScope: string;
-  target?: HistoryTarget;
-  receivedReading?: Reading;
-  context?: HistoryContext;
+  target?: HistoryTarget | undefined;
+  receivedReading?: Reading | undefined;
+  context?: HistoryContext | undefined;
   entries: HistoryEntry[];
   scope: 'vinculo' | 'pedido';
   scanning: boolean;
@@ -53,9 +53,13 @@ export function initialHistoryState(
   };
 }
 type HistoryEvent =
-  | {type: 'selected'; target?: HistoryTarget}
+  | {type: 'selected'; target?: HistoryTarget | undefined}
   | {type: 'route-reading'; reading: Reading}
-  | {type: 'session-changed'; reading?: Reading; sessionScope: string}
+  | {
+      type: 'session-changed';
+      reading?: Reading | undefined;
+      sessionScope: string;
+    }
   | {type: 'scope'; scope: HistoryState['scope']}
   | {type: 'scan'; scanning: boolean}
   | {type: 'reload'}

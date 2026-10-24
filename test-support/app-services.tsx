@@ -26,9 +26,13 @@ export function createTestServices(overrides: Overrides = {}): AppServices {
     throw new Error('Configure esta dependência no teste.');
   };
   const services = createAppServices({
-    installationId: overrides.installationId,
-    randomUUID: overrides.randomUUID,
-    defaultApiUrl: overrides.defaultApiUrl,
+    ...(overrides.installationId
+      ? {installationId: overrides.installationId}
+      : {}),
+    ...(overrides.randomUUID ? {randomUUID: overrides.randomUUID} : {}),
+    ...(overrides.defaultApiUrl
+      ? {defaultApiUrl: overrides.defaultApiUrl}
+      : {}),
     storage: {
       load: async () => null,
       save: async () => {},

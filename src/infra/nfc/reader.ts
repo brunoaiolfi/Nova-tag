@@ -31,7 +31,8 @@ async function native() {
     );
   }
   // Lazy require keeps Expo Go/web startup safe when the native module is absent.
-  return require('react-native-nfc-manager') as typeof import('react-native-nfc-manager');
+  const nativeModule: typeof import('react-native-nfc-manager') = require('react-native-nfc-manager');
+  return nativeModule;
 }
 
 export function decodeReference(
@@ -48,7 +49,7 @@ export function decodeReference(
           ? record.type
           : String.fromCharCode(...record.type);
       if (type === ndef.RTD_URI) {
-        if (!record.payload.length || record.payload[0] > 0x23) {
+        if (record.payload[0] === undefined || record.payload[0] > 0x23) {
           throw new NfcFailure(
             'NFC_INVALID_RESPONSE',
             'Prefixo URI NDEF inválido. Faça uma nova leitura.',

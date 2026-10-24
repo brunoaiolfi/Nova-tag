@@ -1,3 +1,4 @@
+import {byteAt} from './byte';
 /* eslint-disable no-bitwise */
 import {NfcFailure} from './failure';
 
@@ -11,7 +12,9 @@ export interface WireNdefRecord {
 function assertBytes(bytes: readonly number[]) {
   if (
     bytes.length > 4096 ||
-    bytes.some(byte => !Number.isInteger(byte) || byte < 0 || byte > 255)
+    Array.from(bytes).some(
+      byte => !Number.isInteger(byte) || byte < 0 || byte > 255,
+    )
   )
     throw invalid();
 }
@@ -20,7 +23,7 @@ export function utf8(bytes: readonly number[]): string {
   assertBytes(bytes);
   let text = '';
   for (let offset = 0; offset < bytes.length; ) {
-    const first = bytes[offset++];
+    const first = byteAt(bytes, offset++);
     if (first < 0x80) {
       text += String.fromCharCode(first);
       continue;
@@ -36,12 +39,12 @@ export function utf8(bytes: readonly number[]): string {
     if (!count || offset + count > bytes.length) throw invalid();
     let code = first & (0x7f >> (count + 1));
     for (let remaining = count; remaining > 0; remaining--) {
-      const next = bytes[offset++];
+      const next = byteAt(bytes, offset++);
       if (next < 0x80 || next > 0xbf) throw invalid();
       code = code * 64 + (next & 63);
     }
     if (
-      code < [0, 0x80, 0x800, 0x10000][count] ||
+      code < (count === 1 ? 0x80 : count === 2 ? 0x800 : 0x10000) ||
       code > 0x10ffff ||
       (code >= 0xd800 && code <= 0xdfff)
     )
@@ -64,8 +67,8 @@ export function ndefText(payload: readonly number[]): string {
   let offset = littleEndian || (text[0] === 0xfe && text[1] === 0xff) ? 2 : 0;
   const unit = (position: number) =>
     littleEndian
-      ? text[position] + text[position + 1] * 256
-      : text[position] * 256 + text[position + 1];
+      ? byteAt(text, position) + byteAt(text, position + 1) * 256
+      : byteAt(text, position) * 256 + byteAt(text, position + 1);
   let result = '';
   while (offset < text.length) {
     const code = unit(offset);
@@ -107,7 +110,7 @@ export function wireNdefRecords(bytes: readonly number[]): WireNdefRecord[] {
   };
   while (offset < bytes.length) {
     if (ended) throw invalid();
-    const flags = take(1)[0];
+    const flags = byteAt(take(1), 0);
     const mb = !!(flags & 0x80);
     const me = !!(flags & 0x40);
     const cf = !!(flags & 0x20);
@@ -115,13 +118,13 @@ export function wireNdefRecords(bytes: readonly number[]): WireNdefRecord[] {
     const il = !!(flags & 0x08);
     const tnf = flags & 7;
     if (mb !== first || (me && cf) || tnf === 7) throw invalid();
-    const typeLength = take(1)[0];
+    const typeLength = byteAt(take(1), 0);
     const lengthBytes = take(sr ? 1 : 4);
     const payloadLength = lengthBytes.reduce(
       (length, byte) => length * 256 + byte,
       0,
     );
-    const idLength = il ? take(1)[0] : 0;
+    const idLength = il ? byteAt(take(1), 0) : 0;
     const type = take(typeLength);
     const id = take(idLength);
     const payload = take(payloadLength);
@@ -157,16 +160,16 @@ export function bytesBase64(bytes: readonly number[]): string {
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   let encoded = '';
   for (let offset = 0; offset < bytes.length; offset += 3) {
-    const firstByte = bytes[offset],
+    const firstByte = byteAt(bytes, offset),
       secondByte = bytes[offset + 1],
       thirdByte = bytes[offset + 2];
     encoded +=
-      alphabet[firstByte >> 2] +
-      alphabet[((firstByte & 3) << 4) | ((secondByte ?? 0) >> 4)] +
+      alphabet.charAt(firstByte >> 2) +
+      alphabet.charAt(((firstByte & 3) << 4) | ((secondByte ?? 0) >> 4)) +
       (secondByte === undefined
         ? '='
-        : alphabet[((secondByte & 15) << 2) | ((thirdByte ?? 0) >> 6)]) +
-      (thirdByte === undefined ? '=' : alphabet[thirdByte & 63]);
+        : alphabet.charAt(((secondByte & 15) << 2) | ((thirdByte ?? 0) >> 6))) +
+      (thirdByte === undefined ? '=' : alphabet.charAt(thirdByte & 63));
   }
   return encoded;
 }

@@ -355,7 +355,7 @@ function analyze({root, files, compilerOptions = {}}) {
         /@ts-(?:ignore|nocheck|expect-error)\b/.test(comment) ||
         (directive &&
           (!rules ||
-            /\b(?:no-restricted-globals|no-restricted-properties|no-restricted-syntax|no-eval|no-new-func|no-explicit-any|ban-ts-comment|id-length)\b|react-hooks\//.test(
+            /\b(?:no-restricted-globals|no-restricted-properties|no-restricted-syntax|no-eval|no-new-func|no-explicit-any|ban-ts-comment|id-length|no-floating-promises|no-misused-promises|no-unsafe-type-assertion|switch-exhaustiveness-check)\b|react-hooks\//.test(
               rules,
             )))
       ) {

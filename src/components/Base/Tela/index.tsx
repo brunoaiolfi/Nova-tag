@@ -15,18 +15,20 @@ import {HeaderHeightContext} from '@react-navigation/elements';
 import {useAppTheme} from '../../../theme';
 
 type TelaProps = {
-  children?: React.ReactNode;
-  scroll?: boolean;
-  footer?: React.ReactNode;
-  header?: React.ReactNode;
+  children?: React.ReactNode | undefined;
+  scroll?: boolean | undefined;
+  footer?: React.ReactNode | undefined;
+  header?: React.ReactNode | undefined;
   /** Native stack headers already include the top safe area. */
-  insetTop?: boolean;
-  keyboard?: boolean;
+  insetTop?: boolean | undefined;
+  keyboard?: boolean | undefined;
   /** A virtualized list owns scrolling and receives the same screen padding/insets. */
-  renderContent?: (layout: {
-    header?: React.ReactNode;
-    contentStyle: StyleProp<ViewStyle>;
-  }) => React.ReactNode;
+  renderContent?:
+    | ((layout: {
+        header?: React.ReactNode;
+        contentStyle: StyleProp<ViewStyle>;
+      }) => React.ReactNode)
+    | undefined;
 };
 
 const Tela = ({

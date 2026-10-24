@@ -16,24 +16,24 @@ interface AdministrationActivity {
   nfc: boolean;
 }
 export interface AdministrationState {
-  order?: OrderSummary;
+  order?: OrderSummary | undefined;
   uid: string;
   setupStep: number;
-  strategy?: Strategy;
+  strategy?: Strategy | undefined;
   policy: 'ESTRITA' | 'REGISTRO_TARDIO';
-  link?: Provisioning;
-  operation?: AdminOperation;
+  link?: Provisioning | undefined;
+  operation?: AdminOperation | undefined;
   materials: (Material | null)[];
   confirmed: boolean;
   activationConfirmed: boolean;
   pendingActivation: boolean;
-  progress?: AdministrationProgress;
+  progress?: AdministrationProgress | undefined;
   journal: Awaited<ReturnType<AdministrationCoordinator['localJournal']>>;
   activity: AdministrationActivity | null;
   endDialogOpen: boolean;
   message: string;
   failureOpen: boolean;
-  blockingOperation?: AdminOperation;
+  blockingOperation?: AdminOperation | undefined;
   lookupError: string;
 }
 export function initialAdministrationState(): AdministrationState {
@@ -56,7 +56,7 @@ export function initialAdministrationState(): AdministrationState {
 export type AdministrationEvent =
   | {type: 'scope-reset'}
   | {type: 'resumed'; waiting: boolean}
-  | {type: 'order-selected'; order?: OrderSummary}
+  | {type: 'order-selected'; order?: OrderSummary | undefined}
   | {type: 'tag-identified'; uid: string}
   | {type: 'step-changed'; step: number}
   | {type: 'strategy-selected'; strategy: Strategy}

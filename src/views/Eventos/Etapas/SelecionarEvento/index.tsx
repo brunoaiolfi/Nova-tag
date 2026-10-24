@@ -80,6 +80,7 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
       style={styles.toque}
       onPress={() => onSelecionar(tipo)}
       accessibilityRole="radio"
+      accessibilityLabel={descricaoEnumTipoEvento[tipo]}
       accessibilityState={{checked: selecionada}}>
       <View
         style={[
@@ -117,7 +118,7 @@ const ItemOpcao = ({tipo, selecionada, onSelecionar}: ItemOpcaoProps) => {
 
 type SelecionarEventoProps = {
   onSelecionarEvento: (tipo: EnumTipoEvento) => void;
-  tipoInicial?: EnumTipoEvento;
+  tipoInicial?: EnumTipoEvento | undefined;
 };
 
 const SelecionarEvento = ({

@@ -2,12 +2,12 @@ import React from 'react';
 import {View, ViewProps, ViewStyle} from 'react-native';
 
 export interface StackProps extends ViewProps {
-  gap?: number;
-  align?: ViewStyle['alignItems'];
-  justify?: ViewStyle['justifyContent'];
-  wrap?: boolean;
-  flex?: number;
-  children?: React.ReactNode;
+  gap?: number | undefined;
+  align?: ViewStyle['alignItems'] | undefined;
+  justify?: ViewStyle['justifyContent'] | undefined;
+  wrap?: boolean | undefined;
+  flex?: number | undefined;
+  children?: React.ReactNode | undefined;
 }
 
 export interface StackBaseProps extends StackProps {

@@ -8,10 +8,10 @@ export interface ProvisioningContext {
   order: OrderDetails;
 }
 export interface ManagementState {
-  routeProvisioningId?: string;
+  routeProvisioningId?: string | undefined;
   sessionScope: string;
-  selection?: ProvisioningSelection;
-  context?: ProvisioningContext;
+  selection?: ProvisioningSelection | undefined;
+  context?: ProvisioningContext | undefined;
   scanning: boolean;
   task: 'idle' | 'loading' | 'closing';
   confirmation: 'hidden' | 'unchecked' | 'checked';
@@ -34,7 +34,11 @@ export function initialManagementState(
   };
 }
 export type ManagementEvent =
-  | {type: 'route-changed'; provisioningId?: string; sessionScope: string}
+  | {
+      type: 'route-changed';
+      provisioningId?: string | undefined;
+      sessionScope: string;
+    }
   | {type: 'selected'; selection: ProvisioningSelection}
   | {type: 'loading'}
   | {type: 'loaded'; context: ProvisioningContext}

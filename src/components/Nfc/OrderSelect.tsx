@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../Base/Toast/service';
 import {useOrderSearch} from './use-order-search';
 import {FlatList, StyleSheet} from 'react-native';
 import Tela from '../Base/Tela';
@@ -77,14 +78,14 @@ export default function OrderSelect({
   pickerFooter,
   insetTop = true,
 }: {
-  selected?: OrderSummary;
+  selected?: OrderSummary | undefined;
   disabled: boolean;
   onSelect: (order?: OrderSummary) => void;
-  purpose?: 'provisioning' | 'history';
-  onCreate?: () => void;
-  pickerHeader?: React.ReactNode;
-  pickerFooter?: React.ReactNode;
-  insetTop?: boolean;
+  purpose?: ('provisioning' | 'history') | undefined;
+  onCreate?: (() => void) | undefined;
+  pickerHeader?: React.ReactNode | undefined;
+  pickerFooter?: React.ReactNode | undefined;
+  insetTop?: boolean | undefined;
 }) {
   const {search, setSearch, orders, page, total, busy, error, retry, loadMore} =
     useOrderSearch(!selected);
@@ -122,6 +123,7 @@ export default function OrderSelect({
       }
       renderContent={({header, contentStyle}) => (
         <FlatList
+          testID="order-search-results"
           data={orders}
           keyExtractor={order => order.id}
           contentContainerStyle={contentStyle}
@@ -181,7 +183,7 @@ export default function OrderSelect({
                     disabled={busy}
                     onPress={() => {
                       if (page === 0) retry();
-                      else void loadMore();
+                      else loadMore().catch(showCommandFailure);
                     }}>
                     Tentar novamente
                   </Button>
@@ -191,7 +193,7 @@ export default function OrderSelect({
                 <Button
                   disabled={busy}
                   onPress={() => {
-                    void loadMore();
+                    loadMore().catch(showCommandFailure);
                   }}>
                   Carregar mais pedidos
                 </Button>

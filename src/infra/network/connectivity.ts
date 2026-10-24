@@ -6,7 +6,10 @@ export const connectivity: Connectivity = {
     let subscription: {remove(): void} | undefined;
     // Registration is lazy so an older development build can still open the app.
     void Promise.resolve()
-      .then(() => require('expo-network') as typeof import('expo-network'))
+      .then(() => {
+        const nativeModule: typeof import('expo-network') = require('expo-network');
+        return nativeModule;
+      })
       .then(network => {
         if (!disposed)
           subscription = network.addNetworkStateListener(state => {

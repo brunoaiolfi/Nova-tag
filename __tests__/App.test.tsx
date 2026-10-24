@@ -1,17 +1,8 @@
-/**
- * @format
- */
-
 import React from 'react';
-import ReactTestRenderer from 'react-test-renderer';
+import {render, screen} from '@testing-library/react-native';
 import App from '../src/App';
 
 test('renders correctly', async () => {
-  let tree: ReactTestRenderer.ReactTestRenderer;
-  await ReactTestRenderer.act(async () => {
-    tree = ReactTestRenderer.create(<App />);
-  });
-  await ReactTestRenderer.act(async () => {
-    tree!.unmount();
-  });
+  await render(<App />);
+  expect(await screen.findByRole('button', {name: 'Entrar'})).toBeVisible();
 });

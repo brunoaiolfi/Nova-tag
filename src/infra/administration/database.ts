@@ -3,7 +3,10 @@ import type {SqlConnection} from '../offline/sqlite-store';
 let connection: Promise<SqlConnection> | undefined;
 export function openAdministrationDatabase(): Promise<SqlConnection> {
   connection ??= Promise.resolve()
-    .then(() => require('expo-sqlite') as typeof import('expo-sqlite'))
+    .then(() => {
+      const nativeModule: typeof import('expo-sqlite') = require('expo-sqlite');
+      return nativeModule;
+    })
     .then(SQLite => SQLite.openDatabaseAsync('nova-tag-administration.db'))
     .then(sqliteConnection)
     .catch(error => {

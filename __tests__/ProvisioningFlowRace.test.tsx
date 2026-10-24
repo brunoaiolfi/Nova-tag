@@ -1,5 +1,6 @@
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {render as renderProbe, act} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {createTestServices, withServices} from '../test-support/app-services';
 import {useProvisioningFlow} from '../src/views/Provisionar/Etapas/use-provisioning-flow';
 import {provisioning} from '../tests/support/administration';
@@ -18,10 +19,8 @@ test('duplicate taps submit once and a late registration cannot populate a diffe
     flow = useProvisioningFlow('UID');
     return null;
   }
-  let tree!: TestRenderer.ReactTestRenderer;
-  await act(async () => {
-    tree = TestRenderer.create(withServices(<Probe />, services));
-  });
+  let tree!: RenderResult;
+  tree = await renderProbe(withServices(<Probe />, services));
   const order = {
     id: provisioning.pedidoId,
     codigo: 'FIRST',
@@ -35,7 +34,7 @@ test('duplicate taps submit once and a late registration cannot populate a diffe
   let firstRequest!: Promise<void>;
   await act(async () => {
     firstRequest = flow.register();
-    void flow.register();
+    await flow.register();
   });
   expect(register).toHaveBeenCalledTimes(1);
   await act(async () =>
@@ -50,5 +49,5 @@ test('duplicate taps submit once and a late registration cannot populate a diffe
   expect(flow.reading).toBeUndefined();
   expect(flow.confirmed).toBe(false);
   expect(flow.busy).toBe(false);
-  await act(async () => tree.unmount());
+  await tree.unmount();
 });

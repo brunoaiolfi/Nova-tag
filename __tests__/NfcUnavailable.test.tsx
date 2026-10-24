@@ -1,7 +1,8 @@
 import {createTestServices, withServices} from '../test-support/app-services';
-import {ActionButton as Button} from '../src/components/Tracking';
+
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {render as renderProbe, screen} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {PaperProvider} from 'react-native-paper';
 import Leitor from '../src/components/Nfc/Leitor';
 import {SecureSessionStorage} from '../src/infra/auth/secure-session-storage';
@@ -14,23 +15,17 @@ jest.mock('expo-constants', () => ({
 const services = createTestServices({});
 
 test('Expo Go prevents physical operations without importing native NFC', async () => {
-  let tree!: TestRenderer.ReactTestRenderer;
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <PaperProvider>
-          <Leitor onLeituraRealizada={jest.fn()} onErroLeitura={jest.fn()} />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
-  expect(
-    tree.root
-      .findAllByType(Button)
-      .find(button => button.props.children === 'Ler etiqueta')?.props.disabled,
-  ).toBe(true);
-  await act(async () => tree.unmount());
+  let tree!: RenderResult;
+  tree = await renderProbe(
+    withServices(
+      <PaperProvider>
+        <Leitor onLeituraRealizada={jest.fn()} onErroLeitura={jest.fn()} />
+      </PaperProvider>,
+      services,
+    ),
+  );
+  expect(screen.getByRole('button', {name: 'Ler etiqueta'})).toBeDisabled();
+  await tree.unmount();
 });
 test('SecureStore rejects malformed sessions and propagates errors', async () => {
   const storage = new SecureSessionStorage();

@@ -20,7 +20,7 @@ interface Operation {
 
 /** One owner until the native operation AND its cleanup finish, even on timeout. */
 export class ExclusiveNfcSession {
-  private active?: Operation;
+  private active: Operation | undefined;
 
   constructor(
     private readonly scheduler: SessionScheduler,
@@ -70,7 +70,7 @@ export class ExclusiveNfcSession {
       onClose: close => {
         operation.close = close;
         if (operation.failure) {
-          void this.close(operation);
+          this.beginClosing(operation);
         }
       },
     };
@@ -114,16 +114,20 @@ export class ExclusiveNfcSession {
     operation.failure = error;
     operation.stopTimer();
     operation.abort(error);
-    void this.close(operation);
+    this.beginClosing(operation);
   }
 
   private close(operation: Operation): Promise<void> {
+    this.beginClosing(operation);
+    return operation.closing ?? Promise.resolve();
+  }
+
+  private beginClosing(operation: Operation): void {
     if (!operation.close) {
-      return Promise.resolve();
+      return;
     }
     operation.closing ??= Promise.resolve()
       .then(operation.close)
       .catch(() => {});
-    return operation.closing;
   }
 }

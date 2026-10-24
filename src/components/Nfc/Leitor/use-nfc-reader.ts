@@ -37,7 +37,10 @@ function reducer(state: ReaderState, event: ReaderEvent): ReaderState {
   }
 }
 export function useNfcReader(
-  options: {write?: {uid: string; reference: string}; experimentType?: string},
+  options: {
+    write?: {uid: string; reference: string} | undefined;
+    experimentType?: string | undefined;
+  },
   onError: (message: string) => void,
 ) {
   const {nfc, experiment} = useAppServices();
@@ -65,7 +68,12 @@ export function useNfcReader(
   }, [navigation, cancel, nfc]);
   async function read() {
     if (activeTask.current || !mounted.current) return;
-    const task = startPhysicalReading(nfc, experiment, options);
+    const task = startPhysicalReading(nfc, experiment, {
+      ...(options.write !== undefined ? {write: options.write} : {}),
+      ...(options.experimentType !== undefined
+        ? {experimentType: options.experimentType}
+        : {}),
+    });
     activeTask.current = task;
     dispatch({type: 'start'});
     try {

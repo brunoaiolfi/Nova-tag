@@ -1,3 +1,5 @@
+import type {Reading} from '../../domain/traceability/reading';
+import {showCommandFailure} from '../../components/Base/Toast/service';
 import {captureStatus} from '../../components/Tracking/capture-status';
 import React, {useState} from 'react';
 import {FlatList} from 'react-native';
@@ -13,11 +15,7 @@ import {
 import {useOffline} from '../../components/Offline/OfflineProvider';
 import {useSession} from '../../components/Auth/SessionProvider';
 import Leitor from '../../components/Nfc/Leitor';
-import {
-  descricaoEnumTipoEvento,
-  EnumTipoEvento,
-} from '../../domain/enums/tipoEvento';
-import {reasonLabel} from '../../components/Tracking/labels';
+import {reasonLabel, eventLabel} from '../../components/Tracking/labels';
 import {SdmEvidence} from '../../components/Tracking/SdmEvidence';
 import {DecisionDetails} from '../../components/Tracking/DecisionDetails';
 import {ExperimentPanel} from '../../components/Offline/ExperimentPanel';
@@ -43,7 +41,31 @@ export default function Envios() {
       await queue.manager.refreshDecisions();
       await queue.manager.experiment?.flush();
     } catch (error) {
-      setMessage((error as Error).message);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível sincronizar.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remember(reading: Reading) {
+    setScanning(false);
+    setBusy(true);
+    try {
+      const cachedProvisioning = await queue.manager.remember(reading);
+      setMessage(
+        'Etiqueta disponível offline por até 24 horas. Vínculo ativo · época ' +
+          cachedProvisioning.epoca +
+          '.',
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível disponibilizar a etiqueta.',
+      );
     } finally {
       setBusy(false);
     }
@@ -55,21 +77,8 @@ export default function Envios() {
         onVoltar={() => setScanning(false)}
         backLabel="Voltar aos envios"
         onErroLeitura={setMessage}
-        onLeituraRealizada={async reading => {
-          setScanning(false);
-          setBusy(true);
-          try {
-            const cachedProvisioning = await queue.manager.remember(reading);
-            setMessage(
-              'Etiqueta disponível offline por até 24 horas. Vínculo ativo · época ' +
-                cachedProvisioning.epoca +
-                '.',
-            );
-          } catch (error) {
-            setMessage((error as Error).message);
-          } finally {
-            setBusy(false);
-          }
+        onLeituraRealizada={reading => {
+          remember(reading).catch(showCommandFailure);
         }}
       />
     );
@@ -94,7 +103,7 @@ export default function Envios() {
             state.session?.user.perfil === 'CONSULTA'
           }
           onPress={() => {
-            void synchronize();
+            synchronize().catch(showCommandFailure);
           }}>
           Sincronizar
         </Button>
@@ -170,9 +179,8 @@ export default function Envios() {
           renderItem={({item}) => (
             <VStack key={item.id} gap={8}>
               <Text variant="titleMedium">
-                {descricaoEnumTipoEvento[item.payload.tipo as EnumTipoEvento] ??
-                  item.payload.tipo}{' '}
-                · {item.payload.leituraBruta.uid}
+                {eventLabel(item.payload.tipo)} ·{' '}
+                {item.payload.leituraBruta.uid}
               </Text>
               <Text>
                 {new Date(item.payload.ocorridoEm).toLocaleString('pt-BR')}

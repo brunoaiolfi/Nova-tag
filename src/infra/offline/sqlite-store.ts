@@ -1,3 +1,4 @@
+import {decodeProvisioning} from '../../appplication/traceability/contracts/provisioning-decoder';
 import {businessOutcome} from '../../domain/traceability/decision-status';
 import {
   experimentSchema,
@@ -88,7 +89,7 @@ function decode(row: Row): QueuedCapture {
 }
 const uid = (value: string) => value.replace(/[\s:-]/g, '').toUpperCase();
 export class SqliteCaptureStore implements CaptureStore {
-  private initialization?: Promise<void>;
+  private initialization: Promise<void> | undefined;
   constructor(private readonly open: () => Promise<SqlConnection>) {}
   initialize() {
     this.initialization ??= this.migrate().catch(error => {
@@ -309,7 +310,7 @@ export class SqliteCaptureStore implements CaptureStore {
     );
     if (!row || row.verified_at > now || now - row.verified_at > maxAge)
       return null;
-    const cachedProvisioning = JSON.parse(row.snapshot) as Provisioning;
+    const cachedProvisioning = decodeProvisioning(JSON.parse(row.snapshot));
     if (
       cachedProvisioning.status !== 'ATIVA' ||
       (reference &&

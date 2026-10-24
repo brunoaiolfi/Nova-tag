@@ -63,7 +63,7 @@ test('resolves candidate SDM by provisioning reference without UID fallback or l
 test('rejects missing SDM bytes, unknown profile and downgraded strategy without fallback', async () => {
   request.mockResolvedValue(sdmLink);
   await expect(
-    workflow.resolveProvisioning({...sdmReading, bytesBase64: undefined}),
+    workflow.resolveProvisioning({uid: sdmReading.uid, ndef: sdmReading.ndef}),
   ).rejects.toThrow('originais');
   request.mockResolvedValue({
     ...sdmLink,
@@ -96,7 +96,9 @@ test('passes immutable raw SDM proof when confirming a physically configured pen
 test('resumes exact pending link without duplicate registration', async () => {
   request
     .mockResolvedValueOnce({
-      itens: [{id: 'order', codigo: 'TCC-001', estado: 'CADASTRADO'}],
+      itens: [
+        {id: 'order', codigo: 'TCC-001', descricao: null, estado: 'CADASTRADO'},
+      ],
       total: 1,
     })
     .mockResolvedValueOnce(link);
@@ -107,13 +109,15 @@ test('resumes exact pending link without duplicate registration', async () => {
       'NDEF_ESTATICO',
       'NTAG',
     ),
-  ).toBe(link);
+  ).toEqual(link);
   expect(request).toHaveBeenCalledTimes(2);
 });
 test('registration supplies real order ID, tag model and strategy', async () => {
   request
     .mockResolvedValueOnce({
-      itens: [{id: 'order', codigo: 'TCC-001', estado: 'CADASTRADO'}],
+      itens: [
+        {id: 'order', codigo: 'TCC-001', descricao: null, estado: 'CADASTRADO'},
+      ],
       total: 1,
     })
     .mockRejectedValueOnce({code: 'ETIQUETA_NAO_ENCONTRADA'})
@@ -132,7 +136,9 @@ test('registration supplies real order ID, tag model and strategy', async () => 
 test('lost registration response recovers persisted exact link', async () => {
   request
     .mockResolvedValueOnce({
-      itens: [{id: 'order', codigo: 'TCC-001', estado: 'CADASTRADO'}],
+      itens: [
+        {id: 'order', codigo: 'TCC-001', descricao: null, estado: 'CADASTRADO'},
+      ],
       total: 1,
     })
     .mockRejectedValueOnce({code: 'ETIQUETA_NAO_ENCONTRADA'})
@@ -145,7 +151,7 @@ test('lost registration response recovers persisted exact link', async () => {
       'NDEF_ESTATICO',
       'NTAG',
     ),
-  ).toBe(link);
+  ).toEqual(link);
 });
 test('never activates without physical confirmation or with mismatched NDEF', () => {
   expect(() =>
@@ -192,7 +198,12 @@ test('retransmits exact UUID/body and keeps storage separate from authorization'
   );
   const rejection = {
     armazenada: true,
-    decisao: {autorizada: false, motivo: 'SEQUENCIA_INVALIDA'},
+    decisao: {
+      autorizada: false,
+      motivo: 'SEQUENCIA_INVALIDA',
+      classificacao: 'SUSPEITO',
+      avisos: [],
+    },
   };
   request
     .mockRejectedValueOnce(new Error('lost response'))
@@ -200,7 +211,7 @@ test('retransmits exact UUID/body and keeps storage separate from authorization'
   await expect(workflow.send(observation, 'user')).rejects.toThrow(
     'lost response',
   );
-  expect(await workflow.send(observation, 'user')).toBe(rejection);
+  expect(await workflow.send(observation, 'user')).toEqual(rejection);
   expect(request.mock.calls[1]).toEqual(request.mock.calls[2]);
   expect(request.mock.calls[2][1]).toEqual({
     method: 'POST',
@@ -247,7 +258,15 @@ test('snapshot is taken before lookup and preserves original bytes/metadata on r
   expect(Object.isFrozen(observation.leituraBruta.tecnologias)).toBe(true);
   request
     .mockRejectedValueOnce(new Error('response lost'))
-    .mockResolvedValueOnce({armazenada: true});
+    .mockResolvedValueOnce({
+      armazenada: true,
+      decisao: {
+        autorizada: true,
+        motivo: 'OK',
+        classificacao: 'REGULAR',
+        avisos: [],
+      },
+    });
   await expect(workflow.send(observation, 'user')).rejects.toThrow(
     'response lost',
   );

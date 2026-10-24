@@ -19,7 +19,7 @@ export default function TagDetails({
   capturedAt,
 }: {
   reading: Reading;
-  capturedAt?: string;
+  capturedAt?: string | undefined;
 }) {
   const reference =
     typeof reading.ndef === 'string' &&

@@ -12,7 +12,7 @@ export function DecisionDetails({
   history,
 }: {
   decision: Decision['decisao'];
-  history?: Decision['decisao'][];
+  history?: Decision['decisao'][] | undefined;
 }) {
   const pending = decisionStatus(decision) === 'PENDENTE';
   return (

@@ -1,36 +1,49 @@
-import {createTestServices, withServices} from '../test-support/app-services';
-import {ActionButton as Button} from '../src/components/Tracking';
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
-import {PaperProvider, Searchbar} from 'react-native-paper';
-import OrderSelect, {OrderOption} from '../src/components/Nfc/OrderSelect';
-import {FlatList, ScrollView} from 'react-native';
-
+import {
+  act,
+  render as renderUI,
+  screen,
+  userEvent,
+  fireEvent,
+} from '@testing-library/react-native';
+import {PaperProvider} from 'react-native-paper';
+import {createTestServices, withServices} from '../test-support/app-services';
+import OrderSelect from '../src/components/Nfc/OrderSelect';
 import type {OrderPage} from '../src/appplication/traceability/contracts/order.types';
 
+let mockListData: unknown;
+jest.mock('react-native/Libraries/Lists/FlatList', () => {
+  const ReactRuntime = require('react');
+  const ActualList = jest.requireActual(
+    'react-native/Libraries/Lists/FlatList',
+  ).default;
+  return {
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+      mockListData = props.data;
+      return ReactRuntime.createElement(ActualList, props);
+    },
+  };
+});
 const services = createTestServices({traceability: {listOrders: jest.fn()}});
-const {traceability} = services;
-
-const list = jest.mocked(traceability.listOrders);
-let tree: TestRenderer.ReactTestRenderer;
+const list = jest.mocked(services.traceability.listOrders);
 const order = {
   id: 'one',
   codigo: 'TCC-001',
   descricao: 'Volume de teste',
   estado: 'CADASTRADO',
 };
-async function render(purpose: 'provisioning' | 'history' = 'provisioning') {
+const user = () => userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+async function mount(purpose: 'provisioning' | 'history' = 'provisioning') {
   const select = jest.fn();
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <PaperProvider>
-          <OrderSelect onSelect={select} disabled={false} purpose={purpose} />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
+  await renderUI(
+    withServices(
+      <PaperProvider>
+        <OrderSelect onSelect={select} disabled={false} purpose={purpose} />
+      </PaperProvider>,
+      services,
+    ),
+  );
   await act(async () => {
     await jest.advanceTimersByTimeAsync(300);
   });
@@ -40,8 +53,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   list.mockReset();
 });
-afterEach(async () => {
-  await act(async () => tree?.unmount());
+afterEach(() => {
   jest.useRealTimers();
 });
 
@@ -53,30 +65,22 @@ test('selects real orders and disables those beyond CADASTRADO', async () => {
     ],
     total: 2,
   });
-  const select = await render();
-  const items = tree.root.findAllByType(OrderOption);
-  expect(items[1].props.disabled).toBe(true);
-  await act(async () => {
-    items[0].props.onPress();
-  });
+  const select = await mount();
+  expect(screen.getByRole('button', {name: /TCC-002/})).toBeDisabled();
+  await user().press(screen.getByRole('button', {name: /TCC-001/}));
   expect(select).toHaveBeenCalledWith(order);
 });
-
 test('offers additional pages even when the initial orders are ineligible', async () => {
   list
     .mockResolvedValueOnce({itens: [{...order, estado: 'ENTREGUE'}], total: 11})
     .mockResolvedValueOnce({itens: [{...order, id: 'last'}], total: 11});
-  await render();
-  await act(async () => {
-    tree.root
-      .findAllByType(Button)
-      .find(item => item.props.children === 'Carregar mais pedidos')!
-      .props.onPress();
-  });
+  await mount();
+  await user().press(
+    screen.getByRole('button', {name: 'Carregar mais pedidos'}),
+  );
   expect(list).toHaveBeenLastCalledWith('', 2);
-  expect(tree.root.findAllByType(OrderOption)).toHaveLength(2);
+  expect(screen.getAllByRole('button', {name: /TCC-001/})).toHaveLength(2);
 });
-
 test('a stale search response cannot replace the current search results', async () => {
   let finish!: (page: OrderPage) => void;
   list
@@ -87,43 +91,43 @@ test('a stale search response cannot replace the current search results', async 
         }),
     )
     .mockResolvedValueOnce({itens: [{...order, codigo: 'TCC-NEW'}], total: 1});
-  await render();
-  await act(async () => {
-    tree.root.findByType(Searchbar).props.onChangeText('NEW');
-  });
+  await mount();
+  await fireEvent.changeText(
+    screen.getByPlaceholderText('Buscar pedido'),
+    'NEW',
+  );
   await act(async () => {
     await jest.advanceTimersByTimeAsync(300);
   });
   await act(async () => {
     finish({itens: [order], total: 1});
   });
-  expect(tree.root.findAllByType(OrderOption)[0].props.order.codigo).toContain(
-    'TCC-NEW',
-  );
+  expect(screen.getByRole('button', {name: /TCC-NEW/})).toBeVisible();
+  expect(screen.queryByRole('button', {name: /TCC-001/})).not.toBeOnTheScreen();
 });
-
 test('history allows selecting delivered orders while provisioning does not', async () => {
   const delivered = {...order, estado: 'ENTREGUE'};
   list.mockResolvedValueOnce({itens: [delivered], total: 1});
-  const select = await render('history');
-  const option = tree.root.findByType(OrderOption);
-  expect(option.props.disabled).toBe(false);
-  await act(async () => {
-    option.props.onPress();
-  });
+  const select = await mount('history');
+  expect(screen.getByRole('button', {name: /TCC-001/})).toBeEnabled();
+  await user().press(screen.getByRole('button', {name: /TCC-001/}));
   expect(select).toHaveBeenCalledWith(delivered);
 });
-
 test('a large loaded result keeps all data while mounting only a window of order rows', async () => {
   const orders = Array.from({length: 500}, (_, index) => ({
     ...order,
     id: String(index),
   }));
   list.mockResolvedValueOnce({itens: orders, total: 500});
-  await render();
-  const virtualizedList = tree.root.findByType(FlatList);
-  expect(virtualizedList.props.data).toHaveLength(500);
-  expect(tree.root.findAllByType(OrderOption).length).toBeLessThan(500);
-  for (let parent = virtualizedList.parent; parent; parent = parent.parent)
-    expect(parent.type).not.toBe(ScrollView);
+  await mount();
+  expect(mockListData).toHaveLength(500);
+  const rows = screen.getAllByRole('button', {name: /TCC-001/});
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows.length).toBeLessThan(500);
+  for (
+    let parent = screen.getByTestId('order-search-results').parent;
+    parent;
+    parent = parent.parent
+  )
+    expect(parent.type).not.toBe('RCTScrollView');
 });

@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../components/Base/Toast/service';
 import {StyleSheet} from 'react-native';
 import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
@@ -182,7 +183,7 @@ const Home = () => {
         <Button
           icon="logout"
           onPress={() => {
-            void manager.logout();
+            manager.logout().catch(showCommandFailure);
           }}>
           Sair
         </Button>

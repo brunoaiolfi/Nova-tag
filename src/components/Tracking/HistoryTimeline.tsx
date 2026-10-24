@@ -33,7 +33,7 @@ export function HistoryItem({
 }: {
   entry: HistoryEntry;
   anotherLink: boolean;
-  isLast?: boolean;
+  isLast?: boolean | undefined;
 }) {
   const decision = entry.decisao;
   const status = decisionStatus(decision);
@@ -75,7 +75,10 @@ export function HistoryItem({
         </View>
       </View>
       <View style={styles.content}>
-        <Text variant="titleMedium" style={styles.title}>
+        <Text
+          accessibilityRole="header"
+          variant="titleMedium"
+          style={styles.title}>
           {entry.tipo === 'PROVISIONAMENTO'
             ? 'Etiqueta ativada'
             : eventLabel(entry.tipo)}

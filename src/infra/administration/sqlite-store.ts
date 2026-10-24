@@ -1,3 +1,4 @@
+import {decodeOperation} from '../../appplication/administration/contracts/operation-decoder';
 import {AdministrationError} from '../../domain/administration/error';
 import {
   AdminDraft,
@@ -94,7 +95,7 @@ function decode(row: SessionRow): AdminRfSession {
   };
 }
 export class SqliteAdministrationStore implements AdminStore {
-  private initialized?: Promise<void>;
+  private initialized: Promise<void> | undefined;
   constructor(private readonly open: () => Promise<SqlConnection>) {}
   initialize(): Promise<void> {
     this.initialized ??= (async () => {
@@ -194,7 +195,7 @@ export class SqliteAdministrationStore implements AdminStore {
           );
         if (
           row.snapshot &&
-          JSON.stringify((JSON.parse(row.snapshot) as AdminOperation).plano) !==
+          JSON.stringify(decodeOperation(JSON.parse(row.snapshot)).plano) !==
             JSON.stringify(op.plano)
         )
           fail('O conteúdo do plano não pode mudar.');
@@ -485,8 +486,7 @@ export class SqliteAdministrationStore implements AdminStore {
       );
       if (
         !op?.snapshot ||
-        (JSON.parse(op.snapshot) as AdminOperation).alteracaoFisica !==
-          'CONFERIDA'
+        decodeOperation(JSON.parse(op.snapshot)).alteracaoFisica !== 'CONFERIDA'
       )
         fail('A configuração ainda não foi conferida.');
       await tx.run(

@@ -1,11 +1,16 @@
+import {renderedText} from '../test-support/rendered-text';
 import {createTestServices, withServices} from '../test-support/app-services';
-import {Confirmation} from '../src/components/Nfc/SetupControls';
+
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
-import {PaperProvider, Text} from 'react-native-paper';
+import {
+  render as renderProbe,
+  act,
+  screen,
+  fireEvent,
+} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
+import {PaperProvider, MD3LightTheme} from 'react-native-paper';
 import Gerenciar from '../src/views/Provisionar/Gerenciar';
-import {ActionButton} from '../src/components/Tracking';
-import Leitor from '../src/components/Nfc/Leitor';
 
 import type {Provisioning} from '../src/domain/traceability/provisioning';
 
@@ -34,6 +39,7 @@ jest.mock('../src/infra/nfc/reader', () => ({
   cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
 }));
 const services = createTestServices({
+  nfc: {readPhysicalTag: jest.fn()},
   traceability: {
     provisioning: jest.fn(),
     tag: jest.fn(),
@@ -60,37 +66,27 @@ const link: Provisioning = {
   epoca: 1,
   modelo: 'FEIJU_MODELO_DESCONHECIDO',
 };
-let tree: TestRenderer.ReactTestRenderer;
-const button = (label: string) =>
-  tree.root
-    .findAllByType(ActionButton)
-    .find(item => item.props.children === label)!;
-const text = () =>
-  tree.root
-    .findAllByType(Text)
-    .map(item => item.props.children)
-    .flat()
-    .join(' ')
-    .replace(/\s+/g, ' ');
+let tree: RenderResult;
+const button = (label: string) => screen.queryByRole('button', {name: label});
+const text = () => renderedText(tree).replace(/\s+/g, ' ');
 async function mount() {
-  await act(async () => {
-    tree = TestRenderer.create(
-      withServices(
-        <PaperProvider>
-          <Gerenciar />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
+  tree = await renderProbe(
+    withServices(
+      <PaperProvider>
+        <Gerenciar />
+      </PaperProvider>,
+      services,
+    ),
+  );
 }
 async function confirm() {
-  await act(async () => {
-    button('Encerrar vínculo').props.onPress();
-  });
-  await act(async () => {
-    tree.root.findByType(Confirmation).props.onPress();
-  });
+  await fireEvent.press(screen.getByRole('button', {name: 'Encerrar vínculo'}));
+
+  await fireEvent.press(
+    screen.getByRole('checkbox', {
+      name: 'Quero liberar esta etiqueta do pedido',
+    }),
+  );
 }
 beforeEach(() => {
   mockParams = {provisioningId: link.id};
@@ -99,7 +95,6 @@ beforeEach(() => {
   jest.mocked(traceability.order).mockResolvedValue(order);
 });
 afterEach(async () => {
-  await act(async () => tree?.unmount());
   jest.clearAllMocks();
 });
 
@@ -110,30 +105,34 @@ test('closure requires confirmation, submits once and reuse rereads the same UID
   await mount();
   expect(text()).toContain('Vínculo ativo');
   expect(traceability.closeProvisioning).not.toHaveBeenCalled();
-  await act(async () => {
-    button('Encerrar vínculo').props.onPress();
-  });
-  expect(button('Confirmar encerramento').props.disabled).toBe(true);
-  await act(async () => {
-    button('Confirmar encerramento').props.onPress();
-  });
+
+  await fireEvent.press(screen.getByRole('button', {name: 'Encerrar vínculo'}));
+
+  expect(button('Confirmar encerramento')).toBeDisabled();
+
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Confirmar encerramento'}),
+  );
+
   expect(traceability.closeProvisioning).not.toHaveBeenCalled();
-  await act(async () => {
-    tree.root.findByType(Confirmation).props.onPress();
-  });
-  const submit = button('Confirmar encerramento').props.onPress;
-  await act(async () => {
-    submit();
-    submit();
-  });
+
+  await fireEvent.press(
+    screen.getByRole('checkbox', {
+      name: 'Quero liberar esta etiqueta do pedido',
+    }),
+  );
+
+  const control = screen.getByRole('button', {name: 'Confirmar encerramento'});
+  await fireEvent.press(control);
+  await fireEvent.press(control);
   expect(traceability.closeProvisioning).toHaveBeenCalledTimes(1);
   expect(traceability.closeProvisioning).toHaveBeenCalledWith(link, 'admin');
   expect(text()).toContain('Vínculo encerrado');
   expect(text()).toContain('Coletado');
-  expect(button('Encerrar vínculo')).toBeUndefined();
-  await act(async () => {
-    button('Novo vínculo').props.onPress();
-  });
+  expect(button('Encerrar vínculo')).toBeNull();
+
+  await fireEvent.press(screen.getByRole('button', {name: 'Novo vínculo'}));
+
   expect(mockNavigation.push).toHaveBeenCalledWith('EtapasProvisionamento', {
     estrategia: 2,
     expectedUid: link.uid,
@@ -148,16 +147,20 @@ test('failed closure remains active and retries the same provisioning', async ()
     .mockResolvedValueOnce({...link, status: 'DESPROVISIONADA'});
   await mount();
   await confirm();
-  await act(async () => {
-    button('Confirmar encerramento').props.onPress();
-  });
+
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Confirmar encerramento'}),
+  );
+
   expect(text()).toContain('Encerramento não confirmado');
   expect(button('Confirmar encerramento')).toBeDefined();
   expect(traceability.closeProvisioning).toHaveBeenCalledWith(link, 'admin');
-  expect(button('Novo vínculo')).toBeUndefined();
-  await act(async () => {
-    button('Confirmar encerramento').props.onPress();
-  });
+  expect(button('Novo vínculo')).toBeNull();
+
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Confirmar encerramento'}),
+  );
+
   expect(traceability.closeProvisioning).toHaveBeenNthCalledWith(
     2,
     link,
@@ -169,15 +172,17 @@ test('a copied NDEF does not select another tag for an administrative closure', 
   mockParams = undefined;
   jest.mocked(traceability.tag).mockResolvedValue(null);
   await mount();
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
+
+  await fireEvent.press(screen.getByRole('button', {name: 'Ler etiqueta'}));
+
+  jest.mocked(services.nfc.readPhysicalTag).mockResolvedValueOnce({
+    uid: '04FFFFFFFFFFFF',
+    ndef: 'urn:nfc-trace:provisioning:original-id',
   });
-  await act(async () => {
-    tree.root.findByType(Leitor).props.onLeituraRealizada({
-      uid: '04FFFFFFFFFFFF',
-      ndef: 'urn:nfc-trace:provisioning:original-id',
-    });
-  });
+  await fireEvent.press(screen.getByRole('button', {name: 'Ler etiqueta'}));
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Consultar vínculo desta etiqueta'}),
+  );
   expect(traceability.tag).toHaveBeenCalledWith('04FFFFFFFFFFFF');
   expect(traceability.provisioning).not.toHaveBeenCalled();
   expect(text()).toContain('Esta etiqueta ainda não possui vínculo');
@@ -191,9 +196,15 @@ test('a pending NTAG prioritizes resuming configuration over closing the link', 
     status: 'REGISTRADA',
   });
   await mount();
-  expect(button('Retomar configuração').props.mode).toBe('contained');
-  expect(button('Encerrar vínculo').props.mode).not.toBe('contained');
-  await act(async () => button('Retomar configuração').props.onPress());
+  expect(button('Retomar configuração')).toHaveStyle({
+    backgroundColor: MD3LightTheme.colors.primary,
+  });
+  expect(button('Encerrar vínculo')).toHaveStyle({
+    backgroundColor: 'transparent',
+  });
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Retomar configuração'}),
+  );
   expect(mockNavigation.push).toHaveBeenCalledWith('Administracao', {
     provisioningId: link.id,
   });
@@ -208,7 +219,7 @@ test('a closed SDM link opens fresh administration without reusing the closed pl
     modelo: 'NTAG424DNA',
   });
   await mount();
-  await act(async () => button('Novo vínculo').props.onPress());
+  await fireEvent.press(screen.getByRole('button', {name: 'Novo vínculo'}));
   expect(mockNavigation.push).toHaveBeenCalledWith('Administracao');
   expect(traceability.closeProvisioning).not.toHaveBeenCalled();
 });
@@ -240,16 +251,16 @@ test('a late lookup cannot replace a newer selected provisioning', async () => {
     .mockResolvedValueOnce(next);
   await mount();
   mockParams = {provisioningId: next.id};
-  await act(async () => {
-    tree.update(
-      withServices(
-        <PaperProvider>
-          <Gerenciar />
-        </PaperProvider>,
-        services,
-      ),
-    );
-  });
+
+  await tree.rerender(
+    withServices(
+      <PaperProvider>
+        <Gerenciar />
+      </PaperProvider>,
+      services,
+    ),
+  );
+
   expect(text()).toContain('Época 2');
   await act(async () => {
     complete(link);

@@ -1,7 +1,4 @@
-import {
-  descricaoEnumTipoEvento,
-  EnumTipoEvento,
-} from '../../domain/enums/tipoEvento';
+import {descricaoEnumTipoEvento} from '../../domain/enums/tipoEvento';
 
 const reasons: Record<string, string> = {
   AGUARDANDO_ANTECEDENTE:
@@ -54,5 +51,5 @@ export const reasonLabel = (reason: string) =>
   reasons[reason] ?? `Motivo informado pelo servidor: ${reason}`;
 export const stateLabel = (state: string | null) =>
   state ? states[state] ?? state : 'Não informado';
-export const eventLabel = (event: string) =>
-  descricaoEnumTipoEvento[event as EnumTipoEvento] ?? event;
+const eventLabels: Readonly<Record<string, string>> = descricaoEnumTipoEvento;
+export const eventLabel = (event: string) => eventLabels[event] ?? event;

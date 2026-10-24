@@ -10,6 +10,27 @@ import {
 import {useAppTheme} from '../../theme';
 import {palette} from '../../theme/tokens';
 
+type SupportedPaperProps = Pick<
+  React.ComponentProps<typeof PaperButton>,
+  | 'children'
+  | 'contentStyle'
+  | 'labelStyle'
+  | 'mode'
+  | 'disabled'
+  | 'loading'
+  | 'icon'
+  | 'buttonColor'
+  | 'textColor'
+  | 'accessibilityLabel'
+  | 'accessibilityHint'
+  | 'onPress'
+  | 'onLongPress'
+  | 'testID'
+>;
+export type ActionButtonProps = {
+  [Key in keyof SupportedPaperProps]: SupportedPaperProps[Key] | undefined;
+} & {style?: StyleProp<ViewStyle>};
+
 export function ActionButton({
   contentStyle,
   labelStyle,
@@ -26,9 +47,7 @@ export function ActionButton({
   onPress,
   onLongPress,
   testID,
-}: Omit<React.ComponentProps<typeof PaperButton>, 'style'> & {
-  style?: StyleProp<ViewStyle>;
-}) {
+}: ActionButtonProps) {
   const theme = useAppTheme();
   const contained = mode === 'contained' || mode === 'contained-tonal';
   const backgroundColor =
@@ -43,11 +62,11 @@ export function ActionButton({
   const borderColor = disabled ? palette.line : theme.colors.outline;
   return (
     <TouchableRipple
-      onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={disabled}
+      {...(onPress ? {onPress} : {})}
+      {...(onLongPress ? {onLongPress} : {})}
+      disabled={!!disabled || !!loading}
       accessibilityRole="button"
-      accessibilityState={{disabled: !!disabled, busy: !!loading}}
+      accessibilityState={{disabled: !!disabled || !!loading, busy: !!loading}}
       accessibilityLabel={
         accessibilityLabel ??
         (typeof children === 'string' ? children : undefined)

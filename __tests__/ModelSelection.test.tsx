@@ -1,8 +1,7 @@
 import React, {useState} from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
-import {PaperProvider, RadioButton, TextInput} from 'react-native-paper';
+import {act, render, screen, userEvent} from '@testing-library/react-native';
+import {PaperProvider} from 'react-native-paper';
 import ModelSelect from '../src/components/Nfc/ModelSelect';
-import {ActionButton} from '../src/components/Tracking';
 
 test('external preset changes replace an earlier custom editing mode', async () => {
   let setModel!: React.Dispatch<React.SetStateAction<string>>;
@@ -13,31 +12,25 @@ test('external preset changes replace an earlier custom editing mode', async () 
       <ModelSelect value={model} onChange={updateModel} disabled={false} />
     );
   }
-  let tree!: TestRenderer.ReactTestRenderer;
-  await act(async () => {
-    tree = TestRenderer.create(
-      <PaperProvider>
-        <Form />
-      </PaperProvider>,
-    );
-  });
-  await act(async () => tree.root.findByType(ActionButton).props.onPress());
-  await act(async () =>
-    tree.root
-      .findAllByType(RadioButton.Item)
-      .find(item => item.props.value === 'OUTRO')!
-      .props.onPress(),
+  await render(
+    <PaperProvider>
+      <Form />
+    </PaperProvider>,
   );
-  await act(async () =>
-    tree.root.findByType(TextInput).props.onChangeText('Custom chip'),
+  await userEvent.press(screen.getByRole('button', {name: 'Escolher modelo'}));
+  await userEvent.press(
+    screen.getByRole('radio', {name: 'Outro modelo conhecido'}),
   );
-  expect(tree.root.findByType(TextInput).props.value).toBe('Custom chip');
+  await userEvent.type(
+    screen.getByLabelText('Nome do modelo conhecido'),
+    'Custom chip',
+  );
+  expect(screen.getByLabelText('Nome do modelo conhecido')).toHaveDisplayValue(
+    'Custom chip',
+  );
   await act(async () => setModel('NTAG213'));
-  expect(tree.root.findAllByType(TextInput)).toHaveLength(0);
   expect(
-    tree.root
-      .findAllByType(RadioButton.Item)
-      .find(item => item.props.value === 'NTAG213')!.props.status,
-  ).toBe('checked');
-  await act(async () => tree.unmount());
+    screen.queryByLabelText('Nome do modelo conhecido'),
+  ).not.toBeOnTheScreen();
+  expect(screen.getByRole('radio', {name: 'NTAG213'})).toBeChecked();
 });

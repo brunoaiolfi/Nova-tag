@@ -28,7 +28,10 @@ export function openCaptureDatabase() {
   // Lazy require keeps older development builds usable until storage is opened,
   // without requesting a split Metro bundle during an offline cold start.
   connection ??= Promise.resolve()
-    .then(() => require('expo-sqlite') as typeof import('expo-sqlite'))
+    .then(() => {
+      const nativeModule: typeof import('expo-sqlite') = require('expo-sqlite');
+      return nativeModule;
+    })
     .then(SQLite => SQLite.openDatabaseAsync('nova-tag-captures.db'))
     .then(sqliteConnection)
     .catch(error => {

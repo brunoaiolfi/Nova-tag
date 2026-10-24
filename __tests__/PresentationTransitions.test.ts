@@ -137,13 +137,12 @@ test('explicit decision status takes precedence over legacy contradictory fields
   };
   expect(decisionStatus(decision.decisao)).toBe('REJEITADA');
   expect(businessOutcome(decision)).toBe('REJECTED');
-  expect(decisionStatus({...decision.decisao, status: undefined})).toBe(
-    'AUTORIZADA',
-  );
+  const legacyDecision = {...decision.decisao};
+  delete legacyDecision.status;
+  expect(decisionStatus(legacyDecision)).toBe('AUTORIZADA');
   expect(
     decisionStatus({
-      ...decision.decisao,
-      status: undefined,
+      ...legacyDecision,
       autorizada: false,
       motivo: 'AGUARDANDO_ANTECEDENTE',
     }),

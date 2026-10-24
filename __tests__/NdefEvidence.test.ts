@@ -1,3 +1,4 @@
+import {requiredItem} from '../test-support/required-item';
 import {
   wireNdefRecords,
   bytesBase64,
@@ -44,7 +45,7 @@ test('short/long wire encodings parse equally but retain different evidence', ()
 test('multiple records, identifiers, chunked payloads and empty messages are bounded', () => {
   const multi = [0x91, 1, 2, 0x55, 0, 0x61, 0x59, 1, 2, 1, 0x55, 0x7a, 0, 0x62];
   expect(wireNdefRecords(multi)).toHaveLength(2);
-  expect(wireNdefRecords(multi)[1].id).toEqual([0x7a]);
+  expect(requiredItem(wireNdefRecords(multi), 1).id).toEqual([0x7a]);
   expect(
     wireNdefRecords([0xb1, 1, 2, 0x55, 0, 0x61, 0x56, 0, 2, 0x62, 0x63]),
   ).toEqual(wireNdefRecords(short));
@@ -83,7 +84,9 @@ test('operational Type 4 stream reads exact bytes using only SELECT and consecut
   const port = type4Fixture(long);
   expect((await readType4Ndef(port)).bytes).toEqual(long);
   expect(
-    port.commands.every(command => [0xa4, 0xb0].includes(command[1])),
+    port.commands.every(command =>
+      [0xa4, 0xb0].includes(requiredItem(command, 1)),
+    ),
   ).toBe(true);
   const ndefSelect = port.commands.findIndex(
     command => hex(command) === '00A4000C02E10400',
@@ -103,7 +106,7 @@ test('long fragmented reads retain the entire message, without issuing a new com
   expect(
     port.commands
       .filter(command => command[1] === 0xb0)
-      .every(command => command[4] <= 15),
+      .every(command => requiredItem(command, 4) <= 15),
   ).toBe(true);
 });
 test.each([

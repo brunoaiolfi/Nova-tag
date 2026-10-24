@@ -4,6 +4,8 @@ import type {ExperimentRecord} from '../../domain/experimentation/record';
 import type {CaptureOwner} from '../../domain/offline/owner';
 import {OfflineError} from '../../appplication/offline/offline-error';
 import type {SqlConnection} from '../offline/sqlite-store';
+import {decodeExperimentRecord} from '../../appplication/experimentation/record-decoder';
+import {decodeExperimentPlan} from '../../appplication/experimentation/plan-decoder';
 
 // Called by the capture-store v2 migration: both journals share the same durable database.
 export const experimentSchema = [
@@ -63,7 +65,7 @@ export async function insertExperimentalRecord(
       [owner.baseUrl, owner.userId, record.attemptId, ...group],
     );
     if (prior) {
-      const persistedRecord = JSON.parse(prior.input) as ExperimentRecord;
+      const persistedRecord = decodeExperimentRecord(JSON.parse(prior.input));
       if (
         persistedRecord.stage !== record.stage ||
         persistedRecord.trialId !== record.trialId ||
@@ -116,7 +118,7 @@ export class SqliteExperimentJournal implements ExperimentStorage {
       [owner.baseUrl, owner.userId],
     );
     return {
-      plan: row?.plan ? (JSON.parse(row.plan) as ExperimentPlan) : null,
+      plan: row?.plan ? decodeExperimentPlan(JSON.parse(row.plan)) : null,
       hold: row?.hold === 1,
     };
   }
@@ -131,7 +133,7 @@ export class SqliteExperimentJournal implements ExperimentStorage {
         'SELECT input FROM experiment_records WHERE base_url=? AND user_id=? ORDER BY sequence',
         [owner.baseUrl, owner.userId],
       )
-    ).map(recordRow => JSON.parse(recordRow.input) as ExperimentRecord);
+    ).map(recordRow => decodeExperimentRecord(JSON.parse(recordRow.input)));
   }
   async pending(owner: CaptureOwner, now: number) {
     const db = await this.db();
@@ -140,7 +142,7 @@ export class SqliteExperimentJournal implements ExperimentStorage {
         "SELECT input FROM experiment_records WHERE base_url=? AND user_id=? AND state='PENDING' AND next_at<=? ORDER BY sequence LIMIT 100",
         [owner.baseUrl, owner.userId, now],
       )
-    ).map(recordRow => JSON.parse(recordRow.input) as ExperimentRecord);
+    ).map(recordRow => decodeExperimentRecord(JSON.parse(recordRow.input)));
   }
   async sent(owner: CaptureOwner, id: string) {
     const db = await this.db();

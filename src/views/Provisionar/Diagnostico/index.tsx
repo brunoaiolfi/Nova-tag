@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useAppServices} from '../../../components/Services/AppServicesProvider';
 import {
   diagnosticJson,
@@ -34,7 +35,7 @@ export default function Diagnostico() {
     return () => {
       mounted.current = false;
       if (running.current) {
-        void cancelPhysicalRead();
+        cancelPhysicalRead().catch(showCommandFailure);
       }
     };
   }, [cancelPhysicalRead]);
@@ -88,7 +89,7 @@ export default function Diagnostico() {
           disabled={busy || !physicalNfcAvailable}
           loading={busy}
           onPress={() => {
-            void read();
+            read().catch(showCommandFailure);
           }}>
           {report ? 'Outra etiqueta' : 'Diagnosticar'}
         </ActionButton>
@@ -116,7 +117,7 @@ export default function Diagnostico() {
             <ActionButton
               mode="outlined"
               onPress={() => {
-                void cancelPhysicalRead();
+                cancelPhysicalRead().catch(showCommandFailure);
               }}>
               Cancelar diagnóstico
             </ActionButton>

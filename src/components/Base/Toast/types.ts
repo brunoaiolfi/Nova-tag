@@ -6,30 +6,30 @@ export type OpcoesToast = {
   /**
    * Texto secundário, exibido abaixo da mensagem principal.
    */
-  descricao?: string;
+  descricao?: string | undefined;
   /**
    * Posição do toast na tela.
    * Padrão: `top`
    */
-  posicao?: PosicaoToast;
+  posicao?: PosicaoToast | undefined;
   /**
    * Tempo em milissegundos até o toast sumir sozinho.
    * Padrão: 4000 (3000 para o tipo `info`)
    */
-  duracao?: number;
+  duracao?: number | undefined;
   /**
    * Quando `false`, o toast só some ao ser pressionado ou via `toast.esconder()`.
    * Padrão: `true`
    */
-  esconderAutomaticamente?: boolean;
+  esconderAutomaticamente?: boolean | undefined;
   /**
    * Chamado quando o usuário pressiona o toast.
    */
-  aoPressionar?: () => void;
+  aoPressionar?: (() => void) | undefined;
   /**
    * Chamado quando o toast some.
    */
-  aoEsconder?: () => void;
+  aoEsconder?: (() => void) | undefined;
 };
 
 export type ExibirToastParams = OpcoesToast & {

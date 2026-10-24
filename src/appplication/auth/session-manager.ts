@@ -1,10 +1,14 @@
-import {isSession} from './session-decoder';
+import {
+  isSession,
+  decodeLogin,
+  decodeSessionVerification,
+} from './session-decoder';
 import {normalizeApiUrl} from './api-url-policy';
 import {Session} from '../../domain/auth/session';
 import {SessionError} from './session-error';
 import {SessionStorage} from './ports/session-storage';
+import {immutable} from '../../domain/validation/immutable';
 import {Transport} from './ports/transport';
-import {User} from '../../domain/auth/user';
 
 export type AuthSnapshot =
   | {
@@ -27,10 +31,9 @@ export type AuthSnapshot =
       previouslyVerified?: true;
       message: string;
     };
-type LoginResult = {tokenAcesso: string; expiraEm: string; usuario: User};
 
 export class SessionManager {
-  private snapshot: AuthSnapshot = {status: 'checking'};
+  private snapshot: AuthSnapshot = Object.freeze({status: 'checking'});
   private listeners = new Set<() => void>();
   private generation = 0;
   private restorationBlocked = false;
@@ -49,7 +52,12 @@ export class SessionManager {
     };
   };
   private publish(snapshot: AuthSnapshot) {
-    this.snapshot = snapshot;
+    this.snapshot = snapshot.session
+      ? immutable({
+          ...snapshot,
+          session: {...snapshot.session, user: {...snapshot.session.user}},
+        })
+      : immutable({...snapshot});
     this.listeners.forEach(listener => listener());
   }
   private write(work: () => Promise<void>) {
@@ -101,10 +109,11 @@ export class SessionManager {
           401,
         );
       }
-      const result = await this.transport.send<{
-        usuario: User;
-        expiraEm: string;
-      }>(session.baseUrl, '/autenticacao/sessao', {token: session.token});
+      const result = decodeSessionVerification(
+        await this.transport.send(session.baseUrl, '/autenticacao/sessao', {
+          token: session.token,
+        }),
+      );
       if (generation !== this.generation) {
         return;
       }
@@ -179,13 +188,11 @@ export class SessionManager {
   async login(baseUrl: string, login: string, password: string) {
     const url = normalizeApiUrl(baseUrl, this.development);
     const generation = ++this.generation;
-    const response = await this.transport.send<LoginResult>(
-      url,
-      '/autenticacao/login',
-      {
+    const response = decodeLogin(
+      await this.transport.send(url, '/autenticacao/login', {
         method: 'POST',
         body: {login: login.trim().toLowerCase(), senha: password},
-      },
+      }),
     );
     const session: Session = {
       baseUrl: url,
@@ -224,7 +231,7 @@ export class SessionManager {
       await this.revoke(session);
     }
   }
-  async request<T>(
+  async request(
     path: string,
     options?: {
       body?: unknown;
@@ -232,7 +239,7 @@ export class SessionManager {
       expectedUserId?: string;
       expectedBaseUrl?: string;
     },
-  ): Promise<T> {
+  ): Promise<unknown> {
     const state = this.snapshot;
     if (state.status === 'offline') {
       throw new SessionError(
@@ -270,9 +277,9 @@ export class SessionManager {
       );
     }
     try {
-      const result = await this.transport.send<T>(session.baseUrl, path, {
+      const result = await this.transport.send(session.baseUrl, path, {
         token: session.token,
-        method: options?.method,
+        ...(options?.method !== undefined ? {method: options.method} : {}),
         body: options?.body,
       });
       if (generation !== this.generation) {
@@ -364,9 +371,12 @@ export class SessionManager {
     if (generation === this.generation) {
       this.publish({
         status: 'anonymous',
-        message: revoked
-          ? undefined
-          : 'Sessão removida deste aparelho. Sem conexão, a revogação no servidor não foi confirmada.',
+        ...(!revoked
+          ? {
+              message:
+                'Sessão removida deste aparelho. Sem conexão, a revogação no servidor não foi confirmada.',
+            }
+          : {}),
       });
     }
   }

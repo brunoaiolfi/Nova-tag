@@ -1,3 +1,4 @@
+import {requiredItem} from '../test-support/required-item';
 import {DatabaseSync} from 'node:sqlite';
 import {mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -31,9 +32,9 @@ test('concurrent claims permit one physical attempt and never restore READY', as
     local.store.attempt(session, frame),
   ]);
   expect(results.map(x => x.status).sort()).toEqual(['fulfilled', 'rejected']);
-  expect((await local.store.commands(session.id, context))[0].state).toBe(
-    'ATTEMPTED',
-  );
+  expect(
+    requiredItem(await local.store.commands(session.id, context), 0).state,
+  ).toBe('ATTEMPTED');
   await local.store.saveReply(session, reply());
   await expect(local.store.attempt(session, frame)).rejects.toMatchObject({
     code: 'ADMIN_DIARIO_CONFLITANTE',
@@ -69,7 +70,10 @@ test('receipt and next command roll back together when a conflicting checkpoint 
   await expect(
     local.store.acknowledge(session, frame, reply(session.id, next)),
   ).rejects.toThrow('divergente');
-  const original = (await local.store.commands(session.id, context))[0];
+  const original = requiredItem(
+    await local.store.commands(session.id, context),
+    0,
+  );
   expect(original.state).toBe('RESPONSE');
   expect(original.receipt).toBeNull();
 });
@@ -166,9 +170,9 @@ test('reopening a real SQLite file preserves an unknown physical attempt', async
     db = new DatabaseSync(path);
     sql = connection(db);
     store = new SqliteAdministrationStore(async () => sql);
-    expect((await store.commands(session.id, context))[0].state).toBe(
-      'ATTEMPTED',
-    );
+    expect(
+      requiredItem(await store.commands(session.id, context), 0).state,
+    ).toBe('ATTEMPTED');
     await expect(store.attempt(session, frame)).rejects.toThrow(
       'Não o retransmita',
     );

@@ -122,7 +122,7 @@ export function compareSdmLayout(
     for (const [offset, length] of [
       [expected.offsets.piccData, 32],
       [expected.offsets.mac, 16],
-    ]) {
+    ] as const) {
       const start = offset - 2;
       const chars = observed
         .slice(start, start + length)

@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../../../components/Base/Toast/service';
 import {useAdministrationFlow} from './use-administration-flow';
 import {stageLabel, administrationStatusLabel} from './labels';
 export {stageLabel} from './labels';
@@ -114,7 +115,7 @@ export default function Administracao() {
           <ActionButton
             mode="outlined"
             onPress={() => {
-              void cancel();
+              cancel().catch(showCommandFailure);
             }}>
             Cancelar leitura
           </ActionButton>
@@ -153,13 +154,13 @@ export default function Administracao() {
           icon={pendingActivation ? 'cloud-upload-outline' : 'nfc-tap'}
           disabled={!enabled || !activationConfirmed}
           onPress={() => {
-            void run(
+            run(
               pendingActivation
                 ? 'Confirmando leitura salva'
                 : 'Lendo em nova sessão para ativar',
               activate,
               !pendingActivation,
-            );
+            ).catch(showCommandFailure);
           }}>
           {pendingActivation ? 'Reenviar ativação' : 'Ler e ativar'}
         </ActionButton>
@@ -187,7 +188,9 @@ export default function Administracao() {
           icon="nfc-tap"
           disabled={!canExecute}
           onPress={() => {
-            void run('Configurando a etiqueta', execute, true);
+            run('Configurando a etiqueta', execute, true).catch(
+              showCommandFailure,
+            );
           }}>
           {recovery ? 'Recuperar configuração' : 'Configurar etiqueta'}
         </ActionButton>
@@ -202,7 +205,7 @@ export default function Administracao() {
         icon="refresh"
         disabled={!enabled}
         onPress={() => {
-          void run('Preparando o plano', prepare);
+          run('Preparando o plano', prepare).catch(showCommandFailure);
         }}>
         Consultar plano
       </ActionButton>
@@ -223,7 +226,10 @@ export default function Administracao() {
             disabled={!enabled}
             onPress={() => {
               if (uid) dispatch({type: 'step-changed', step: 2});
-              else void run('Identificando a etiqueta', identify, true);
+              else
+                run('Identificando a etiqueta', identify, true).catch(
+                  showCommandFailure,
+                );
             }}>
             {uid ? 'Continuar' : 'Identificar NTAG 424 DNA'}
           </ActionButton>
@@ -239,7 +245,7 @@ export default function Administracao() {
               icon="arrow-right"
               disabled={!enabled || !order || !uid || !strategy}
               onPress={() => {
-                void run('Preparando o plano', prepare);
+                run('Preparando o plano', prepare).catch(showCommandFailure);
               }}>
               Preparar plano
             </ActionButton>
@@ -313,10 +319,10 @@ export default function Administracao() {
                 onAction={
                   tagInUse
                     ? () => {
-                        void run(
+                        run(
                           'Resolvendo a configuração anterior',
                           resolvePending,
-                        );
+                        ).catch(showCommandFailure);
                       }
                     : undefined
                 }>
@@ -399,7 +405,9 @@ export default function Administracao() {
                         mode="outlined"
                         disabled={!enabled}
                         onPress={() => {
-                          void run('Identificando a etiqueta', identify, true);
+                          run('Identificando a etiqueta', identify, true).catch(
+                            showCommandFailure,
+                          );
                         }}>
                         Ler outra etiqueta
                       </ActionButton>
@@ -615,7 +623,9 @@ export default function Administracao() {
                   icon="refresh"
                   disabled={!enabled}
                   onPress={() => {
-                    void run('Atualizando e recuperando o diário', refresh);
+                    run('Atualizando e recuperando o diário', refresh).catch(
+                      showCommandFailure,
+                    );
                   }}>
                   Atualizar plano
                 </ActionButton>
@@ -707,7 +717,9 @@ export default function Administracao() {
                   mode="contained"
                   onPress={() => {
                     dispatch({type: 'dialog-visibility', open: false});
-                    void run('Finalizando a operação administrativa', end);
+                    run('Finalizando a operação administrativa', end).catch(
+                      showCommandFailure,
+                    );
                   }}>
                   Confirmar encerramento
                 </ActionButton>

@@ -3,7 +3,11 @@ import {Text} from 'react-native-paper';
 import type {Decision} from '../../domain/traceability/decision';
 import {Details} from '.';
 
-export function SdmEvidence({sdm}: {sdm?: Decision['decisao']['sdm']}) {
+export function SdmEvidence({
+  sdm,
+}: {
+  sdm?: Decision['decisao']['sdm'] | undefined;
+}) {
   if (!sdm) return null;
   return (
     <Details title="Validação NFC">

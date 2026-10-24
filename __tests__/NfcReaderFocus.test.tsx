@@ -1,5 +1,6 @@
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {render as renderProbe, act} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {AppState} from 'react-native';
 import type {AppStateStatus} from 'react-native';
 import {NavigationContext} from '@react-navigation/native';
@@ -13,9 +14,8 @@ function Probe() {
   reader = useNfcReader({}, jest.fn());
   return null;
 }
-let tree: TestRenderer.ReactTestRenderer;
+let tree: RenderResult;
 afterEach(async () => {
-  await act(async () => tree?.unmount());
   jest.restoreAllMocks();
 });
 test.each(['blur', 'background'] as const)(
@@ -48,16 +48,14 @@ test.each(['blur', 'background'] as const)(
         return stopBlur;
       },
     } as unknown as NavigationProp<ParamListBase>;
-    await act(async () => {
-      tree = TestRenderer.create(
-        withServices(
-          <NavigationContext.Provider value={navigation}>
-            <Probe />
-          </NavigationContext.Provider>,
-          services,
-        ),
-      );
-    });
+    tree = await renderProbe(
+      withServices(
+        <NavigationContext.Provider value={navigation}>
+          <Probe />
+        </NavigationContext.Provider>,
+        services,
+      ),
+    );
     expect(readPhysicalTag).not.toHaveBeenCalled();
     let reading!: Promise<void>;
     await act(async () => {
@@ -79,7 +77,7 @@ test.each(['blur', 'background'] as const)(
     });
     expect(reader.result).toBeUndefined();
     expect(reader.busy).toBe(false);
-    await act(async () => tree.unmount());
+    await tree.unmount();
     expect(stopBlur).toHaveBeenCalledTimes(1);
     expect(removeAppState).toHaveBeenCalledTimes(1);
   },

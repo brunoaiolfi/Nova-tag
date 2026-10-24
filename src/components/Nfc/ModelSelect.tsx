@@ -70,6 +70,7 @@ export default function ModelSelect({
             {custom && (
               <TextInput
                 label="Nome do modelo conhecido"
+                accessibilityLabel="Nome do modelo conhecido"
                 value={value}
                 onChangeText={customModel => {
                   setCustomDraft(customModel);

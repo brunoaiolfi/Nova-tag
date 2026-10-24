@@ -8,7 +8,7 @@ export function sdmProvisioningId(uri: string): string {
     /^urn:nfc-trace:sdm:v1:([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\?picc_data=[0-9a-fA-F]{32}&cmac=[0-9a-fA-F]{16}$/.exec(
       uri,
     );
-  if (!match)
+  if (!match?.[1])
     throw new Error(
       'Referência SDM inválida. Faça uma nova leitura; a estratégia será determinada pelo servidor.',
     );
