@@ -67,8 +67,34 @@ test('selects real orders and disables those beyond CADASTRADO', async () => {
   });
   const select = await mount();
   expect(screen.getByRole('button', {name: /TCC-002/})).toBeDisabled();
+  expect(
+    screen.getByText('Novo vínculo indisponível neste estado'),
+  ).toBeVisible();
+  await user().press(screen.getByRole('button', {name: /TCC-002/}));
+  expect(select).not.toHaveBeenCalled();
   await user().press(screen.getByRole('button', {name: /TCC-001/}));
   expect(select).toHaveBeenCalledWith(order);
+});
+
+test('long order codes keep their full accessible identity inside separated rounded cards on a light surface', async () => {
+  const longCode = 'DEMO-A1B2C3D4-1111-4222-8333-123456789ABC';
+  list.mockResolvedValueOnce({itens: [{...order, codigo: longCode}], total: 1});
+  const select = await mount();
+  expect(screen.getByTestId('order-search-results')).toHaveStyle({
+    backgroundColor: 'white',
+  });
+  const card = screen.getByRole('button', {
+    name: longCode + ' · Volume de teste · Cadastrado',
+  });
+  expect(card).toHaveStyle({
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 12,
+  });
+  expect(screen.getByText(longCode)).toBeVisible();
+  expect(screen.getByText('1 pedido encontrado')).toBeVisible();
+  await user().press(card);
+  expect(select).toHaveBeenCalledWith({...order, codigo: longCode});
 });
 test('offers additional pages even when the initial orders are ineligible', async () => {
   list
@@ -110,6 +136,9 @@ test('history allows selecting delivered orders while provisioning does not', as
   list.mockResolvedValueOnce({itens: [delivered], total: 1});
   const select = await mount('history');
   expect(screen.getByRole('button', {name: /TCC-001/})).toBeEnabled();
+  expect(
+    screen.queryByText('Novo vínculo indisponível neste estado'),
+  ).not.toBeOnTheScreen();
   await user().press(screen.getByRole('button', {name: /TCC-001/}));
   expect(select).toHaveBeenCalledWith(delivered);
 });

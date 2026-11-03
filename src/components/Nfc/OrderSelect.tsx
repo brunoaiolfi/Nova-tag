@@ -22,10 +22,12 @@ export function OrderOption({
   order,
   disabled,
   onPress,
+  unavailableReason,
 }: {
   order: OrderSummary;
   disabled: boolean;
   onPress: () => void;
+  unavailableReason?: string | undefined;
 }) {
   return (
     <TouchableRipple
@@ -33,36 +35,52 @@ export function OrderOption({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{disabled}}
+      {...(unavailableReason ? {accessibilityHint: unavailableReason} : {})}
       accessibilityLabel={`${order.codigo}${
         order.descricao ? ` · ${order.descricao}` : ''
       } · ${stateLabel(order.estado)}`}
       style={layoutStyles.orderRow}>
       <View style={layoutStyles.orderContent}>
-        <View style={layoutStyles.orderIcon}>
-          <Icon
-            source="package-variant-closed"
-            size={26}
-            color={disabled ? colors.muted : colors.blue}
-          />
+        <View style={layoutStyles.orderHeading}>
+          <View style={layoutStyles.orderIcon}>
+            <Icon
+              source="package-variant-closed"
+              size={26}
+              color={disabled ? colors.muted : colors.blue}
+            />
+          </View>
+          <View
+            style={[
+              layoutStyles.stateBadge,
+              disabled && layoutStyles.unavailableBadge,
+            ]}>
+            <Text
+              style={[
+                layoutStyles.state,
+                {color: disabled ? colors.muted : colors.blue},
+              ]}>
+              {stateLabel(order.estado)}
+            </Text>
+          </View>
+          <View style={layoutStyles.trailingIcon}>
+            <Icon
+              source={disabled ? 'lock-outline' : 'chevron-right'}
+              size={20}
+              color={disabled ? colors.muted : colors.blue}
+            />
+          </View>
         </View>
         <View style={layoutStyles.orderText}>
           <Text style={layoutStyles.orderCode}>{order.codigo}</Text>
           {!!order.descricao && (
             <Text style={layoutStyles.description}>{order.descricao}</Text>
           )}
-          <Text
-            style={[
-              layoutStyles.state,
-              {color: disabled ? colors.muted : colors.blue},
-            ]}>
-            {stateLabel(order.estado)}
-          </Text>
+          {!!unavailableReason && (
+            <Text style={layoutStyles.unavailableReason}>
+              {unavailableReason}
+            </Text>
+          )}
         </View>
-        <Icon
-          source={disabled ? 'lock-outline' : 'chevron-right'}
-          size={22}
-          color={colors.muted}
-        />
       </View>
     </TouchableRipple>
   );
@@ -94,7 +112,9 @@ export default function OrderSelect({
       <View>
         <VStack gap={12}>
           <Text variant="titleMedium">Pedido</Text>
-          <Text variant="titleLarge" style={layoutStyles.orderCode}>
+          <Text
+            variant="titleLarge"
+            style={[layoutStyles.orderCode, layoutStyles.selectedCode]}>
             {selected.codigo}
           </Text>
           {!!selected.descricao && <Text>{selected.descricao}</Text>}
@@ -116,7 +136,7 @@ export default function OrderSelect({
           description={
             purpose === 'history'
               ? 'Leia a etiqueta ou busque pelo código.'
-              : 'Selecione o pedido deste volume.'
+              : 'Selecione um pedido cadastrado para vincular.'
           }
           icon="package-variant-closed"
         />
@@ -124,36 +144,43 @@ export default function OrderSelect({
       renderContent={({header, contentStyle}) => (
         <FlatList
           testID="order-search-results"
+          style={layoutStyles.list}
           data={orders}
           keyExtractor={order => order.id}
-          contentContainerStyle={contentStyle}
+          contentContainerStyle={[contentStyle, layoutStyles.listContent]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           ListHeaderComponent={
-            <VStack gap={12}>
+            <View>
               {header}
-              {pickerHeader}
-              <Text variant="titleMedium">
-                {purpose === 'history' ? 'Ou busque pelo pedido' : 'Pedido'}
-              </Text>
-              <Searchbar
-                placeholder="Buscar pedido"
-                value={search}
-                onChangeText={setSearch}
-                editable={!disabled}
-                style={layoutStyles.search}
-              />
-              {purpose === 'provisioning' && onCreate && (
-                <Button icon="plus" disabled={disabled} onPress={onCreate}>
-                  Novo pedido
-                </Button>
-              )}
-              {!busy && total > 0 && (
-                <Text variant="bodySmall" style={layoutStyles.description}>
-                  {total} pedido(s) encontrado(s)
-                </Text>
-              )}
-            </VStack>
+              <VStack gap={12} style={layoutStyles.searchSection}>
+                {pickerHeader}
+                <Searchbar
+                  placeholder="Buscar pedido"
+                  accessibilityLabel="Buscar pedido"
+                  value={search}
+                  onChangeText={setSearch}
+                  editable={!disabled}
+                  elevation={0}
+                  style={layoutStyles.search}
+                />
+                {purpose === 'provisioning' && onCreate && (
+                  <Button
+                    mode="outlined"
+                    icon="plus"
+                    disabled={disabled}
+                    onPress={onCreate}>
+                    Novo pedido
+                  </Button>
+                )}
+                {!busy && total > 0 && (
+                  <Text variant="bodySmall" style={layoutStyles.description}>
+                    {total}{' '}
+                    {total === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
+                  </Text>
+                )}
+              </VStack>
+            </View>
           }
           renderItem={({item: order}) => (
             <OrderOption
@@ -162,11 +189,16 @@ export default function OrderSelect({
                 disabled ||
                 (purpose === 'provisioning' && order.estado !== 'CADASTRADO')
               }
+              unavailableReason={
+                purpose === 'provisioning' && order.estado !== 'CADASTRADO'
+                  ? 'Novo vínculo indisponível neste estado'
+                  : undefined
+              }
               onPress={() => onSelect(order)}
             />
           )}
           ListFooterComponent={
-            <VStack gap={12}>
+            <VStack gap={12} style={layoutStyles.listFooter}>
               {busy && (
                 <ActivityIndicator accessibilityLabel="Carregando pedidos" />
               )}
@@ -207,33 +239,62 @@ export default function OrderSelect({
 }
 
 const layoutStyles = StyleSheet.create({
-  orderRow: {
-    minHeight: 96,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+  list: {backgroundColor: 'white'},
+  listContent: {paddingHorizontal: 0, paddingTop: 0},
+  searchSection: {
+    padding: 16,
+    paddingBottom: 20,
+    marginTop: -16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     backgroundColor: 'white',
   },
+  listFooter: {paddingHorizontal: 16, paddingBottom: 12},
+  orderRow: {
+    minHeight: 96,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 20,
+    borderColor: colors.line,
+    backgroundColor: 'white',
+    overflow: 'hidden',
+  },
   orderContent: {
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 16,
     gap: 12,
   },
+  orderHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   orderIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: colors.pale,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orderText: {flex: 1, minWidth: 0, gap: 4},
+  orderText: {minWidth: 0, gap: 6},
   orderCode: {
-    fontSize: 18,
-    lineHeight: 25,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: '700',
     color: colors.navy,
   },
+  selectedCode: {fontSize: 18, lineHeight: 25},
+  stateBadge: {
+    flexShrink: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: colors.pale,
+  },
+  unavailableBadge: {backgroundColor: colors.background},
+  unavailableReason: {fontSize: 12, lineHeight: 18, color: colors.muted},
+  trailingIcon: {marginLeft: 'auto'},
   description: {fontSize: 14, lineHeight: 21, color: colors.muted},
   state: {fontSize: 13, lineHeight: 20, fontWeight: '600'},
   search: {backgroundColor: colors.background, borderRadius: 18},

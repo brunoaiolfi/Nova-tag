@@ -93,3 +93,26 @@ o estado vazio e a abertura da preparação offline. Captura local em
 `.tmp/envios-corrigido.png`; contexto do fixture em
 `postman/simulations/nova-tag-ui.context.yaml`. Isso não representa aceite nativo
 no iPhone, validação da API implantada ou operação física NFC.
+
+## Seletor de pedidos — 03/11/2026
+
+A busca e os resultados agora ficam sobre uma superfície branca, separada do
+cabeçalho azul por cantos arredondados. Cada pedido usa um cartão com borda,
+raio de 20 pontos e espaçamento externo. Código e descrição ocupam a largura do
+cartão, preservando identificadores longos completos. O estado aparece em um
+badge e a indisponibilidade de vínculo tem explicação visível e acessível.
+
+A seleção continua restrita aos pedidos cadastrados no provisionamento; o
+histórico permite consultar pedidos já movimentados. Paginação, busca protegida
+contra respostas antigas e virtualização permanecem cobertas por testes. A
+regressão acrescentada usa um código longo sintético e verifica identidade
+acessível, superfície clara, cartão arredondado e seleção correta.
+
+`npm run verify` aprovado: **406 testes em 45 suítes**, **88 testes das proteções
+arquiteturais**, lint, tipos e compilação verificada pelo React Compiler.
+
+A revisão automática bloqueou a inicialização do ambiente de prévia nativa
+(emulador e servidores locais), sem apresentar um motivo específico. Portanto,
+esta revisão não contém uma nova captura validada no Android ou iPhone. Os
+resultados de testes JS e compilação não são apresentados como inspeção visual
+nativa.
