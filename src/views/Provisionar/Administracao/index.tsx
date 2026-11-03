@@ -5,7 +5,8 @@ export {stageLabel} from './labels';
 import React from 'react';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {ActivityIndicator, Dialog, Portal, Text} from 'react-native-paper';
+import {ActivityIndicator, Text} from 'react-native-paper';
+import EndAdministrationDialog from './EndAdministrationDialog';
 import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
@@ -685,47 +686,17 @@ export default function Administracao() {
           </>
         )}
         {endDialogOpen && operation && (
-          <Portal>
-            <Dialog
-              visible
-              onDismiss={() =>
-                dispatch({type: 'dialog-visibility', open: false})
-              }>
-              <Dialog.Title>
-                {verified
-                  ? 'Finalizar a administração?'
-                  : 'Encerrar sem configurar?'}
-              </Dialog.Title>
-              <Dialog.Content>
-                <Text>
-                  {verified
-                    ? active
-                      ? 'A configuração e o vínculo ativo serão preservados. Você poderá registrar eventos e consultar o histórico normalmente.'
-                      : 'A configuração conferida será preservada, mas o vínculo continuará registrado. Você poderá voltar para fazer a leitura de ativação.'
-                    : 'Nenhum comando de configuração foi emitido. O plano será encerrado e o vínculo continuará registrado. Para configurar depois, encerre o vínculo em Gerenciar e crie uma nova época.'}
-                </Text>
-                <Text>O plano e o diário permanecerão no histórico.</Text>
-              </Dialog.Content>
-              <Dialog.Actions>
-                <ActionButton
-                  onPress={() =>
-                    dispatch({type: 'dialog-visibility', open: false})
-                  }>
-                  Voltar ao plano
-                </ActionButton>
-                <ActionButton
-                  mode="contained"
-                  onPress={() => {
-                    dispatch({type: 'dialog-visibility', open: false});
-                    run('Finalizando a operação administrativa', end).catch(
-                      showCommandFailure,
-                    );
-                  }}>
-                  Confirmar encerramento
-                </ActionButton>
-              </Dialog.Actions>
-            </Dialog>
-          </Portal>
+          <EndAdministrationDialog
+            verified={verified}
+            active={active}
+            onDismiss={() => dispatch({type: 'dialog-visibility', open: false})}
+            onConfirm={() => {
+              dispatch({type: 'dialog-visibility', open: false});
+              run('Finalizando a operação administrativa', end).catch(
+                showCommandFailure,
+              );
+            }}
+          />
         )}
       </VStack>
     </Tela>

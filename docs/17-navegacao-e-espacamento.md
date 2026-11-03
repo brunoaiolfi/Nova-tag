@@ -146,3 +146,31 @@ Esta alteração não tem uma nova inspeção visual em dispositivo. O ambiente 
 prévia nativa teve sua inicialização bloqueada pela revisão automática na
 revisão anterior, sem motivo específico; os testes de apresentação não
 substituem a conferência visual no Android e no iPhone.
+
+## Confirmação de encerramento — 03/11/2026
+
+O modal de encerramento usava `Dialog.Actions`, que dispõe os filhos em uma
+linha. Os dois `ActionButton` com textos longos excediam a largura disponível e
+cortavam a ação de voltar. O modal agora apresenta a confirmação e a volta em
+uma coluna com largura total, sem as margens horizontais injetadas por esse
+contêiner. A superfície tem raio de 24 pontos e largura máxima de 440 pontos,
+limitada pela janela e pelos insets laterais.
+
+Título, explicação e ações pertencem à mesma área rolável. A altura máxima
+considera os insets superiores/inferiores e uma margem de 16 pontos em cada
+extremidade, permitindo alcançar as ações quando o conteúdo ultrapassa essa
+altura. Os rótulos mantêm a quebra de linha e o ajuste de fonte do sistema.
+
+A apresentação foi extraída para `EndAdministrationDialog`, dentro da
+funcionalidade de administração. A tela continua responsável pelo comando de
+encerramento e pelo estado de abertura. Voltar ou dispensar o modal não executa
+o comando; a confirmação preserva o fluxo existente e as explicações para plano
+não configurado, configuração conferida e vínculo ativo.
+
+Os testes de apresentação verificam os limites e a disposição das ações em
+janelas de 320 × 568, 390 × 844 e 667 × 375, com escalas de fonte de 1 a 2,
+além de distinguir os callbacks de voltar e confirmar. São verificações de
+contrato de layout em JS, sem medição de pixels ou nova inspeção visual nativa.
+
+`npm run verify` aprovado: **412 testes em 46 suítes**, mais **88 testes das
+proteções arquiteturais**, lint, tipos e verificação do React Compiler.
