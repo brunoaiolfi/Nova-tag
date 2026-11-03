@@ -20,14 +20,17 @@ interface Operation {
 
 /** One owner until the native operation AND its cleanup finish, even on timeout. */
 export class ExclusiveNfcSession {
-  private active?: Operation;
+  private active: Operation | undefined;
 
   constructor(
     private readonly scheduler: SessionScheduler,
     private readonly timeoutMilliseconds = 45000,
   ) {}
 
-  run<T>(job: (scope: SessionScope) => Promise<T>): Promise<T> {
+  run<T>(
+    job: (scope: SessionScope) => Promise<T>,
+    timeoutMilliseconds = this.timeoutMilliseconds,
+  ): Promise<T> {
     if (this.active) {
       return Promise.reject(
         new NfcFailure(
@@ -42,18 +45,15 @@ export class ExclusiveNfcSession {
     });
     const operation: Operation = {abort, stopTimer: () => {}};
     this.active = operation;
-    operation.stopTimer = this.scheduler.schedule(
-      this.timeoutMilliseconds,
-      () => {
-        this.abort(
-          operation,
-          new NfcFailure(
-            'NFC_TIMEOUT',
-            'O tempo de leitura terminou. Aproxime a etiqueta e tente novamente. Se estava gravando, confira o conteúdo antes de ativar o vínculo.',
-          ),
-        );
-      },
-    );
+    operation.stopTimer = this.scheduler.schedule(timeoutMilliseconds, () => {
+      this.abort(
+        operation,
+        new NfcFailure(
+          'NFC_TIMEOUT',
+          'O tempo de leitura terminou. Aproxime a etiqueta e tente novamente. Se estava gravando, confira o conteúdo antes de ativar o vínculo.',
+        ),
+      );
+    });
     const checkpoint = () => {
       if (operation.failure) {
         throw operation.failure;
@@ -70,7 +70,7 @@ export class ExclusiveNfcSession {
       onClose: close => {
         operation.close = close;
         if (operation.failure) {
-          void this.close(operation);
+          this.beginClosing(operation);
         }
       },
     };
@@ -114,16 +114,20 @@ export class ExclusiveNfcSession {
     operation.failure = error;
     operation.stopTimer();
     operation.abort(error);
-    void this.close(operation);
+    this.beginClosing(operation);
   }
 
   private close(operation: Operation): Promise<void> {
+    this.beginClosing(operation);
+    return operation.closing ?? Promise.resolve();
+  }
+
+  private beginClosing(operation: Operation): void {
     if (!operation.close) {
-      return Promise.resolve();
+      return;
     }
     operation.closing ??= Promise.resolve()
       .then(operation.close)
       .catch(() => {});
-    return operation.closing;
   }
 }

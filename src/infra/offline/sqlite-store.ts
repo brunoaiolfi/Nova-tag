@@ -1,26 +1,22 @@
+import {decodeProvisioning} from '../../appplication/traceability/contracts/provisioning-decoder';
 import {businessOutcome} from '../../domain/traceability/decision-status';
 import {
   experimentSchema,
   insertExperimentalRecord,
 } from '../experimentation/sqlite-journal';
-import type {
-  Observation,
-  Provisioning,
-  Decision,
-  Reading,
-} from '../../domain/traceability/types';
+import type {Observation} from '../../domain/traceability/observation';
+import type {Provisioning} from '../../domain/traceability/provisioning';
+import type {Decision} from '../../domain/traceability/decision';
+import type {Reading} from '../../domain/traceability/reading';
 import {
   assertSdmReading,
   sdmProvisioningId,
 } from '../../domain/traceability/sdm-reading';
-import {
-  CaptureOwner,
-  CaptureStore,
-  CaptureMetadata,
-  QueuedCapture,
-  Settlement,
-  OfflineError,
-} from '../../domain/offline/types';
+import {CaptureOwner} from '../../domain/offline/owner';
+import {CaptureStore} from '../../appplication/offline/ports/capture-store';
+import {CaptureMetadata, QueuedCapture} from '../../domain/offline/capture';
+import {Settlement} from '../../appplication/offline/settlement.types';
+import {OfflineError} from '../../appplication/offline/offline-error';
 
 export type SqlValue = string | number | null;
 export interface SqlConnection {
@@ -93,7 +89,7 @@ function decode(row: Row): QueuedCapture {
 }
 const uid = (value: string) => value.replace(/[\s:-]/g, '').toUpperCase();
 export class SqliteCaptureStore implements CaptureStore {
-  private initialization?: Promise<void>;
+  private initialization: Promise<void> | undefined;
   constructor(private readonly open: () => Promise<SqlConnection>) {}
   initialize() {
     this.initialization ??= this.migrate().catch(error => {
@@ -314,16 +310,17 @@ export class SqliteCaptureStore implements CaptureStore {
     );
     if (!row || row.verified_at > now || now - row.verified_at > maxAge)
       return null;
-    const p = JSON.parse(row.snapshot) as Provisioning;
+    const cachedProvisioning = decodeProvisioning(JSON.parse(row.snapshot));
     if (
-      p.status !== 'ATIVA' ||
+      cachedProvisioning.status !== 'ATIVA' ||
       (reference &&
         !sdm &&
-        (p.estrategia !== 'NDEF_ESTATICO' || p.referenciaNdef !== reading.ndef))
+        (cachedProvisioning.estrategia !== 'NDEF_ESTATICO' ||
+          cachedProvisioning.referenciaNdef !== reading.ndef))
     )
       return null;
-    assertSdmReading(p, reading);
-    return freeze(p);
+    assertSdmReading(cachedProvisioning, reading);
+    return freeze(cachedProvisioning);
   }
   async updateDecision(owner: CaptureOwner, id: string, result: Decision) {
     const db = await this.db();

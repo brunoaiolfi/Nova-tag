@@ -1,16 +1,41 @@
 # Nova-tag NFC — Expo Development Build
 
 Aplicativo Expo com NFC físico e API NFC Trace. Branch candidata
-`codex/issue-9-reproducibility`, no mesmo repositório do Nova-tag, sem merge na main.
+`codex/issue-12-secure-messaging`, sobre `codex/issue-9-reproducibility`, no mesmo repositório do Nova-tag, sem merge na main.
 O checkout pode ter qualquer caminho; `C:\src\Nova-tag-expo` é somente o ambiente
 local usado nas implementações. O checkout original continua separado.
 
 Software #1–#7, incluindo fila SQLite, validação SDM, reconciliação e instrumentação,
-está implementado. Protocolo/análise preliminares #8 estão na API. Personalização/
-proteção/aceite NTAG #12, piloto/coleta #8 e integração/reprodução final #9 permanecem.
+está implementado. A #12 tem tela administrativa, transporte APDU durável, recuperação
+guiada e ativação em nova sessão, integrados à API. Protocolo/análise preliminares #8
+estão na API. Aceite/procedimento definitivo NTAG #12, piloto/coleta #8 e integração/
+reprodução final #9 permanecem. [Configuração e recuperação NTAG](docs/16-administracao-ntag.md).
 Veja [entregas atuais e próximas etapas](docs/10-estado-do-projeto.md).
 O [guia de reprodução e APK local](docs/15-reproducao-e-entrega.md) descreve o build
-Android 0.3.0/3 com bundle embutido e identificação de fonte/artefato.
+Android candidato 0.4.0/4 com bundle embutido e identificação de fonte/artefato.
+Veja também a [revisão de navegação e espaçamento](docs/17-navegacao-e-espacamento.md):
+retornos padronizados, cabeçalhos compactos e área inferior sem margens duplicadas.
+
+## Validar uma alteração
+
+Execute `npm run verify`: fronteiras arquiteturais, lint sem warnings, tipos e
+testes precisam passar. `npm run lint` e `npm test` também executam as proteções
+de arquitetura. Veja [regras, exceções legadas e limites do bloqueio](docs/architecture-checks.md).
+As 31 exceções arquiteturais iniciais do Expo foram corrigidas; o inventário atual
+é vazio. A CI compara o inventário com a base Git e rejeita seu crescimento, e um
+teste mantém a exigência de zero exceções. O job `architecture-and-quality` está
+configurado para PRs, sem build EAS/nativo.
+
+Contratos, decoders, portas e políticas foram separados por responsabilidade. Os
+fluxos de apresentação usam transições explícitas onde os estados são relacionados;
+regras adicionais de hooks e nomes fazem parte de `verify`. Veja a execução e os
+limites de validação na [seção 19 da análise arquitetural](docs/18-analise-arquitetural-comparativa.md).
+
+A [pesquisa de padrões React Native e código limpo](docs/19-padroes-react-native-e-codigo-limpo.md)
+reúne 23 diretrizes com fontes dos mantenedores, compara as versões do original
+e do Expo e distingue implementação local, validação e propostas adicionais.
+Inclui lint com tipos, decoders, estado/efeitos, identidade, navegação, testes,
+acessibilidade e desempenho, com critérios de adoção e aceite.
 
 ## Instalar no iPhone usando Windows
 

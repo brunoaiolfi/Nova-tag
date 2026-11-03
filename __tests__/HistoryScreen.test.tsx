@@ -1,24 +1,27 @@
+import {createTestServices, withServices} from '../test-support/app-services';
+import {renderedText} from '../test-support/rendered-text';
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
 import {
-  List,
-  PaperProvider,
-  SegmentedButtons,
-  TouchableRipple,
-} from 'react-native-paper';
-import {ActionButton as Button, OrderJourney} from '../src/components/Tracking';
-import Historico, {HistoryItem} from '../src/views/Historico';
-import OrderSelect from '../src/components/Nfc/OrderSelect';
-import type {
-  HistoryEntry,
-  Reading,
-} from '../src/appplication/traceability/workflow';
-import {traceability} from '../src/infra/traceability/runtime';
+  render as renderProbe,
+  act,
+  screen,
+  fireEvent,
+  userEvent,
+} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
+import {PaperProvider} from 'react-native-paper';
+
+import Historico from '../src/views/Historico';
+import type {HistoryEntry} from '../src/appplication/traceability/contracts/history.types';
+import type {Reading} from '../src/domain/traceability/reading';
+import {palette} from '../src/theme/tokens';
 
 let mockParams: {reading?: Reading} | undefined;
 const mockNavigation = {setParams: jest.fn(), navigate: jest.fn()};
 let mockRole = 'ADMINISTRADOR';
 jest.mock('@react-navigation/native', () => ({
+  NavigationContext: jest.requireActual('@react-navigation/native')
+    .NavigationContext,
   useRoute: () => ({params: mockParams}),
   useNavigation: () => mockNavigation,
   useFocusEffect: (callback: () => void | (() => void)) =>
@@ -29,14 +32,17 @@ jest.mock('../src/components/Auth/SessionProvider', () => ({
     state: {status: 'authenticated', session: {user: {perfil: mockRole}}},
   }),
 }));
-jest.mock('../src/infra/traceability/runtime', () => ({
+
+const services = createTestServices({
   traceability: {
     listOrders: jest.fn(),
     order: jest.fn(),
     history: jest.fn(),
     resolveProvisioning: jest.fn(),
   },
-}));
+});
+const {traceability} = services;
+
 const order = {
   id: 'order',
   codigo: 'TCC-001',
@@ -71,19 +77,20 @@ const entry: HistoryEntry = {
     estadoResultante: 'ENTREGUE',
   },
 };
-let tree: TestRenderer.ReactTestRenderer;
-const button = (label: string) =>
-  tree.root.findAllByType(Button).find(item => item.props.children === label)!;
+let tree: RenderResult;
+const button = (label: string) => screen.queryByRole('button', {name: label});
 async function render() {
-  await act(async () => {
-    tree = TestRenderer.create(
+  tree = await renderProbe(
+    withServices(
       <PaperProvider>
         <Historico />
       </PaperProvider>,
-    );
-  });
+      services,
+    ),
+  );
 }
 beforeEach(() => {
+  jest.useFakeTimers();
   jest.clearAllMocks();
   mockParams = undefined;
   mockRole = 'ADMINISTRADOR';
@@ -96,32 +103,122 @@ beforeEach(() => {
     .mocked(traceability.history)
     .mockResolvedValue({itens: [entry], proximaPagina: null, totalDoPedido: 1});
 });
+
 afterEach(async () => {
-  await act(async () => tree?.unmount());
+  await act(async () => jest.runOnlyPendingTimers());
+  jest.useRealTimers();
 });
 
 test('order selection shows stored rejection, current state and separate server/device times', async () => {
   await render();
-  expect(tree.root.findByType(OrderSelect).props.purpose).toBe('history');
-  await act(async () => {
-    tree.root.findByType(OrderSelect).props.onSelect(order);
-  });
+
+  await selectOrder();
   expect(traceability.history).toHaveBeenCalledWith(order.id, 1, undefined);
-  expect(tree.root.findByType(OrderJourney).props.order).toEqual(order);
-  await act(async () =>
-    tree.root
-      .findAllByType(List.Accordion)
-      .find(item => item.props.title === 'Detalhes do registro')!
-      .findByType(TouchableRipple)
-      .props.onPress(),
-  );
-  const text = JSON.stringify(tree.toJSON());
+  expect(screen.getByTestId('history-entry-capture')).toHaveStyle({
+    backgroundColor: 'white',
+    borderRadius: 18,
+    marginHorizontal: 16,
+  });
+  expect(renderedText(tree)).toContain(order.descricao);
+  expect(
+    screen.getByRole('button', {name: 'Detalhes do registro'}),
+  ).toBeCollapsed();
+  await fireEvent.press(screen.getByText('Detalhes do registro'));
+  expect(
+    screen.getByRole('button', {name: 'Detalhes do registro'}),
+  ).toBeExpanded();
+  const text = renderedText(tree);
   expect(text).toContain(order.codigo);
   expect(text).toContain('Entregue');
   expect(text).toContain('Operação rejeitada · pedido não alterado');
   expect(text).toContain('Recebido pelo servidor:');
   expect(text).toContain('Horário declarado pelo aparelho');
   expect(text).toContain('Leitura suspeita');
+});
+
+test('a registered tag without events uses a rounded light surface and keeps its activation warning', async () => {
+  mockParams = {reading: {uid: link.uid}};
+  jest
+    .mocked(traceability.resolveProvisioning)
+    .mockResolvedValue({...link, status: 'REGISTRADA'});
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({...order, estado: 'CADASTRADO', expedido: false});
+  jest
+    .mocked(traceability.history)
+    .mockResolvedValue({itens: [], proximaPagina: null, totalDoPedido: 0});
+  const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+  await render();
+
+  expect(screen.getByTestId('history-list')).toHaveStyle({
+    backgroundColor: 'white',
+  });
+  expect(screen.getByTestId('history-content')).toHaveStyle({
+    backgroundColor: 'white',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  });
+  expect(
+    screen.getByText(
+      'Esta etiqueta aguarda ativação e ainda não pode registrar etapas.',
+    ),
+  ).toHaveStyle({color: palette.navy});
+  expect(screen.getByRole('header', {name: 'Caminho do pedido'})).toHaveStyle({
+    color: palette.navy,
+  });
+  expect(screen.getByText('Nenhuma etapa registrada')).toBeVisible();
+  expect(
+    screen.getByText('Nenhum registro encontrado neste vínculo.'),
+  ).toBeVisible();
+  expect(screen.getByRole('button', {name: 'Esta etiqueta'})).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({checked: true}),
+  );
+  expect(
+    screen.getByRole('button', {name: 'Sobre a etiqueta deste pedido'}),
+  ).toBeCollapsed();
+  await user.press(
+    screen.getByRole('button', {name: 'Sobre a etiqueta deste pedido'}),
+  );
+  expect(screen.getByText(/Vínculo.*Aguardando ativação/)).toBeVisible();
+  await user.press(screen.getByRole('button', {name: 'Pedido completo'}));
+  expect(screen.getByRole('button', {name: 'Pedido completo'})).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({checked: true}),
+  );
+  expect(
+    screen.getByText('Nenhum registro encontrado neste pedido.'),
+  ).toBeVisible();
+  expect(traceability.history).toHaveBeenLastCalledWith(order.id, 1, undefined);
+});
+
+test('loading and failed history requests have a light surface without showing an empty result', async () => {
+  mockParams = {reading: {uid: link.uid}};
+  let rejectHistory!: (error: Error) => void;
+  jest.mocked(traceability.history).mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectHistory = reject;
+      }),
+  );
+  const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+  await render();
+
+  expect(screen.getByTestId('history-list')).toHaveStyle({
+    backgroundColor: 'white',
+  });
+  expect(screen.getByLabelText('Carregando histórico')).toBeVisible();
+  expect(screen.queryByText('Nenhuma etapa registrada')).not.toBeOnTheScreen();
+  expect(screen.getByRole('button', {name: 'Pedido completo'})).toBeDisabled();
+  await act(async () => {
+    rejectHistory(new Error('Histórico indisponível'));
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('Histórico indisponível');
+  expect(screen.queryByText('Nenhuma etapa registrada')).not.toBeOnTheScreen();
+  expect(screen.queryByLabelText('Carregando histórico')).not.toBeOnTheScreen();
+  await user.press(screen.getByRole('button', {name: 'Tentar novamente'}));
+  expect(screen.getByRole('header', {name: 'Coleta'})).toBeVisible();
+  expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
 });
 
 test('late SDM history distinguishes authentication, policy and absence of authorized movement', async () => {
@@ -151,12 +248,13 @@ test('late SDM history distinguishes authentication, policy and absence of autho
     totalDoPedido: 1,
   });
   await render();
-  await act(async () =>
-    tree.root.findByType(OrderSelect).props.onSelect(order),
-  );
-  const text = JSON.stringify(tree.toJSON());
-  expect(text).toContain('Evidência autenticada pelo servidor');
-  expect(text).toContain('sem movimentação automática');
+  await selectOrder();
+  const text = renderedText(tree);
+  expect(text).not.toContain('Evidência autenticada pelo servidor');
+  await expandDetails('Validação NFC');
+  const expanded = renderedText(tree);
+  expect(expanded).toContain('Evidência autenticada pelo servidor');
+  expect(expanded).toContain('sem movimentação automática');
   expect(text).toContain('Leitura tardia preservada · sem movimentação');
   expect(text).not.toContain('Operação autorizada');
 });
@@ -176,10 +274,10 @@ test('a scanned NDEF tag opens its exact provisioning history and can expand to 
     mockParams.reading,
   );
   expect(traceability.history).toHaveBeenCalledWith(order.id, 1, link.id);
-  expect(JSON.stringify(tree.toJSON())).toContain('o UID lido é diferente');
-  await act(async () => {
-    tree.root.findByType(SegmentedButtons).props.onValueChange('pedido');
-  });
+  expect(renderedText(tree)).toContain('o UID lido é diferente');
+
+  await fireEvent.press(screen.getByText('Pedido completo'));
+
   expect(traceability.history).toHaveBeenLastCalledWith(order.id, 1, undefined);
   expect(mockNavigation.setParams).toHaveBeenCalledWith({reading: undefined});
 });
@@ -197,14 +295,18 @@ test('load more keeps previous entries and refresh starts from the first page', 
     proximaPagina: null,
     totalDoPedido: 21,
   });
-  await act(async () => {
-    button('Carregar mais registros').props.onPress();
-  });
-  expect(tree.root.findAllByType(HistoryItem)).toHaveLength(2);
+
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Carregar mais registros'}),
+  );
+
+  expect(
+    screen.queryAllByRole('header', {name: /^(Coleta|Entrega)$/}),
+  ).toHaveLength(2);
   expect(traceability.history).toHaveBeenLastCalledWith(order.id, 2, link.id);
-  await act(async () => {
-    button('Atualizar histórico').props.onPress();
-  });
+
+  await fireEvent.press(screen.getByRole('button', {name: 'Atualizar'}));
+
   expect(traceability.history).toHaveBeenLastCalledWith(order.id, 1, link.id);
 });
 
@@ -217,17 +319,19 @@ test('a lookup abandoned for NFC cannot update the screen or issue a stale histo
         finish = resolve;
       }),
   );
-  await act(async () => {
-    tree.root.findByType(OrderSelect).props.onSelect(order);
-  });
-  await act(async () => {
-    button('Ler outra etiqueta').props.onPress();
-  });
+  await selectOrder();
+
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Ler outra etiqueta'}),
+  );
+
   await act(async () => {
     finish(order);
   });
   // Leaving for NFC invalidates the previous request, even if it resolves later.
-  expect(tree.root.findAllByType(HistoryItem)).toHaveLength(0);
+  expect(
+    screen.queryAllByRole('header', {name: /^(Coleta|Entrega)$/}),
+  ).toHaveLength(0);
   expect(traceability.history).not.toHaveBeenCalled();
 });
 
@@ -236,14 +340,14 @@ test('a network failure offers retry without losing the selected order', async (
   jest
     .mocked(traceability.order)
     .mockRejectedValueOnce(new Error('Sem conexão'));
-  await act(async () => {
-    tree.root.findByType(OrderSelect).props.onSelect(order);
-  });
-  expect(JSON.stringify(tree.toJSON())).toContain('Sem conexão');
-  await act(async () => {
-    button('Tentar novamente').props.onPress();
-  });
-  expect(tree.root.findAllByType(HistoryItem)).toHaveLength(1);
+  await selectOrder();
+  expect(renderedText(tree)).toContain('Sem conexão');
+
+  await fireEvent.press(screen.getByRole('button', {name: 'Tentar novamente'}));
+
+  expect(
+    screen.queryAllByRole('header', {name: /^(Coleta|Entrega)$/}),
+  ).toHaveLength(1);
   expect(traceability.order).toHaveBeenCalledTimes(2);
 });
 
@@ -267,43 +371,31 @@ test('a rejected delivery does not advance the journey and delivery does not req
     totalDoPedido: 1,
   });
   await render();
-  await act(async () =>
-    tree.root.findByType(OrderSelect).props.onSelect(order),
-  );
-  expect(tree.root.findByType(OrderJourney).props.order.estado).toBe(
-    'CADASTRADO',
-  );
-  expect(JSON.stringify(tree.toJSON())).toContain(
-    'Entrega: ainda não registrada',
-  );
+  await selectOrder();
+  expect(renderedText(tree)).toContain('Cadastro: etapa atual');
+  expect(renderedText(tree)).toContain('Entrega: ainda não registrada');
   jest
     .mocked(traceability.order)
     .mockResolvedValue({...order, expedido: false});
-  await act(async () => button('Atualizar histórico').props.onPress());
-  const text = JSON.stringify(tree.toJSON());
+  await fireEvent.press(screen.getByRole('button', {name: 'Atualizar'}));
+  const text = renderedText(tree);
   expect(text).toContain('Entrega: etapa atual');
   expect(text).not.toContain('Saída para entrega registrada');
 });
 
 async function expandTag() {
-  await act(async () =>
-    tree.root
-      .findAllByType(List.Accordion)
-      .find(item => item.props.title === 'Sobre a etiqueta deste pedido')!
-      .findByType(TouchableRipple)
-      .props.onPress(),
-  );
+  await fireEvent.press(screen.getByText('Sobre a etiqueta deste pedido'));
 }
 test('the selected order exposes its current link for administrative management', async () => {
   jest
     .mocked(traceability.order)
     .mockResolvedValue({...order, provisionamentoVigente: link});
   await render();
-  await act(async () =>
-    tree.root.findByType(OrderSelect).props.onSelect(order),
-  );
+  await selectOrder();
   await expandTag();
-  await act(async () => button('Gerenciar este vínculo').props.onPress());
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Gerenciar vínculo'}),
+  );
   expect(mockNavigation.navigate).toHaveBeenCalledWith('Provisionar', {
     screen: 'Gerenciar',
     params: {provisioningId: link.id},
@@ -315,11 +407,9 @@ test('management stays unavailable to operators even when order details expose t
     .mocked(traceability.order)
     .mockResolvedValue({...order, provisionamentoVigente: link});
   await render();
-  await act(async () =>
-    tree.root.findByType(OrderSelect).props.onSelect(order),
-  );
+  await selectOrder();
   await expandTag();
-  expect(button('Gerenciar este vínculo')).toBeUndefined();
+  expect(button('Gerenciar vínculo')).toBeNull();
 });
 test('a scanned old NDEF epoch stays selected when the order has a newer current link', async () => {
   mockParams = {
@@ -334,7 +424,9 @@ test('a scanned old NDEF epoch stays selected when the order has a newer current
   });
   await render();
   await expandTag();
-  await act(async () => button('Gerenciar este vínculo').props.onPress());
+  await fireEvent.press(
+    screen.getByRole('button', {name: 'Gerenciar vínculo'}),
+  );
   expect(mockNavigation.navigate).toHaveBeenCalledWith('Provisionar', {
     screen: 'Gerenciar',
     params: {provisioningId: link.id},
@@ -363,14 +455,12 @@ test('pending logistics shows prerequisites and deadline instead of rejection', 
     totalDoPedido: 1,
   });
   await render();
-  await act(async () =>
-    tree.root.findByType(OrderSelect).props.onSelect(order),
-  );
-  const text = JSON.stringify(tree.toJSON());
+  await selectOrder();
+  const text = renderedText(tree);
   expect(text).toContain('Aguardando etapa anterior · salva no servidor');
   expect(text).toContain('Aguardando:');
   expect(text).toContain('Coleta');
-  expect(text).toContain('Prazo para conciliação:');
+  expect(text).toContain('Prazo:');
   expect(text).not.toContain('Operação rejeitada · pedido não alterado');
 });
 
@@ -398,12 +488,22 @@ test('history displays all decision revisions with separate evaluation and recei
     totalDoPedido: 1,
   });
   await render();
-  await act(async () =>
-    tree.root.findByType(OrderSelect).props.onSelect(order),
-  );
-  const text = JSON.stringify(tree.toJSON());
+  await selectOrder();
+  const text = renderedText(tree);
   expect(text).toContain('Evolução da decisão');
-  expect(text).toContain('Decisão ');
+  expect(text).not.toContain('Decisão ');
+  await expandDetails('Evolução da decisão');
+  expect(renderedText(tree)).toContain('Decisão ');
   expect(text).toContain('Operação autorizada');
   expect(text).toContain('Recebido pelo servidor:');
 });
+
+async function expandDetails(title: string) {
+  await fireEvent.press(screen.getByRole('button', {name: title}));
+}
+
+async function selectOrder() {
+  const control = await screen.findByRole('button', {name: /TCC-001/});
+  expect(control).toBeEnabled();
+  await fireEvent.press(control);
+}

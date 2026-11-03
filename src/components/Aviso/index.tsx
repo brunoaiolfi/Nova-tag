@@ -8,7 +8,7 @@ import HStack from '../Base/HStack';
 import {trackingColors as colors} from '../Tracking';
 
 type AvisoProps = {
-  icone?: string;
+  icone?: string | undefined;
   children: React.ReactNode;
 };
 

@@ -3,7 +3,8 @@
     "name": "Nova-tag NFC",
     "slug": "nova-tag-nfc",
     "scheme": "novatag",
-    "version": "0.3.0",
+    "version": "0.4.0",
+    "experiments": {"reactCompiler": true},
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "web": {
@@ -21,11 +22,11 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "5"
     },
     "android": {
       "package": "com.joaoaugustopf.novatag.nfc",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": ["android.permission.NFC"]
     },
     "plugins": [

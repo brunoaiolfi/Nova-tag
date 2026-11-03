@@ -1,62 +1,57 @@
+import {decodeDecision} from '../traceability/contracts/decision-decoder';
 import {businessOutcome} from '../../domain/traceability/decision-status';
 import type {ExperimentJournal} from '../experimentation/journal';
-import type {Attempt} from '../../domain/experimentation/types';
-import type {Api} from '../traceability/workflow';
+import type {Attempt} from '../../domain/experimentation/attempt';
+import type {Api} from '../auth/ports/authenticated-api';
 import {assertSdmReading} from '../../domain/traceability/sdm-reading';
-import type {
-  Reading,
-  Provisioning,
-  Observation,
-  Decision,
-} from '../../domain/traceability/types';
-import {
-  CaptureContext,
-  CaptureOwner,
-  CaptureStore,
-  QueuedCapture,
-  OfflineError,
-} from '../../domain/offline/types';
+import type {Reading} from '../../domain/traceability/reading';
+import type {Provisioning} from '../../domain/traceability/provisioning';
+import type {Observation} from '../../domain/traceability/observation';
+import type {Decision} from '../../domain/traceability/decision';
+import {CaptureContext} from './capture-context.types';
+import {CaptureOwner} from '../../domain/offline/owner';
+import {CaptureStore} from './ports/capture-store';
+import {QueuedCapture} from '../../domain/offline/capture';
+import {OfflineError} from './offline-error';
+import {decodeBatch} from './batch-decoder';
+import {record} from '../../domain/validation/values';
+import {errorDetails} from '../../domain/validation/error-details';
 
 export interface OfflineSnapshot {
   loading: boolean;
   syncing: boolean;
-  items: QueuedCapture[];
+  items: readonly QueuedCapture[];
   error: string | null;
-}
-interface BatchItem {
-  indice: number;
-  id: string | null;
-  sucesso: boolean;
-  status: number;
-  codigo: string | null;
-  mensagem: string;
-  dados: Decision | null;
 }
 const captureAge = 24 * 60 * 60 * 1000;
 const leaseMs = 45000;
 function errorInfo(error: unknown) {
-  const item = error as {
-    code?: string;
-    status?: number;
-    message?: string;
-  } | null;
+  const item = errorDetails(error);
   return {
     code: item?.code ?? 'API_INDISPONIVEL',
-    status: item?.status,
+    ...(item.status !== undefined ? {status: item.status} : {}),
     message: item?.message ?? 'Não foi possível sincronizar agora.',
   };
 }
 function unavailable(error: unknown) {
-  const e = errorInfo(error);
+  const failure = errorInfo(error);
   return (
     ['API_INDISPONIVEL', 'RESPOSTA_INVALIDA'].includes(
-      (error as {code?: string})?.code ?? '',
+      errorDetails(error).code ?? '',
     ) ||
-    (e.status !== undefined && e.status >= 500)
+    (failure.status !== undefined && failure.status >= 500)
   );
 }
-function sameOwner(a: CaptureOwner | null, b: CaptureOwner | null) {
-  return !!a && !!b && a.userId === b.userId && a.baseUrl === b.baseUrl;
+function sameOwner(
+  expectedOwner: CaptureOwner | null,
+  actualOwner: CaptureOwner | null,
+) {
+  return (
+    !!expectedOwner &&
+    !!actualOwner &&
+    expectedOwner.userId === actualOwner.userId &&
+    expectedOwner.baseUrl === actualOwner.baseUrl
+  );
 }
 function immutable<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -67,8 +62,8 @@ function immutable<T>(value: T): T {
 }
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  if (value && typeof value === 'object') {
-    const object = value as Record<string, unknown>;
+  if (record(value)) {
+    const object = value;
     return (
       '{' +
       Object.keys(object)
@@ -81,24 +76,15 @@ function canonical(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 function decision(value: unknown): value is Decision {
-  if (!value || typeof value !== 'object') return false;
-  const receipt = value as Decision;
-  return (
-    receipt.armazenada === true &&
-    !!receipt.decisao &&
-    typeof receipt.decisao.autorizada === 'boolean' &&
-    typeof receipt.decisao.motivo === 'string' &&
-    ['REGULAR', 'SUSPEITO'].includes(receipt.decisao.classificacao) &&
-    Array.isArray(receipt.decisao.avisos) &&
-    receipt.decisao.avisos.every(warning => typeof warning === 'string') &&
-    (receipt.decisao.revisao === undefined ||
-      (Number.isInteger(receipt.decisao.revisao) &&
-        receipt.decisao.revisao >= 1)) &&
-    (receipt.decisao.status === undefined ||
-      ['AUTORIZADA', 'PENDENTE', 'REJEITADA', 'TARDIA'].includes(
-        receipt.decisao.status,
-      ))
-  );
+  try {
+    const receipt = decodeDecision(value);
+    return (
+      receipt.armazenada &&
+      ['REGULAR', 'SUSPEITO'].includes(receipt.decisao.classificacao)
+    );
+  } catch {
+    return false;
+  }
 }
 function bytes(value: string) {
   let size = 0;
@@ -116,7 +102,7 @@ export class OfflineCoordinator {
     error: null,
   };
   private listeners = new Set<() => void>();
-  private synchronization?: Promise<void>;
+  private synchronization: Promise<void> | undefined;
   private view?: OfflineSnapshot;
   private viewSource?: OfflineSnapshot;
   private viewOwner = '';
@@ -132,15 +118,23 @@ export class OfflineCoordinator {
   getSnapshot = () => {
     const owner = this.context();
     const key = owner ? owner.baseUrl + '/' + owner.userId : '';
-    if (this.viewSource !== this.snapshot || this.viewOwner !== key) {
+    if (
+      !this.view ||
+      this.viewSource !== this.snapshot ||
+      this.viewOwner !== key
+    ) {
       this.viewSource = this.snapshot;
       this.viewOwner = key;
-      this.view = {
+      this.view = Object.freeze({
         ...this.snapshot,
-        items: this.snapshot.items.filter(item => sameOwner(owner, item.owner)),
-      };
+        items: Object.freeze(
+          this.snapshot.items
+            .filter(item => sameOwner(owner, item.owner))
+            .map(item => Object.freeze({...item})),
+        ),
+      });
     }
-    return this.view!;
+    return this.view;
   };
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -151,6 +145,10 @@ export class OfflineCoordinator {
   private publish(patch: Partial<OfflineSnapshot>) {
     this.snapshot = {...this.snapshot, ...patch};
     this.listeners.forEach(listener => listener());
+  }
+  reportBackgroundFailure(error: unknown, expectedOwner: CaptureOwner): void {
+    if (!sameOwner(expectedOwner, this.context())) return;
+    this.publish({error: errorInfo(error).message});
   }
   async refresh() {
     const owner = this.context();
@@ -186,19 +184,19 @@ export class OfflineCoordinator {
         'CONEXAO_NECESSARIA',
         'Conecte-se para disponibilizar esta etiqueta offline.',
       );
-    const p = await this.resolve(reading);
+    const provisioning = await this.resolve(reading);
     if (!sameOwner(owner, this.context()))
       throw new OfflineError(
         'OPERADOR_DIVERGENTE',
         'A sessão mudou. Faça uma nova leitura.',
       );
-    if (p.status !== 'ATIVA')
+    if (provisioning.status !== 'ATIVA')
       throw new OfflineError(
         'VINCULO_INATIVO',
         'Ative o vínculo antes de disponibilizar a etiqueta offline.',
       );
-    await this.store.remember(owner, p, this.now());
-    return p;
+    await this.store.remember(owner, provisioning, this.now());
+    return provisioning;
   }
   async capture(
     reading: Reading,
@@ -215,7 +213,10 @@ export class OfflineCoordinator {
         'OPERADOR_DIVERGENTE',
         'Entre com o operador que realizou a leitura para confirmar esta captura.',
       );
-    const raw = immutable(JSON.parse(JSON.stringify(reading)) as Reading);
+    const raw = immutable({
+      ...reading,
+      ...(reading.tecnologias ? {tecnologias: [...reading.tecnologias]} : {}),
+    });
     if (
       typeof raw.uid !== 'string' ||
       !raw.uid.trim() ||
@@ -248,40 +249,45 @@ export class OfflineCoordinator {
       await this.experiment?.confirmedLocal(existing);
       return existing;
     }
-    let p: Provisioning | null = null;
+    let provisioning: Provisioning | null = null;
     let cacheUsed = !owner.canSend;
     if (owner.canSend) {
       try {
-        p = await this.resolve(raw);
+        provisioning = await this.resolve(raw);
       } catch (error) {
         if (!unavailable(error)) throw error;
         cacheUsed = true;
       }
     }
     if (cacheUsed)
-      p = await this.store.cached(owner, raw, this.now(), captureAge);
-    if (!p)
+      provisioning = await this.store.cached(
+        owner,
+        raw,
+        this.now(),
+        captureAge,
+      );
+    if (!provisioning)
       throw new OfflineError(
         'ETIQUETA_NAO_DISPONIVEL_OFFLINE',
         'Esta etiqueta não está disponível offline ou sua confirmação expirou. Conecte-se e use Disponibilizar etiqueta antes de sair para a coleta.',
       );
-    if (p.status !== 'ATIVA')
+    if (provisioning.status !== 'ATIVA')
       throw new OfflineError(
         'VINCULO_INATIVO',
         'O vínculo precisa estar ativo para capturar.',
       );
-    assertSdmReading(p, raw);
+    assertSdmReading(provisioning, raw);
     const current = this.context();
     if (!sameOwner(owner, current) || !current?.canCapture)
       throw new OfflineError(
         'OPERADOR_DIVERGENTE',
         'A sessão mudou. A captura não foi confirmada.',
       );
-    if (!cacheUsed) await this.store.remember(owner, p, this.now());
+    if (!cacheUsed) await this.store.remember(owner, provisioning, this.now());
     const payload: Observation = immutable({
       id,
       versaoContrato: 1,
-      provisionamentoId: p.id,
+      provisionamentoId: provisioning.id,
       tipo: type,
       ocorridoEm: occurredAt,
       dispositivoId: deviceId,
@@ -293,20 +299,17 @@ export class OfflineCoordinator {
         'CAPTURA_EXCEDIDA',
         'A captura excede o tamanho permitido. Ela ainda não foi confirmada.',
       );
+    const experimentalCapture =
+      experimentAttempt && this.experiment
+        ? await this.experiment.capture(experimentAttempt, payload)
+        : undefined;
     const saved = await this.store.enqueue(
       owner,
       payload,
       {
-        provisioning: p,
+        provisioning: provisioning,
         cacheUsed,
-        ...(experimentAttempt
-          ? {
-              experiment: await this.experiment?.capture(
-                experimentAttempt,
-                payload,
-              ),
-            }
-          : {}),
+        ...(experimentalCapture ? {experiment: experimentalCapture} : {}),
       },
       this.now(),
     );
@@ -354,8 +357,11 @@ export class OfflineCoordinator {
         for (const item of claimed) {
           const candidate = [...sent, item];
           if (
-            bytes(JSON.stringify({itens: candidate.map(c => c.payload)})) <=
-            28000
+            bytes(
+              JSON.stringify({
+                itens: candidate.map(capture => capture.payload),
+              }),
+            ) <= 28000
           )
             sent.push(item);
           else
@@ -372,14 +378,13 @@ export class OfflineCoordinator {
         for (const item of sent) await this.experiment?.sendStart(item);
         const started = this.experiment?.clock.nowMs() ?? 0;
         try {
-          const result = await this.api.request<{itens: BatchItem[]}>(
-            '/eventos/lote',
-            {
+          const result = decodeBatch(
+            await this.api.request('/eventos/lote', {
               method: 'POST',
               body: {itens: sent.map(item => item.payload)},
               expectedUserId: owner.userId,
               expectedBaseUrl: owner.baseUrl,
-            },
+            }),
           );
           const ended = this.experiment?.clock.nowMs() ?? 0;
           if (
@@ -389,7 +394,7 @@ export class OfflineCoordinator {
               (item, index) =>
                 !item ||
                 item.indice !== index ||
-                item.id !== sent[index].id ||
+                item.id !== sent[index]?.id ||
                 typeof item.sucesso !== 'boolean' ||
                 (item.sucesso
                   ? item.status !== 200 || !decision(item.dados)
@@ -403,8 +408,13 @@ export class OfflineCoordinator {
               'Resposta incompleta da API; a captura será reenviada com o mesmo identificador.',
             );
           }
-          for (const [index, item] of sent.entries()) {
-            const answer = result.itens[index];
+          for (const [index, answer] of result.itens.entries()) {
+            const item = sent[index];
+            if (!item)
+              throw new OfflineError(
+                'RESPOSTA_INVALIDA',
+                'Resposta sem captura correspondente.',
+              );
             await this.experiment?.sendEnd(
               item,
               started,
@@ -480,7 +490,7 @@ export class OfflineCoordinator {
         this.now() + Math.min(300000, 1000 * 2 ** Math.min(item.attempts, 9)),
     });
   }
-  private decisionRefresh?: Promise<void>;
+  private decisionRefresh: Promise<void> | undefined;
   refreshDecisions() {
     this.decisionRefresh ??= this.fetchDecisions().finally(() => {
       this.decisionRefresh = undefined;
@@ -498,10 +508,12 @@ export class OfflineCoordinator {
       item => item.state === 'STORED' && item.businessState === 'PENDING',
     );
     for (const item of pending) {
-      const result = await this.api.request<Decision>('/eventos/' + item.id, {
-        expectedUserId: owner.userId,
-        expectedBaseUrl: owner.baseUrl,
-      });
+      const result = decodeDecision(
+        await this.api.request('/eventos/' + item.id, {
+          expectedUserId: owner.userId,
+          expectedBaseUrl: owner.baseUrl,
+        }),
+      );
       if (!sameOwner(owner, this.context()) || !decision(result)) break;
       await this.store.updateDecision(owner, item.id, result);
       await this.experiment?.decision(item, result);

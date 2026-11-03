@@ -1,0 +1,1767 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "NFC Trace API",
+    "description": "API experimental com sessões revogáveis. Identidade autenticada é registrada separadamente do operador/dispositivo declarados. HTTP 200 em eventos confirma armazenamento; a decisão informa se a movimentação foi autorizada. UID/NDEF não são autenticação criptográfica.",
+    "version": "1.1.0",
+    "contact": {}
+  },
+  "x-source-file": "nfc-trace-api/docs/openapi.json",
+  "x-source-sha256": "8d3dd907abfb06d5ce9ae4b94b135b1a3a7d99dbfad5583d8e3fad1ee8e382a7",
+  "paths": {
+    "/api/v1/pedidos": {
+      "post": {
+        "operationId": "OrdersController_createOrder",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "$ref": "#/components/schemas/OrderResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Pedidos"
+        ]
+      },
+      "get": {
+        "operationId": "OrdersController_list",
+        "parameters": [
+          {
+            "name": "pagina",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limite",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "busca",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "type": "object",
+                      "required": [
+                        "itens",
+                        "total",
+                        "pagina",
+                        "limite"
+                      ],
+                      "properties": {
+                        "itens": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/OrderResponse"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "pagina": {
+                          "type": "integer"
+                        },
+                        "limite": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Pedidos"
+        ]
+      }
+    },
+    "/api/v1/pedidos/{id}": {
+      "get": {
+        "operationId": "OrdersController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "$ref": "#/components/schemas/OrderDetailsResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Pedidos"
+        ]
+      }
+    },
+    "/api/v1/pedidos/{id}/eventos": {
+      "get": {
+        "operationId": "OrdersController_history",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagina",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limite",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "type": "object",
+                      "required": [
+                        "itens",
+                        "total",
+                        "pagina",
+                        "limite"
+                      ],
+                      "properties": {
+                        "itens": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/HistoryResponse"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "pagina": {
+                          "type": "integer"
+                        },
+                        "limite": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Pedidos"
+        ]
+      }
+    },
+    "/api/v1/autenticacao/login": {
+      "post": {
+        "operationId": "AuthenticationController_signIn",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "$ref": "#/components/schemas/LoginResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Iniciar sessão revogável (token exibido uma única vez)",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/v1/autenticacao/sessao": {
+      "get": {
+        "operationId": "AuthenticationController_session",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "$ref": "#/components/schemas/SessionResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar a identidade verificada da sessão atual",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/v1/autenticacao/logout": {
+      "post": {
+        "operationId": "AuthenticationController_logout",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sucesso",
+                    "mensagem",
+                    "dados"
+                  ],
+                  "properties": {
+                    "sucesso": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "mensagem": {
+                      "type": "string"
+                    },
+                    "dados": {
+                      "$ref": "#/components/schemas/LogoutResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revogar somente a sessão atual",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateOrderDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "example": "TCC-001",
+            "maxLength": 64
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "codigo"
+        ]
+      },
+      "OrderResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "CADASTRADO",
+              "COLETADO",
+              "RECEBIDO",
+              "ENTREGUE"
+            ]
+          },
+          "expedido": {
+            "type": "boolean"
+          },
+          "versao": {
+            "type": "number"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "codigo",
+          "descricao",
+          "estado",
+          "expedido",
+          "versao",
+          "criadoEm"
+        ]
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "sucesso": {
+            "type": "boolean",
+            "example": false
+          },
+          "mensagem": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "example": "ACESSO_NEGADO"
+          },
+          "correlacaoId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sucesso",
+          "mensagem",
+          "codigo",
+          "correlacaoId"
+        ]
+      },
+      "Object": {
+        "type": "object",
+        "properties": {}
+      },
+      "OrderDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "CADASTRADO",
+              "COLETADO",
+              "RECEBIDO",
+              "ENTREGUE"
+            ]
+          },
+          "expedido": {
+            "type": "boolean"
+          },
+          "versao": {
+            "type": "number"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provisionamentoVigente": {
+            "nullable": true,
+            "description": "Vínculo registrado ou ativo do pedido; null quando não há vínculo vigente.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProvisioningResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "codigo",
+          "descricao",
+          "estado",
+          "expedido",
+          "versao",
+          "criadoEm",
+          "provisionamentoVigente"
+        ]
+      },
+      "ProvisioningResponse": {
+        "type": "object",
+        "properties": {
+          "sdm": {
+            "$ref": "#/components/schemas/SdmConfigurationResponse"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "etiquetaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "modelo": {
+            "type": "string"
+          },
+          "pedidoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "estrategia": {
+            "type": "string",
+            "enum": [
+              "UID",
+              "NDEF_ESTATICO",
+              "SDM"
+            ]
+          },
+          "epoca": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "REGISTRADA",
+              "ATIVA",
+              "DESPROVISIONADA"
+            ]
+          },
+          "referenciaNdef": {
+            "type": "string",
+            "nullable": true
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ativadoEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "encerradoEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "etiquetaId",
+          "uid",
+          "modelo",
+          "pedidoId",
+          "estrategia",
+          "epoca",
+          "status",
+          "referenciaNdef",
+          "criadoEm",
+          "ativadoEm",
+          "encerradoEm"
+        ]
+      },
+      "SdmConfigurationResponse": {
+        "type": "object",
+        "properties": {
+          "perfil": {
+            "type": "string",
+            "enum": [
+              "nfc-trace.sdm.encrypted-picc.v1"
+            ]
+          },
+          "perfilCandidato": {
+            "type": "boolean",
+            "example": true
+          },
+          "politica": {
+            "type": "string",
+            "enum": [
+              "ESTRITA",
+              "REGISTRO_TARDIO"
+            ]
+          },
+          "referenciaChaves": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versaoChaves": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "metaReadSlot": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "fileReadSlot": {
+            "type": "number",
+            "enum": [
+              2
+            ]
+          },
+          "uriTemplate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "perfil",
+          "perfilCandidato",
+          "politica",
+          "referenciaChaves",
+          "versaoChaves",
+          "metaReadSlot",
+          "fileReadSlot",
+          "uriTemplate"
+        ]
+      },
+      "HistoryResponse": {
+        "type": "object",
+        "properties": {
+          "historicoDecisoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DecisionResponse"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "ocorridoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recebidoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provisionamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "SISTEMA",
+              "CAPTURA"
+            ]
+          },
+          "autoria": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuthorshipResponse"
+              }
+            ]
+          },
+          "decisao": {
+            "$ref": "#/components/schemas/DecisionResponse"
+          }
+        },
+        "required": [
+          "historicoDecisoes",
+          "id",
+          "tipo",
+          "ocorridoEm",
+          "recebidoEm",
+          "provisionamentoId",
+          "origem",
+          "autoria",
+          "decisao"
+        ]
+      },
+      "DecisionResponse": {
+        "type": "object",
+        "properties": {
+          "revisao": {
+            "type": "number",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AUTORIZADA",
+              "PENDENTE",
+              "REJEITADA",
+              "TARDIA"
+            ]
+          },
+          "avaliadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "causaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dependencias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DependencyResponse"
+            }
+          },
+          "sdm": {
+            "$ref": "#/components/schemas/SdmDecisionResponse"
+          },
+          "autorizada": {
+            "type": "boolean"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "classificacao": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "SUSPEITO"
+            ]
+          },
+          "evidencia": {
+            "type": "string",
+            "enum": [
+              "IDENTIFICADA",
+              "INVALIDA",
+              "NAO_AVALIADA"
+            ]
+          },
+          "alterouEstado": {
+            "type": "boolean"
+          },
+          "estadoAnterior": {
+            "type": "string",
+            "nullable": true
+          },
+          "estadoResultante": {
+            "type": "string",
+            "nullable": true
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "revisao",
+          "status",
+          "avaliadaEm",
+          "causaId",
+          "expiraEm",
+          "dependencias",
+          "autorizada",
+          "motivo",
+          "classificacao",
+          "evidencia",
+          "alterouEstado",
+          "estadoAnterior",
+          "estadoResultante",
+          "avisos"
+        ]
+      },
+      "DependencyResponse": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "COLETA",
+              "RECEBIMENTO"
+            ]
+          },
+          "estadoNecessario": {
+            "type": "string",
+            "enum": [
+              "COLETADO",
+              "RECEBIDO"
+            ]
+          }
+        },
+        "required": [
+          "tipo",
+          "estadoNecessario"
+        ]
+      },
+      "SdmDecisionResponse": {
+        "type": "object",
+        "properties": {
+          "perfil": {
+            "type": "string"
+          },
+          "politica": {
+            "type": "string",
+            "enum": [
+              "ESTRITA",
+              "REGISTRO_TARDIO"
+            ]
+          },
+          "epoca": {
+            "type": "number"
+          },
+          "autenticada": {
+            "type": "boolean"
+          },
+          "previamenteUtilizada": {
+            "type": "boolean"
+          },
+          "contador": {
+            "type": "number",
+            "nullable": true
+          },
+          "maiorContadorAnterior": {
+            "type": "number",
+            "nullable": true
+          },
+          "temporalidade": {
+            "type": "string",
+            "enum": [
+              "NAO_AVALIADA",
+              "NOVA",
+              "TARDIA",
+              "REUTILIZADA"
+            ]
+          }
+        },
+        "required": [
+          "perfil",
+          "politica",
+          "epoca",
+          "autenticada",
+          "previamenteUtilizada",
+          "contador",
+          "maiorContadorAnterior",
+          "temporalidade"
+        ]
+      },
+      "AuthorshipResponse": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "AUTENTICADA",
+              "DECLARADA"
+            ]
+          },
+          "usuarioId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sessaoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "perfil": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "tipo",
+          "usuarioId",
+          "sessaoId",
+          "perfil"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string",
+            "example": "operador.lab"
+          },
+          "senha": {
+            "type": "string",
+            "format": "password",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "login",
+          "senha"
+        ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tokenAcesso": {
+            "type": "string",
+            "description": "Token opaco. Guardar no armazenamento seguro; nunca em logs."
+          }
+        },
+        "required": [
+          "usuario",
+          "expiraEm",
+          "tokenAcesso"
+        ]
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "login": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "perfil": {
+            "type": "string",
+            "enum": [
+              "ADMINISTRADOR",
+              "OPERADOR",
+              "CONSULTA"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "login",
+          "nome",
+          "perfil"
+        ]
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "usuario",
+          "expiraEm"
+        ]
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "properties": {
+          "encerrada": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "encerrada"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Token opaco retornado por POST /api/v1/autenticacao/login."
+      }
+    }
+  }
+}

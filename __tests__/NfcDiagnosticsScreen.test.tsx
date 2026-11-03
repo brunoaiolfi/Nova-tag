@@ -1,9 +1,17 @@
+import {renderedText} from '../test-support/rendered-text';
+import {createTestServices, withServices} from '../test-support/app-services';
 import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
+import {
+  render as renderProbe,
+  act,
+  screen,
+  fireEvent,
+} from '@testing-library/react-native';
+import type {RenderResult} from '@testing-library/react-native';
 import {Share} from 'react-native';
-import {List, PaperProvider, Text} from 'react-native-paper';
+import {PaperProvider} from 'react-native-paper';
 import Diagnostico from '../src/views/Provisionar/Diagnostico';
-import {ActionButton} from '../src/components/Tracking';
+
 import {ndefFileSettings} from '../src/domain/nfc/file-settings';
 import {createSdmBenchPlan} from '../src/domain/nfc/sdm-profile';
 import {cancelPhysicalRead} from '../src/infra/nfc/reader';
@@ -21,6 +29,8 @@ jest.mock('../src/infra/nfc/diagnostics', () => ({
   ...jest.requireActual('../src/infra/nfc/diagnostics'),
   diagnosePhysicalTag: jest.fn(),
 }));
+const services = createTestServices({});
+
 const fixture: PhysicalTagReport = {
   reportVersion: 2,
   capturedAt: '2026-10-06T12:00:00.000Z',
@@ -47,30 +57,20 @@ const fixture: PhysicalTagReport = {
   uidMatchesProduction: null,
   fileSettings: {issue: 'Modelo não confirmado; permissões não consultadas.'},
 };
-let tree: TestRenderer.ReactTestRenderer;
-const button = (label: string) =>
-  tree.root
-    .findAllByType(ActionButton)
-    .find(item => item.props.children === label)!;
-const text = () =>
-  tree.root
-    .findAllByType(Text)
-    .map(item => item.props.children)
-    .flat()
-    .join(' ');
+let tree: RenderResult;
+const button = (label: string) => screen.getByRole('button', {name: label});
+const text = () => renderedText(tree);
 async function mount() {
-  await act(async () => {
-    tree = TestRenderer.create(
+  tree = await renderProbe(
+    withServices(
       <PaperProvider>
         <Diagnostico />
       </PaperProvider>,
-    );
-  });
+      services,
+    ),
+  );
 }
 afterEach(async () => {
-  await act(async () => {
-    tree?.unmount();
-  });
   jest.restoreAllMocks();
   jest.clearAllMocks();
 });
@@ -80,19 +80,19 @@ test('scan is explicit, unknown hardware stays visible and sharing uses original
   jest.spyOn(Share, 'share').mockResolvedValue({action: Share.sharedAction});
   await mount();
   expect(diagnosePhysicalTag).not.toHaveBeenCalled();
-  await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Diagnosticar'));
+
   expect(text()).toContain('NTAG 424 DNA não confirmada');
   expect(text()).toContain(fixture.uid);
   expect(text()).toContain('A mensagem NDEF está vazia');
-  await act(async () => {
-    tree.root.findByType(List.Accordion).props.onPress();
-  });
+
+  await fireEvent.press(screen.getByText('Dados técnicos da consulta'));
+
   expect(text()).toContain('9060000000');
-  await act(async () => {
-    button('Compartilhar diagnóstico').props.onPress();
-  });
+
+  await fireEvent.press(button('Compartilhar diagnóstico'));
+
   expect(Share.share).toHaveBeenCalledWith({
     title: 'Diagnóstico NFC Nova-tag',
     message: diagnosticJson(fixture),
@@ -109,15 +109,14 @@ test('a failed second scan preserves the previous dated result and shows the err
     .mockResolvedValueOnce(fixture)
     .mockRejectedValueOnce(new Error('Conexão perdida'));
   await mount();
-  await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
-  });
-  await act(async () => {
-    button('Diagnosticar outra etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Diagnosticar'));
+
+  await fireEvent.press(button('Outra etiqueta'));
+
   expect(text()).toContain('Conexão perdida');
   expect(text()).toContain(fixture.uid);
-  expect(button('Diagnosticar outra etiqueta').props.disabled).toBe(false);
+  expect(button('Outra etiqueta')).toBeEnabled();
 });
 
 test('native permissions remain declarations and never mark SDM or protection as verified', async () => {
@@ -127,16 +126,16 @@ test('native permissions remain declarations and never mark SDM or protection as
     fileSettings: {value: plan.expectedSettings},
   });
   await mount();
-  await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Diagnosticar'));
+
   expect(text()).toContain('As rotas de escrita disponíveis exigem chave');
   expect(text()).toContain('SDM declarado como habilitado');
   expect(text()).toContain('Isso não verifica a mensagem');
   expect(text()).toContain('confirmada em bancada');
-  await act(async () => {
-    tree.root.findByType(List.Accordion).props.onPress();
-  });
+
+  await fireEvent.press(screen.getByText('Dados técnicos da consulta'));
+
   expect(text()).toContain(plan.expectedSettings.rawHex);
   const exported = JSON.parse(
     diagnosticJson({...fixture, fileSettings: {value: plan.expectedSettings}}),
@@ -151,9 +150,9 @@ test('a free ReadWrite path is visible even when the Write permission requires a
     .mocked(diagnosePhysicalTag)
     .mockResolvedValue({...fixture, fileSettings: {value}});
   await mount();
-  await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Diagnosticar'));
+
   expect(text()).toContain('uma rota de escrita livre');
   expect(text()).toContain('SDM declarado como desabilitado');
 });
@@ -166,9 +165,9 @@ test('an older report retained by Fast Refresh remains readable without native s
   } as unknown as PhysicalTagReport;
   jest.mocked(diagnosePhysicalTag).mockResolvedValue(oldReport);
   await mount();
-  await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
-  });
+
+  await fireEvent.press(button('Diagnosticar'));
+
   expect(text()).toContain(fixture.uid);
   expect(text()).toContain('Permissões nativas não disponíveis');
   expect(text()).toContain('A mensagem NDEF está vazia');
@@ -183,12 +182,12 @@ test('leaving an active diagnosis cancels it and discards its late result', asyn
       }),
   );
   await mount();
+
+  await fireEvent.press(button('Diagnosticar'));
+
+  expect(button('Diagnosticar')).toBeDisabled();
   await act(async () => {
-    button('Diagnosticar etiqueta').props.onPress();
-  });
-  expect(button('Diagnosticar etiqueta').props.disabled).toBe(true);
-  await act(async () => {
-    tree.unmount();
+    await tree.unmount();
   });
   expect(cancelPhysicalRead).toHaveBeenCalledTimes(1);
   await act(async () => {

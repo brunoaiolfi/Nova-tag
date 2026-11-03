@@ -1,3 +1,4 @@
+import {requiredItem} from '../test-support/required-item';
 import {inspectType4} from '../src/appplication/nfc/inspect-type4';
 import {NfcFailure} from '../src/domain/nfc/failure';
 import {
@@ -42,20 +43,22 @@ function fixture(
       return bytes('9000');
     }
     if (encoded === '9060000000' || encoded === '90AF000000') {
-      return bytes((options.versions ?? version)[frame++]);
+      return bytes(requiredItem(options.versions ?? version, frame++));
     }
     if (encoded === '90F50000010200') {
       // Synthetic configured permissions, not proof of physical protection.
       return bytes(options.settings ?? '000000E00001009100');
     }
-    if (command[1] === 0xa4 && command[2] === 0) {
-      selected = command[5] * 256 + command[6];
+    if (command[1] === 0xa4 && requiredItem(command, 2) === 0) {
+      selected = requiredItem(command, 5) * 256 + requiredItem(command, 6);
       return bytes('9000');
     }
     if (command[1] === 0xb0) {
-      const start = command[2] * 256 + command[3];
+      const start = requiredItem(command, 2) * 256 + requiredItem(command, 3);
       const source = selected === 0xe103 ? options.cc ?? cc : file;
-      const count = options.shortRead ? command[4] - 1 : command[4];
+      const count = options.shortRead
+        ? requiredItem(command, 4) - 1
+        : requiredItem(command, 4);
       return [...source.slice(start, start + count), ...bytes('9000')];
     }
     throw new Error(`Unexpected or non-read-only command ${encoded}`);
@@ -107,7 +110,11 @@ test('file settings are queried only for a compatible model, before consecutive 
       .every(command => command.startsWith('00B0')),
   ).toBe(true);
   const unknown = fixture({
-    versions: ['5304083000110591AF', version[1], version[2]],
+    versions: [
+      '5304083000110591AF',
+      requiredItem(version, 1),
+      requiredItem(version, 2),
+    ],
   });
   expect((await inspectType4(unknown)).fileSettings.value).toBeUndefined();
   expect(unknown.commands).not.toContain('90F50000010200');
@@ -142,7 +149,13 @@ test('physical loss during file settings aborts the diagnostic before NDEF reads
 
 test('unknown vendor is not labeled NTAG 424 and an unavailable GET_VERSION still permits independent NDEF diagnosis', async () => {
   const unknown = await inspectType4(
-    fixture({versions: ['5304083000110591AF', version[1], version[2]]}),
+    fixture({
+      versions: [
+        '5304083000110591AF',
+        requiredItem(version, 1),
+        requiredItem(version, 2),
+      ],
+    }),
   );
   expect(unknown.version.value?.compatibleNtag424).toBe(false);
   const unavailable = await inspectType4(fixture({versions: ['6D00']}));
@@ -159,7 +172,11 @@ test('malformed or endlessly chained versions are bounded and never confirm the 
     short.commands.filter(command => command === '90AF000000'),
   ).toHaveLength(0);
   const chained = fixture({
-    versions: [version[0], version[1], '04968CAA5C5E80CD65935D40211891AF'],
+    versions: [
+      requiredItem(version, 0),
+      requiredItem(version, 1),
+      '04968CAA5C5E80CD65935D40211891AF',
+    ],
   });
   expect((await inspectType4(chained)).version.value).toBeUndefined();
   expect(
@@ -171,12 +188,12 @@ test('random or hidden production UID is reported, not inferred from manufacture
   const frames = version.map(value => response(bytes(value)).data);
   expect(
     tagVersion([
-      frames[0],
-      frames[1],
-      [...Array(7).fill(0), ...frames[2].slice(7)],
+      requiredItem(frames, 0),
+      requiredItem(frames, 1),
+      [...Array(7).fill(0), ...requiredItem(frames, 2).slice(7)],
     ]),
   ).toMatchObject({uidHidden: true, productionUid: '00000000000000'});
-  expect(() => tagVersion([frames[0]])).toThrow('incompletos');
+  expect(() => tagVersion([requiredItem(frames, 0)])).toThrow('incompletos');
   expect(() => response([300, 0x90, 0])).toThrow('inválida');
 });
 

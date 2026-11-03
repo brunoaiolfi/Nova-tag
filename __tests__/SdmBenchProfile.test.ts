@@ -1,7 +1,6 @@
-import {
-  ndefFileSettings,
-  writeAccessSummary,
-} from '../src/domain/nfc/file-settings';
+import {requiredItem} from '../test-support/required-item';
+import {ndefFileSettings} from '../src/domain/nfc/file-settings';
+import {writeAccessSummary} from '../src/components/Nfc/file-access-labels';
 import {
   createSdmBenchPlan,
   compareSdmLayout,
@@ -111,12 +110,12 @@ test('versioned plan calculates offsets in the file including NLEN, record heade
   expect(plan.status).toBe('CANDIDATO_BANCADA');
   expect(plan.provisioningId).toBe(id);
   expect(plan.fileBytes.length).toBeLessThanOrEqual(256);
-  expect(plan.fileBytes[0] * 256 + plan.fileBytes[1]).toBe(
-    plan.messageBytes.length,
-  );
-  expect(utf8(wireNdefRecords(plan.messageBytes)[0].payload.slice(1))).toBe(
-    plan.uriTemplate,
-  );
+  expect(
+    requiredItem(plan.fileBytes, 0) * 256 + requiredItem(plan.fileBytes, 1),
+  ).toBe(plan.messageBytes.length);
+  expect(
+    utf8(requiredItem(wireNdefRecords(plan.messageBytes), 0).payload.slice(1)),
+  ).toBe(plan.uriTemplate);
   expect(
     String.fromCharCode(
       ...plan.fileBytes.slice(

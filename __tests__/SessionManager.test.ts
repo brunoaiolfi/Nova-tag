@@ -1,10 +1,8 @@
 import {SessionManager} from '../src/appplication/auth/session-manager';
-import {
-  Session,
-  SessionError,
-  SessionStorage,
-  Transport,
-} from '../src/domain/auth/types';
+import {Session} from '../src/domain/auth/session';
+import {SessionError} from '../src/appplication/auth/session-error';
+import {SessionStorage} from '../src/appplication/auth/ports/session-storage';
+import {Transport} from '../src/appplication/auth/ports/transport';
 import {HttpTransport} from '../src/infra/auth/http-transport';
 
 const baseUrl = 'http://127.0.0.1:3000/api/v1';
@@ -366,4 +364,25 @@ describe('HTTP transport', () => {
       }),
     ).rejects.toMatchObject({code: 'CREDENCIAIS_INVALIDAS', status: 401});
   });
+});
+
+test('published session snapshots are stable, immutable and stop notifying after unsubscribe', async () => {
+  const {manager, send} = setup();
+  const initial = manager.getSnapshot();
+  expect(manager.getSnapshot()).toBe(initial);
+  expect(Object.isFrozen(initial)).toBe(true);
+  const listener = jest.fn();
+  const unsubscribe = manager.subscribe(listener);
+  send.mockResolvedValueOnce(result());
+  await manager.login(baseUrl, 'operator', 'password');
+  const authenticated = manager.getSnapshot();
+  expect(manager.getSnapshot()).toBe(authenticated);
+  expect(authenticated).not.toBe(initial);
+  expect(Object.isFrozen(authenticated)).toBe(true);
+  expect(Object.isFrozen(authenticated.session?.user)).toBe(true);
+  expect(listener).toHaveBeenCalledTimes(1);
+  unsubscribe();
+  send.mockResolvedValueOnce({encerrada: true});
+  await manager.logout();
+  expect(listener).toHaveBeenCalledTimes(1);
 });

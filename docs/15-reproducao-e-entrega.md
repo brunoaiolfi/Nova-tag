@@ -1,14 +1,15 @@
 # Reprodução e APK candidato — preparação da #9
 
-Branch `codex/issue-9-reproducibility`, sobre a instrumentação #7. Reconciliação e
+Branch `codex/issue-12-secure-messaging`, sobre a preparação #9. Reconciliação e
 offline estão implementados; protocolo/analista preliminares estão na API #18.
-NTAG/administração/proteção #12, piloto/coleta #8, integração na main e reprodução
+Administração NTAG tem [fluxo integrado candidato](16-administracao-ntag.md).
+Aceite/proteção física #12, piloto/coleta #8, integração na main e reprodução
 por outro integrante continuam pendentes. Esta preparação não fecha #9.
 
 ## Checkout e execução
 
 ```powershell
-git clone --branch codex/issue-9-reproducibility https://github.com/brunoaiolfi/Nova-tag.git
+git clone --branch codex/issue-12-secure-messaging https://github.com/brunoaiolfi/Nova-tag.git
 cd Nova-tag
 npm ci
 Copy-Item .env.example .env
@@ -36,8 +37,8 @@ npx expo prebuild --platform android --no-install
 .\android\gradlew.bat -p android assembleRelease --console=plain --no-daemon '-PreactNativeArchitectures=arm64-v8a,x86_64'
 ```
 
-APK: `android/app/build/outputs/apk/release/app-release.apk`, versão **0.3.0**,
-versionCode **3**, pacote `com.joaoaugustopf.novatag.nfc`. Bundle está embutido;
+APK: `android/app/build/outputs/apk/release/app-release.apk`, versão **0.4.0**,
+versionCode **4**, pacote `com.joaoaugustopf.novatag.nfc`. Bundle está embutido;
 não exige Metro para abrir. Inclui NFC/SQLite/SecureStore/rede. Este build é para
 laboratório com assinatura de desenvolvimento do template, não release de loja.
 Guardar log Gradle, SHA-256 do APK e manifesto. Não versionar keystores/binários.
@@ -101,3 +102,26 @@ Documentos 03/05/06/07/08 preservam registros históricos. O [estado atual](10-e
 e este guia definem reprodução vigente; falhas/limites históricos não significam
 que funcionalidades posteriores estejam ausentes. Integração/revisão/conclusões
 permanecem #9. Nenhum push/PR deve reativar os workflows automáticos do GitHub.
+
+## Build iOS de 7 de outubro de 2026
+
+Build **0.4.0 (5)** concluído no EAS, solicitado explicitamente pelo usuário para
+reinstalar no iPhone. SDK 57, perfil `development`, distribuição interna/ad hoc,
+bundle `com.joaoaugustopf.novatag.nfc`. As credenciais remotas existentes foram
+reutilizadas; o perfil inclui o iPhone já registrado. A validação do perfil contra
+os servidores Apple foi dispensada pelo modo não interativo; a instalação efetiva
+ainda precisa ser confirmada no aparelho.
+
+- Fonte enviada: `319fe6ae8f393f3ed739a7ef79a035939939bba0`, sem mudanças rastreadas.
+- Build: `05c703b8-a46a-4dbd-bd15-42cb36a260ef`, estado `FINISHED`.
+- [Abrir instalação no Safari do iPhone](https://expo.dev/accounts/joaoaugustopfpf/projects/nova-tag-nfc/builds/05c703b8-a46a-4dbd-bd15-42cb36a260ef).
+
+Inclui a revisão de navegação/espaçamento, administração NTAG, diários SQLite,
+fila offline e demais implementações atuais. O development client requer conexão
+ao Metro para carregar o aplicativo durante os testes. Instale por cima do app
+atual; desinstalar ou limpar dados remove os registros locais da fila.
+
+Esta compilação remota verifica a geração do binário iOS; não comprova instalação,
+renderização no iPhone nem NFC físico. O APK Android da revisão `6e9083b` continua
+sendo um artefato anterior, separado deste build. Foi iniciado apenas este build
+EAS iOS, com autorização explícita. Nenhum GitHub Actions ou merge foi realizado.

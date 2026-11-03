@@ -41,7 +41,7 @@ async function main() {
       'src',
       '--outDir',
       '.tmp/auth-contract',
-      'src/domain/auth/types.ts',
+      'src/domain/auth/session.ts',
       'src/appplication/auth/session-manager.ts',
       'src/infra/auth/http-transport.ts',
     ],

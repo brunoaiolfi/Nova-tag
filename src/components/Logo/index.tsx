@@ -1,7 +1,7 @@
 import React from 'react';
 import {Image, StyleSheet} from 'react-native';
 
-export default function Logo({size = 160}: {size?: number}) {
+export default function Logo({size = 160}: {size?: number | undefined}) {
   return (
     <Image
       source={require('../../../assets/logo.jpg')}

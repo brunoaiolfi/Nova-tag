@@ -1,10 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
-import {
-  isSession,
-  Session,
-  SessionError,
-  SessionStorage,
-} from '../../domain/auth/types';
+import {isSession} from '../../appplication/auth/session-decoder';
+import {Session} from '../../domain/auth/session';
+import {SessionError} from '../../appplication/auth/session-error';
+import {SessionStorage} from '../../appplication/auth/ports/session-storage';
 
 const key = 'com.novatag.preview.auth.session';
 export class SecureSessionStorage implements SessionStorage {

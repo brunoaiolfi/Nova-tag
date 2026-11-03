@@ -1,3 +1,4 @@
+import {requiredItem} from '../../test-support/required-item';
 import React, {useEffect, useState, useSyncExternalStore} from 'react';
 import {ScrollView, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import Constants from 'expo-constants';
@@ -9,12 +10,13 @@ import {TraceabilityWorkflow} from '../../src/appplication/traceability/workflow
 import {OfflineCoordinator} from '../../src/appplication/offline/coordinator';
 import {SqliteCaptureStore} from '../../src/infra/offline/sqlite-store';
 import {openCaptureDatabase} from '../../src/infra/offline/database';
+import {connectivity} from '../../src/infra/network/connectivity';
 import {
   OfflineProvider,
   useOffline,
 } from '../../src/components/Offline/OfflineProvider';
-import type {CaptureContext} from '../../src/domain/offline/types';
-import type {Reading} from '../../src/domain/traceability/types';
+import type {CaptureContext} from '../../src/appplication/offline/capture-context.types';
+import type {Reading} from '../../src/domain/traceability/reading';
 
 type Fixture = {
   baseUrl: string;
@@ -73,11 +75,11 @@ function Content() {
   }, []);
   const reading = (index: number): Reading => {
     const value: Reading = {
-      uid: fixture.tags[index].uid,
+      uid: requiredItem(fixture.tags, index).uid,
       bytesBase64: '0QEDVQBh',
       tecnologias: ['IsoDep', 'NfcA'],
     };
-    const reference = fixture.tags[index].reference;
+    const reference = requiredItem(fixture.tags, index).reference;
     if (typeof reference === 'string') value.ndef = reference;
     return value;
   };
@@ -193,7 +195,10 @@ function Content() {
 }
 export default function Harness() {
   return (
-    <OfflineProvider manager={queue} session={session}>
+    <OfflineProvider
+      manager={queue}
+      session={session}
+      connectivity={connectivity}>
       <Content />
     </OfflineProvider>
   );

@@ -1,12 +1,16 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-paper';
-import type {Decision} from '../../domain/traceability/types';
+import type {Decision} from '../../domain/traceability/decision';
+import {Details} from '.';
 
-export function SdmEvidence({sdm}: {sdm?: Decision['decisao']['sdm']}) {
+export function SdmEvidence({
+  sdm,
+}: {
+  sdm?: Decision['decisao']['sdm'] | undefined;
+}) {
   if (!sdm) return null;
   return (
-    <View style={styles.evidence}>
+    <Details title="Validação NFC">
       <Text>
         {sdm.autenticada
           ? 'Evidência autenticada pelo servidor'
@@ -32,7 +36,6 @@ export function SdmEvidence({sdm}: {sdm?: Decision['decisao']['sdm']}) {
           {sdm.maiorContadorAnterior ?? 'nenhum'}
         </Text>
       )}
-    </View>
+    </Details>
   );
 }
-const styles = StyleSheet.create({evidence: {gap: 6}});

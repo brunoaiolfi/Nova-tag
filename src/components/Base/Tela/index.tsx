@@ -1,16 +1,34 @@
-import React from 'react';
-import {ScrollView, StatusBar, StyleSheet, View} from 'react-native';
+import React, {useContext} from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  View,
+} from 'react-native';
+import type {StyleProp, ViewStyle} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {BottomTabBarHeightContext} from '@react-navigation/bottom-tabs';
+import {HeaderHeightContext} from '@react-navigation/elements';
 
 import {useAppTheme} from '../../../theme';
 
 type TelaProps = {
-  children?: React.ReactNode;
-  scroll?: boolean;
-  footer?: React.ReactNode;
-  header?: React.ReactNode;
+  children?: React.ReactNode | undefined;
+  scroll?: boolean | undefined;
+  footer?: React.ReactNode | undefined;
+  header?: React.ReactNode | undefined;
   /** Native stack headers already include the top safe area. */
-  insetTop?: boolean;
+  insetTop?: boolean | undefined;
+  keyboard?: boolean | undefined;
+  /** A virtualized list owns scrolling and receives the same screen padding/insets. */
+  renderContent?:
+    | ((layout: {
+        header?: React.ReactNode;
+        contentStyle: StyleProp<ViewStyle>;
+      }) => React.ReactNode)
+    | undefined;
 };
 
 const Tela = ({
@@ -19,12 +37,18 @@ const Tela = ({
   footer,
   header,
   insetTop = true,
+  renderContent,
+  keyboard = false,
 }: TelaProps) => {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
+  // A visible tab bar already protects the home indicator area.
+  const bottomInset = tabBarHeight > 0 ? 0 : insets.bottom;
   const contentStyle = [
     styles.conteudo,
-    {paddingBottom: 16 + (footer ? 0 : insets.bottom)},
+    {paddingBottom: 16 + (footer ? 0 : bottomInset)},
   ];
   const body = (
     <View style={[contentStyle, !!header && styles.sheet]}>{children}</View>
@@ -47,25 +71,33 @@ const Tela = ({
           header ? theme.colors.primary : theme.colors.background
         }
       />
-      {scroll ? (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          {header}
-          {body}
-        </ScrollView>
-      ) : (
-        <View style={styles.scrollContent}>
-          {header}
-          {body}
-        </View>
-      )}
-      {footer && (
-        <View style={[styles.footer, {paddingBottom: 16 + insets.bottom}]}>
-          {footer}
-        </View>
-      )}
+      <KeyboardAvoidingView
+        style={styles.scroll}
+        enabled={keyboard}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight}>
+        {renderContent ? (
+          renderContent({header, contentStyle})
+        ) : scroll ? (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled">
+            {header}
+            {body}
+          </ScrollView>
+        ) : (
+          <View style={styles.scrollContent}>
+            {header}
+            {body}
+          </View>
+        )}
+        {footer && (
+          <View style={[styles.footer, {paddingBottom: 12 + bottomInset}]}>
+            {footer}
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -79,17 +111,18 @@ const styles = StyleSheet.create({
   scrollContent: {flexGrow: 1},
   conteudo: {
     flexGrow: 1,
-    padding: 20,
+    padding: 16,
   },
   sheet: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -16,
   },
   footer: {
     flexShrink: 0,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#E3E7F2',

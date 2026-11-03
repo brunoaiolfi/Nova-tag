@@ -1,11 +1,11 @@
-import type {
-  ExperimentStorage,
-  ExperimentPlan,
-  ExperimentRecord,
-} from '../../domain/experimentation/types';
-import type {CaptureOwner} from '../../domain/offline/types';
-import {OfflineError} from '../../domain/offline/types';
+import type {ExperimentStorage} from '../../appplication/experimentation/ports/experiment-storage';
+import type {ExperimentPlan} from '../../domain/experimentation/plan';
+import type {ExperimentRecord} from '../../domain/experimentation/record';
+import type {CaptureOwner} from '../../domain/offline/owner';
+import {OfflineError} from '../../appplication/offline/offline-error';
 import type {SqlConnection} from '../offline/sqlite-store';
+import {decodeExperimentRecord} from '../../appplication/experimentation/record-decoder';
+import {decodeExperimentPlan} from '../../appplication/experimentation/plan-decoder';
 
 // Called by the capture-store v2 migration: both journals share the same durable database.
 export const experimentSchema = [
@@ -65,11 +65,11 @@ export async function insertExperimentalRecord(
       [owner.baseUrl, owner.userId, record.attemptId, ...group],
     );
     if (prior) {
-      const r = JSON.parse(prior.input) as ExperimentRecord;
+      const persistedRecord = decodeExperimentRecord(JSON.parse(prior.input));
       if (
-        r.stage !== record.stage ||
-        r.trialId !== record.trialId ||
-        r.observationId !== record.observationId
+        persistedRecord.stage !== record.stage ||
+        persistedRecord.trialId !== record.trialId ||
+        persistedRecord.observationId !== record.observationId
       )
         throw new OfflineError(
           'REGISTRO_EXPERIMENTAL_CONFLITANTE',
@@ -118,7 +118,7 @@ export class SqliteExperimentJournal implements ExperimentStorage {
       [owner.baseUrl, owner.userId],
     );
     return {
-      plan: row?.plan ? (JSON.parse(row.plan) as ExperimentPlan) : null,
+      plan: row?.plan ? decodeExperimentPlan(JSON.parse(row.plan)) : null,
       hold: row?.hold === 1,
     };
   }
@@ -133,7 +133,7 @@ export class SqliteExperimentJournal implements ExperimentStorage {
         'SELECT input FROM experiment_records WHERE base_url=? AND user_id=? ORDER BY sequence',
         [owner.baseUrl, owner.userId],
       )
-    ).map(r => JSON.parse(r.input) as ExperimentRecord);
+    ).map(recordRow => decodeExperimentRecord(JSON.parse(recordRow.input)));
   }
   async pending(owner: CaptureOwner, now: number) {
     const db = await this.db();
@@ -142,7 +142,7 @@ export class SqliteExperimentJournal implements ExperimentStorage {
         "SELECT input FROM experiment_records WHERE base_url=? AND user_id=? AND state='PENDING' AND next_at<=? ORDER BY sequence LIMIT 100",
         [owner.baseUrl, owner.userId, now],
       )
-    ).map(r => JSON.parse(r.input) as ExperimentRecord);
+    ).map(recordRow => decodeExperimentRecord(JSON.parse(recordRow.input)));
   }
   async sent(owner: CaptureOwner, id: string) {
     const db = await this.db();
@@ -170,9 +170,9 @@ export class SqliteExperimentJournal implements ExperimentStorage {
       [owner.baseUrl, owner.userId],
     );
     return {
-      pending: rows.find(r => r.state === 'PENDING')?.n ?? 0,
-      sent: rows.find(r => r.state === 'SENT')?.n ?? 0,
-      failed: rows.find(r => r.state === 'FAILED')?.n ?? 0,
+      pending: rows.find(recordRow => recordRow.state === 'PENDING')?.n ?? 0,
+      sent: rows.find(recordRow => recordRow.state === 'SENT')?.n ?? 0,
+      failed: rows.find(recordRow => recordRow.state === 'FAILED')?.n ?? 0,
     };
   }
 }

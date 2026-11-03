@@ -1,0 +1,70 @@
+import React from 'react';
+import {StyleSheet, View, useWindowDimensions} from 'react-native';
+import {Icon, Text, TouchableRipple} from 'react-native-paper';
+import type {NativeStackNavigationOptions} from '@react-navigation/native-stack';
+import type {TemaApp} from '../theme';
+
+type BackNavigation = {goBack(): void};
+
+function StackBackButton({
+  onPress,
+  tintColor,
+}: {
+  onPress(): void;
+  tintColor: string | undefined;
+}) {
+  const {width, fontScale} = useWindowDimensions();
+  const compact = width < 360 || fontScale >= 1.5;
+  return (
+    <TouchableRipple
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Voltar"
+      style={styles.back}>
+      <View style={styles.content}>
+        <Icon
+          source="chevron-left"
+          size={26}
+          {...(tintColor !== undefined ? {color: tintColor} : {})}
+        />
+        {!compact && (
+          <Text style={[styles.label, {color: tintColor}]}>Voltar</Text>
+        )}
+      </View>
+    </TouchableRipple>
+  );
+}
+
+/** Keep internal route names out of the back control on every platform. */
+export function stackScreenOptions(
+  theme: TemaApp,
+  navigation: BackNavigation,
+): NativeStackNavigationOptions {
+  return {
+    headerStyle: {backgroundColor: theme.colors.primary},
+    headerTintColor: theme.colors.onPrimary,
+    headerTitleStyle: {color: theme.colors.onPrimary, fontSize: 17},
+    headerTitleAlign: 'center',
+    headerShadowVisible: false,
+    headerBackVisible: false,
+    headerBackTitle: 'Voltar',
+    headerLeft: ({canGoBack, tintColor}) =>
+      canGoBack ? (
+        <StackBackButton
+          onPress={() => navigation.goBack()}
+          tintColor={tintColor}
+        />
+      ) : null,
+  };
+}
+
+const styles = StyleSheet.create({
+  back: {minWidth: 44, minHeight: 44, borderRadius: 12},
+  content: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  label: {fontSize: 15, lineHeight: 22, fontWeight: '600'},
+});

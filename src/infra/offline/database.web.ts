@@ -1,4 +1,4 @@
-import {OfflineError} from '../../domain/offline/types';
+import {OfflineError} from '../../appplication/offline/offline-error';
 import type {SqlConnection} from './sqlite-store';
 export async function openCaptureDatabase(): Promise<SqlConnection> {
   throw new OfflineError(

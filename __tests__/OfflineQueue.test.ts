@@ -1,3 +1,4 @@
+import {requiredItem} from '../test-support/required-item';
 import {DatabaseSync} from 'node:sqlite';
 import {mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -7,18 +8,16 @@ import {
   SqlConnection,
 } from '../src/infra/offline/sqlite-store';
 import {OfflineCoordinator} from '../src/appplication/offline/coordinator';
-import type {CaptureContext} from '../src/domain/offline/types';
+import type {CaptureContext} from '../src/appplication/offline/capture-context.types';
 import {
   createSdmBenchPlan,
   SDM_BENCH_PROFILE,
 } from '../src/domain/nfc/sdm-profile';
 import {bytesBase64} from '../src/domain/nfc/ndef';
-import type {
-  Api,
-  Observation,
-  Provisioning,
-  Decision,
-} from '../src/appplication/traceability/workflow';
+import type {Api} from '../src/appplication/auth/ports/authenticated-api';
+import type {Observation} from '../src/domain/traceability/observation';
+import type {Provisioning} from '../src/domain/traceability/provisioning';
+import type {Decision} from '../src/domain/traceability/decision';
 
 const owner = {baseUrl: 'http://127.0.0.1:3110/api/v1', userId: 'operator-a'};
 const p: Provisioning = {
@@ -148,6 +147,37 @@ function coordinator() {
     },
   };
 }
+
+test('published queue snapshots are stable, immutable, isolated by owner and detachable', async () => {
+  await enqueue();
+  const {manager, setContext} = coordinator();
+  const listener = jest.fn();
+  const unsubscribe = manager.subscribe(listener);
+  await manager.refresh();
+  const current = manager.getSnapshot();
+  expect(manager.getSnapshot()).toBe(current);
+  expect(current.items).toHaveLength(1);
+  expect(Object.isFrozen(current)).toBe(true);
+  expect(Object.isFrozen(current.items)).toBe(true);
+  expect(
+    Object.isFrozen(requiredItem(current.items, 0).payload.leituraBruta),
+  ).toBe(true);
+  setContext({
+    ...owner,
+    userId: 'another-operator',
+    canCapture: true,
+    canSend: true,
+  });
+  const otherOwner = manager.getSnapshot();
+  expect(otherOwner).not.toBe(current);
+  expect(otherOwner.items).toHaveLength(0);
+  expect(manager.getSnapshot()).toBe(otherOwner);
+  expect(current.items).toHaveLength(1);
+  listener.mockClear();
+  unsubscribe();
+  await manager.refresh();
+  expect(listener).not.toHaveBeenCalled();
+});
 test('commits bytes, owner and epoch durably across database close/reopen and rejects local mutation', async () => {
   const first = await enqueue();
   expect(first.state).toBe('QUEUED');
@@ -167,9 +197,9 @@ test('commits bytes, owner and epoch durably across database close/reopen and re
   await expect(
     sql.run('UPDATE captures SET payload=? WHERE id=?', ['{}', first.id]),
   ).rejects.toThrow('immutable');
-  expect((await store.list(owner))[0].payload.leituraBruta.bytesBase64).toBe(
-    '0QEDVQBh',
-  );
+  expect(
+    requiredItem(await store.list(owner), 0).payload.leituraBruta.bytesBase64,
+  ).toBe('0QEDVQBh');
   expect(await store.list({...owner, userId: 'operator-b'})).toEqual([]);
   expect(
     await store.list({...owner, baseUrl: 'https://another.example/api/v1'}),
@@ -186,7 +216,7 @@ test('simultaneous claims select each item once and block later captures of the 
     store.claim(owner, 'b', now, 45000, 20),
   ]);
   expect(a.length + b.length).toBe(1);
-  const claimed = [...a, ...b][0];
+  const claimed = requiredItem([...a, ...b], 0);
   await store.settle(claimed.id, claimed.claim!, {
     state: 'STORED',
     result: response,
@@ -203,7 +233,7 @@ test('recovers an expired claim and ignores stale acknowledgements', async () =>
   const recovered = await store.claim(owner, 'new', now + 45001, 45000, 20);
   expect(recovered).toHaveLength(1);
   await store.settle(input().id, 'old', {state: 'FAILED'});
-  expect((await store.list(owner))[0].claim).toBe('new');
+  expect(requiredItem(await store.list(owner), 0).claim).toBe('new');
   await store.settle(input().id, 'new', {
     state: 'STORED',
     result: response,
@@ -264,7 +294,9 @@ test('cache requires original scope, active/recent link and explicit NDEF refere
   const next = {...p, id: '00000000-0000-4000-8000-000000000020', epoca: 2};
   await enqueue();
   await store.remember(owner, next, now + 1);
-  expect((await store.list(owner))[0].metadata.provisioning.epoca).toBe(1);
+  expect(
+    requiredItem(await store.list(owner), 0).metadata.provisioning.epoca,
+  ).toBe(1);
   expect(await store.cached(owner, {uid: p.uid}, now + 1, 86400000)).toEqual(
     next,
   );
@@ -292,7 +324,7 @@ test('freezes reading before lookup and saves before any network send', async ()
   reading.tecnologias.push('changed');
   complete(p);
   await operation;
-  const queued = (await store.list(owner))[0];
+  const queued = requiredItem(await store.list(owner), 0);
   expect(queued.payload.leituraBruta).toMatchObject({
     bytesBase64: '0QEDVQBh',
     tecnologias: ['IsoDep'],
@@ -328,7 +360,7 @@ test('uncertain response retries the identical frozen payload and simultaneous s
   const {manager, request} = coordinator();
   request.mockRejectedValueOnce(new Error('response lost'));
   await manager.synchronize();
-  expect((await store.list(owner))[0].state).toBe('RETRY');
+  expect(requiredItem(await store.list(owner), 0).state).toBe('RETRY');
   await Promise.all([manager.synchronize(true), manager.synchronize(true)]);
   expect(request).toHaveBeenCalledTimes(2);
   expect(request.mock.calls[0]).toEqual(request.mock.calls[1]);
@@ -388,7 +420,7 @@ test('mixed batch results settle independently and terminal outcomes are not ret
     'FAILED',
     'RETRY',
   ]);
-  expect(rows[0].businessState).toBe('REJECTED');
+  expect(requiredItem(rows, 0).businessState).toBe('REJECTED');
   await manager.synchronize(true);
   expect(request.mock.calls[1][1].body.itens).toHaveLength(1);
 });
@@ -401,14 +433,14 @@ test('expired authentication preserves captures and another operator/API cannot 
     message: 'reauth',
   });
   await manager.synchronize();
-  expect((await store.list(owner))[0].state).toBe('AUTH_REQUIRED');
+  expect(requiredItem(await store.list(owner), 0).state).toBe('AUTH_REQUIRED');
   setContext({...owner, userId: 'operator-b', canCapture: true, canSend: true});
   expect(manager.getSnapshot().items).toEqual([]);
   await manager.synchronize(true);
   expect(request).toHaveBeenCalledTimes(1);
   setContext({...owner, canCapture: true, canSend: true});
   await manager.synchronize(true);
-  expect((await store.list(owner))[0].state).toBe('STORED');
+  expect(requiredItem(await store.list(owner), 0).state).toBe('STORED');
 });
 test('malformed receipts keep pending items and backoff prevents immediate loops', async () => {
   await enqueue();
@@ -423,7 +455,7 @@ test('malformed receipts keep pending items and backoff prevents immediate loops
   expect(request).toHaveBeenCalledTimes(1);
   now += 3000;
   await manager.synchronize();
-  expect((await store.list(owner))[0].state).toBe('STORED');
+  expect(requiredItem(await store.list(owner), 0).state).toBe('STORED');
 });
 test('opaque synthetic SDM evidence survives the same storage/retry path without being authenticated', async () => {
   const payload = {
@@ -439,7 +471,7 @@ test('opaque synthetic SDM evidence survives the same storage/retry path without
   db = new DatabaseSync(join(folder, 'queue.db'));
   sql = connection(db);
   store = new SqliteCaptureStore(async () => sql);
-  expect((await store.list(owner))[0].payload).toEqual(payload);
+  expect(requiredItem(await store.list(owner), 0).payload).toEqual(payload);
   const {manager, request} = coordinator();
   request.mockRejectedValueOnce(new Error('offline'));
   await manager.synchronize();

@@ -43,7 +43,9 @@ export function ndefFileSettings(bytes: readonly number[]): NdefFileSettings {
   if (
     bytes.length < 7 ||
     bytes.length > 64 ||
-    bytes.some(byte => !Number.isInteger(byte) || byte < 0 || byte > 255)
+    Array.from(bytes).some(
+      byte => !Number.isInteger(byte) || byte < 0 || byte > 255,
+    )
   )
     invalid();
   let position = 0;
@@ -53,7 +55,11 @@ export function ndefFileSettings(bytes: readonly number[]): NdefFileSettings {
     position += size;
     return result;
   };
-  const byte = () => take(1)[0];
+  const byte = () => {
+    const value = take(1)[0];
+    if (value === undefined) invalid();
+    return value;
+  };
   const uint24 = () =>
     take(3).reduceRight((value, part) => value * 256 + part, 0);
   if (byte() !== 0) invalid();
@@ -153,19 +159,4 @@ export function ndefFileSettings(bytes: readonly number[]): NdefFileSettings {
   }
   if (position !== bytes.length) invalid();
   return result;
-}
-
-export function accessDescription(right: number): string {
-  if (right === 14) return 'Livre';
-  if (right === 15) return 'Sem acesso por esta permissão';
-  return `Exige chave ${right}`;
-}
-
-/** Both write routes matter; a restricted Write alone does not protect ReadWrite. */
-export function writeAccessSummary(rights: FileAccessRights): string {
-  if (rights.write === 14 || rights.readWrite === 14)
-    return 'O chip declara uma rota de escrita livre.';
-  if (rights.write === 15 && rights.readWrite === 15)
-    return 'O chip declara as duas rotas de escrita sem acesso.';
-  return 'As rotas de escrita disponíveis exigem chave.';
 }

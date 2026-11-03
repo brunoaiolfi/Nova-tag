@@ -1,14 +1,22 @@
-import {ActionButton as Button} from '../src/components/Tracking';
+import {createTestServices, withServices} from '../test-support/app-services';
+
 import React from 'react';
 import {AppState} from 'react-native';
-import TestRenderer, {act} from 'react-test-renderer';
+import {
+  render as renderProbe,
+  act,
+  screen,
+  fireEvent,
+  userEvent,
+} from '@testing-library/react-native';
 import {PaperProvider} from 'react-native-paper';
 import {SessionProvider} from '../src/components/Auth/SessionProvider';
 import {SessionGate} from '../src/components/Auth/SessionGate';
 import Leitor from '../src/components/Nfc/Leitor';
-import TagDetails from '../src/components/Nfc/TagDetails';
 import {SessionManager} from '../src/appplication/auth/session-manager';
-import {Session, SessionError, Transport} from '../src/domain/auth/types';
+import {Session} from '../src/domain/auth/session';
+import {SessionError} from '../src/appplication/auth/session-error';
+import {Transport} from '../src/appplication/auth/ports/transport';
 import {readPhysicalTag} from '../src/infra/nfc/reader';
 
 jest.mock('../src/infra/nfc/reader', () => ({
@@ -16,6 +24,8 @@ jest.mock('../src/infra/nfc/reader', () => ({
   readPhysicalTag: jest.fn(),
   cancelPhysicalRead: jest.fn().mockResolvedValue(undefined),
 }));
+const services = createTestServices({});
+
 const session: Session = {
   baseUrl: 'http://127.0.0.1:3000/api/v1',
   token: 'nfc_' + 'a'.repeat(43),
@@ -28,56 +38,58 @@ const session: Session = {
   },
 };
 const verification = {usuario: session.user, expiraEm: session.expiresAt};
-let tree: TestRenderer.ReactTestRenderer;
 let change: Parameters<typeof AppState.addEventListener>[1];
-const button = (label: string) =>
-  tree.root.findAllByType(Button).find(item => item.props.children === label)!;
+const button = (label: string) => screen.getByRole('button', {name: label});
 
 async function render(
   send = jest.fn().mockResolvedValue(verification),
   now: () => number = Date.now,
 ) {
+  const listeners = new Set<Parameters<typeof AppState.addEventListener>[1]>();
+  change = next => listeners.forEach(listener => listener(next));
   jest
     .spyOn(AppState, 'addEventListener')
     .mockImplementation((_event, listener) => {
-      change = listener;
-      return {remove: jest.fn()};
+      listeners.add(listener);
+      return {remove: jest.fn(() => listeners.delete(listener))};
     });
+  const onRead = jest.fn();
   const storage = {
     load: jest.fn().mockResolvedValue(session),
     save: jest.fn().mockResolvedValue(undefined),
     clear: jest.fn().mockResolvedValue(undefined),
   };
   const manager = new SessionManager(storage, {send} as Transport, true, now);
-  await act(async () => {
-    tree = TestRenderer.create(
+  await renderProbe(
+    withServices(
       <PaperProvider>
         <SessionProvider manager={manager}>
           <SessionGate>
-            <Leitor onLeituraRealizada={jest.fn()} onErroLeitura={jest.fn()} />
+            <Leitor onLeituraRealizada={onRead} onErroLeitura={jest.fn()} />
           </SessionGate>
         </SessionProvider>
       </PaperProvider>,
-    );
-  });
-  return {manager, send, storage};
+      services,
+    ),
+  );
+  return {manager, send, storage, onRead};
 }
 async function scan() {
   jest.mocked(readPhysicalTag).mockResolvedValueOnce({uid: '53721F76950001'});
-  await act(async () => {
-    button('Ler etiqueta').props.onPress();
+
+  await fireEvent.press(button('Ler etiqueta'));
+
+  return screen.getByText('53:72:1F:76:95:00:01', {
+    includeHiddenElements: true,
   });
-  return tree.root.findByType(TagDetails);
 }
 afterEach(async () => {
-  await act(async () => tree?.unmount());
   jest.restoreAllMocks();
   jest.clearAllMocks();
 });
 
 test('closing the iOS NFC sheet does not restore the session or erase a completed reading', async () => {
   const {send, manager} = await render();
-  const reader = tree.root.findByType(Leitor);
   await act(async () => {
     change('inactive');
   });
@@ -87,9 +99,10 @@ test('closing the iOS NFC sheet does not restore the session or erase a complete
   });
   expect(send).toHaveBeenCalledTimes(1);
   expect(manager.getSnapshot().status).toBe('authenticated');
-  expect(tree.root.findByType(Leitor)).toBe(reader);
-  expect(tree.root.findByType(TagDetails)).toBe(details);
-  expect(details.props.reading.uid).toBe('53721F76950001');
+  expect(
+    screen.getByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).toBe(details);
+  expect(details).toHaveTextContent('53:72:1F:76:95:00:01');
 });
 
 test('returning to active before NFC resolves still retains the reader and its result', async () => {
@@ -101,24 +114,22 @@ test('returning to active before NFC resolves still retains the reader and its r
         finish = resolve;
       }),
   );
-  const reader = tree.root.findByType(Leitor);
+
+  await fireEvent.press(button('Ler etiqueta'));
   await act(async () => {
-    button('Ler etiqueta').props.onPress();
     change('inactive');
     change('active');
   });
+
   await act(async () => {
     finish({uid: '53721F76950001'});
   });
   expect(send).toHaveBeenCalledTimes(1);
-  expect(tree.root.findByType(Leitor)).toBe(reader);
-  expect(tree.root.findByType(TagDetails).props.reading.uid).toBe(
-    '53721F76950001',
-  );
+  expect(screen.getByText('53:72:1F:76:95:00:01')).toBeVisible();
 });
 
 test('real background revalidation blocks interaction without unmounting the captured tag', async () => {
-  const {send, manager} = await render();
+  const {send, manager, onRead} = await render();
   const details = await scan();
   let finish!: (value: typeof verification) => void;
   send.mockImplementationOnce(
@@ -134,19 +145,24 @@ test('real background revalidation blocks interaction without unmounting the cap
     change('active');
   });
   expect(manager.getSnapshot().status).toBe('checking');
-  expect(tree.root.findByType(TagDetails)).toBe(details);
   expect(
-    tree.root.findAll(
-      node =>
-        node.props.pointerEvents === 'none' &&
-        node.props.accessibilityElementsHidden === true,
-    ).length,
-  ).toBeGreaterThan(0);
+    screen.getByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).toBe(details);
+  expect(screen.queryByText('53:72:1F:76:95:00:01')).not.toBeOnTheScreen();
+  await userEvent.press(
+    screen.getByRole('button', {
+      name: 'Continuar',
+      includeHiddenElements: true,
+    }),
+  );
+  expect(onRead).not.toHaveBeenCalled();
   await act(async () => {
     finish(verification);
   });
   expect(manager.getSnapshot().status).toBe('authenticated');
-  expect(tree.root.findByType(TagDetails)).toBe(details);
+  expect(
+    screen.getByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).toBe(details);
   expect(send).toHaveBeenCalledTimes(2);
 });
 
@@ -159,7 +175,9 @@ test('network failure permits local work for a verified identity but blocks HTTP
     change('active');
   });
   expect(manager.getSnapshot().status).toBe('offline');
-  expect(tree.root.findByType(TagDetails)).toBe(details);
+  expect(
+    screen.getByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).toBe(details);
   await expect(manager.request('/pedidos')).rejects.toMatchObject({
     code: 'SESSAO_OFFLINE',
     status: 503,
@@ -168,7 +186,9 @@ test('network failure permits local work for a verified identity but blocks HTTP
     await manager.restore();
   });
   expect(manager.getSnapshot().status).toBe('authenticated');
-  expect(tree.root.findByType(TagDetails)).toBe(details);
+  expect(
+    screen.getByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).toBe(details);
 });
 
 test('revoked sessions remove protected tag data despite preservation during revalidation', async () => {
@@ -183,7 +203,12 @@ test('revoked sessions remove protected tag data despite preservation during rev
   });
   expect(manager.getSnapshot().status).toBe('anonymous');
   expect(storage.clear).toHaveBeenCalledTimes(1);
-  expect(tree.root.findAllByType(Leitor)).toHaveLength(0);
+  expect(
+    screen.queryByRole('button', {name: 'Ler etiqueta'}),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).not.toBeOnTheScreen();
 });
 
 test('an unverified saved session never mounts the protected reader on cold startup', async () => {
@@ -192,7 +217,12 @@ test('an unverified saved session never mounts the protected reader on cold star
     .mockRejectedValue(new SessionError('API_INDISPONIVEL', 'offline'));
   const {manager} = await render(send);
   expect(manager.getSnapshot().status).toBe('unavailable');
-  expect(tree.root.findAllByType(Leitor)).toHaveLength(0);
+  expect(
+    screen.queryByRole('button', {name: 'Ler etiqueta'}),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).not.toBeOnTheScreen();
 });
 
 test('a short native interruption still invalidates a session that has expired', async () => {
@@ -206,7 +236,12 @@ test('a short native interruption still invalidates a session that has expired',
   });
   expect(manager.getSnapshot().status).toBe('anonymous');
   expect(storage.clear).toHaveBeenCalledTimes(1);
-  expect(tree.root.findAllByType(Leitor)).toHaveLength(0);
+  expect(
+    screen.queryByRole('button', {name: 'Ler etiqueta'}),
+  ).not.toBeOnTheScreen();
+  expect(
+    screen.queryByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).not.toBeOnTheScreen();
   expect(send).toHaveBeenCalledTimes(1);
 });
 
@@ -221,5 +256,7 @@ test('verification of a different operator resets the previous operator’s read
     change('active');
   });
   expect(manager.getSnapshot().session?.user.id).toBe(next.user.id);
-  expect(tree.root.findAllByType(TagDetails)).toHaveLength(0);
+  expect(
+    screen.queryByText('53:72:1F:76:95:00:01', {includeHiddenElements: true}),
+  ).not.toBeOnTheScreen();
 });

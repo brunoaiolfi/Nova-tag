@@ -1,3 +1,4 @@
+import {showCommandFailure} from '../Base/Toast/service';
 import React, {PropsWithChildren} from 'react';
 import {ActivityIndicator, Text} from 'react-native-paper';
 import {ActionButton as Button} from '../Tracking';
@@ -35,13 +36,13 @@ export function SessionGate({children}: PropsWithChildren) {
                 <Text accessibilityRole="alert">{state.message}</Text>
                 <Button
                   onPress={() => {
-                    void manager.restore();
+                    manager.restore().catch(showCommandFailure);
                   }}>
                   Tentar novamente
                 </Button>
                 <Button
                   onPress={() => {
-                    void manager.logout();
+                    manager.logout().catch(showCommandFailure);
                   }}>
                   Sair desta sessão
                 </Button>
@@ -61,13 +62,13 @@ export function SessionGate({children}: PropsWithChildren) {
           <Text accessibilityRole="alert">{state.message}</Text>
           <Button
             onPress={() => {
-              void manager.restore();
+              manager.restore().catch(showCommandFailure);
             }}>
             Tentar novamente
           </Button>
           <Button
             onPress={() => {
-              void manager.logout();
+              manager.logout().catch(showCommandFailure);
             }}>
             Sair desta sessão
           </Button>

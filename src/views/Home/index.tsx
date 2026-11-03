@@ -1,9 +1,10 @@
-import {StyleSheet, useWindowDimensions} from 'react-native';
+import {showCommandFailure} from '../../components/Base/Toast/service';
+import {StyleSheet} from 'react-native';
 import {ActionButton as Button} from '../../components/Tracking';
 import React, {useState} from 'react';
 import {Icon, Text} from 'react-native-paper';
 import {View} from 'react-native';
-import {ActionTile, trackingColors as colors} from '../../components/Tracking';
+import {ActionRow, trackingColors as colors} from '../../components/Tracking';
 import ListaPassos from '../../components/ListaPassos';
 import {useNavigation} from '@react-navigation/native';
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
@@ -13,7 +14,7 @@ import {useSession} from '../../components/Auth/SessionProvider';
 import Tela from '../../components/Base/Tela';
 import VStack from '../../components/Base/VStack';
 import Leitor from '../../components/Nfc/Leitor';
-import type {Reading} from '../../appplication/traceability/workflow';
+import type {Reading} from '../../domain/traceability/reading';
 import TagDetails from '../../components/Nfc/TagDetails';
 
 const Home = () => {
@@ -23,8 +24,6 @@ const Home = () => {
   const [reading, setReading] = useState<Reading>();
   const [capturedAt, setCapturedAt] = useState<string>();
   const [help, setHelp] = useState(false);
-  const {width, fontScale} = useWindowDimensions();
-  const singleColumn = width < 360 || fontScale > 1.25;
   const user = state.session?.user;
   const role =
     user?.perfil === 'ADMINISTRADOR'
@@ -35,9 +34,10 @@ const Home = () => {
   if (scanning) {
     return (
       <Leitor
-        context="Consultar etiqueta · sem alterar o pedido"
-        continueLabel="Concluir consulta"
+        context="Consultar pedido"
+        continueLabel="Concluir"
         onVoltar={() => setScanning(false)}
+        backLabel="Voltar ao início"
         onLeituraRealizada={(value, time) => {
           setReading(value);
           setCapturedAt(time);
@@ -85,53 +85,41 @@ const Home = () => {
               onPress={() => setScanning(true)}>
               Escanear etiqueta
             </Button>
-            <Text style={layoutStyles.hint}>
-              A consulta não altera o pedido.
-            </Text>
+            <Text style={layoutStyles.hint}>Apenas consulta.</Text>
           </View>
         </View>
       }>
-      <VStack gap={20}>
+      <VStack gap={16}>
         {reading && (
           <>
             <TagDetails reading={reading} capturedAt={capturedAt} />
-            <Button
-              mode="contained"
-              onPress={() => navigation.navigate('Historico', {reading})}>
-              Ver histórico desta etiqueta
+            <Button onPress={() => navigation.navigate('Historico', {reading})}>
+              Ver histórico
             </Button>
           </>
         )}
         <View>
           <Text variant="titleLarge" style={layoutStyles.sectionTitle}>
-            O que você precisa fazer?
-          </Text>
-          <Text style={layoutStyles.sectionDescription}>
-            Escolha uma ação para continuar.
+            Ações
           </Text>
         </View>
-        <View
-          style={[
-            layoutStyles.actionList,
-            singleColumn && layoutStyles.singleColumn,
-          ]}>
-          <ActionTile
+        <View>
+          <ActionRow
             title="Abrir histórico"
             description="Veja a situação e todas as etapas."
             icon="map-marker-path"
             onPress={() => navigation.navigate('Historico')}
           />
           {user?.perfil !== 'CONSULTA' && (
-            <ActionTile
+            <ActionRow
               title="Registrar etapa"
               description="Atualize o caminho do pedido."
               icon="timeline-plus-outline"
-              accent
               onPress={() => navigation.navigate('Eventos')}
             />
           )}
           {user?.perfil === 'CONSULTA' && (
-            <ActionTile
+            <ActionRow
               title="Como funciona"
               description="Entenda a etiqueta e o rastreio."
               icon="help-circle-outline"
@@ -140,22 +128,18 @@ const Home = () => {
           )}
         </View>
         {user?.perfil !== 'CONSULTA' && (
-          <View
-            style={[
-              layoutStyles.actionList,
-              singleColumn && layoutStyles.singleColumn,
-            ]}>
+          <View>
             {user?.perfil === 'ADMINISTRADOR' &&
               state.status === 'authenticated' && (
-                <ActionTile
+                <ActionRow
                   title="Vincular etiqueta"
                   description="Prepare a identificação do pedido."
                   icon="nfc-tap"
                   onPress={() => navigation.navigate('Provisionar')}
                 />
               )}
-            <ActionTile
-              title="Capturas e envios"
+            <ActionRow
+              title="Envios"
               description={
                 state.status === 'offline'
                   ? 'Veja os registros salvos sem conexão.'
@@ -164,9 +148,6 @@ const Home = () => {
               icon="cloud-upload-outline"
               onPress={() => navigation.navigate('Envios')}
             />
-            {user?.perfil !== 'ADMINISTRADOR' && !singleColumn && (
-              <View style={layoutStyles.emptyTile} />
-            )}
           </View>
         )}
         {help && (
@@ -200,10 +181,9 @@ const Home = () => {
           </VStack>
         )}
         <Button
-          mode="outlined"
           icon="logout"
           onPress={() => {
-            void manager.logout();
+            manager.logout().catch(showCommandFailure);
           }}>
           Sair
         </Button>
@@ -218,8 +198,8 @@ const layoutStyles = StyleSheet.create({
   header: {
     backgroundColor: colors.blue,
     padding: 20,
-    paddingBottom: 40,
-    gap: 14,
+    paddingBottom: 32,
+    gap: 12,
   },
   account: {flexDirection: 'row', alignItems: 'center', gap: 12},
   avatar: {
@@ -237,7 +217,7 @@ const layoutStyles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 24,
     padding: 18,
-    gap: 16,
+    gap: 12,
     marginTop: 4,
   },
   scanHeading: {flexDirection: 'row', alignItems: 'center', gap: 12},

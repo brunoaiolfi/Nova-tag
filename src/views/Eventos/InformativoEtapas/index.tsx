@@ -1,7 +1,7 @@
 import React from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {PageHero} from '../../../components/Tracking';
+import {Details, FlowSteps, PageHero} from '../../../components/Tracking';
 
 import Tela from '../../../components/Base/Tela';
 import Botao from '../../../components/Base/Botao';
@@ -42,20 +42,20 @@ const InformativoEtapas = () => {
       header={
         <PageHero
           fullBleed
-          title="Atualize o caminho do pedido."
-          description="Registre o que aconteceu com o volume usando sua etiqueta NFC."
+          title="Registrar etapa"
+          description="Escolha a etapa e leia a etiqueta."
           icon="timeline-plus-outline"
-          eyebrow="REGISTRAR ETAPA"
         />
       }
-      footer={<Botao onPress={iniciar}>Iniciar</Botao>}>
-      <VStack gap={24}>
-        <ListaPassos passos={PASSOS} />
-
+      footer={<Botao onPress={iniciar}>Escolher etapa</Botao>}>
+      <VStack gap={16}>
+        <FlowSteps labels={['Escolher', 'Ler', 'Confirmar']} current={1} />
         <Aviso icone="cloud-off-outline">
-          Este fluxo exige conexão. Uma captura armazenada pode ter uma operação
-          rejeitada. Confira a decisão antes de seguir com o pedido.
+          Salvo no aparelho. A etapa só avança após a autorização do servidor.
         </Aviso>
+        <Details title="Como funciona">
+          <ListaPassos passos={PASSOS} />
+        </Details>
       </VStack>
     </Tela>
   );

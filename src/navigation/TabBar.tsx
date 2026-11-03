@@ -1,8 +1,9 @@
-import React from 'react';
-import {StyleSheet, View, ViewStyle} from 'react-native';
+import React, {useContext, useLayoutEffect} from 'react';
+import {StyleSheet, View} from 'react-native';
 import {Icon, Text, TouchableRipple} from 'react-native-paper';
 import {CommonActions} from '@react-navigation/native';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {BottomTabBarHeightCallbackContext} from '@react-navigation/bottom-tabs';
 import {palette as colors} from '../theme/tokens';
 
 const TabBar = ({
@@ -13,15 +14,27 @@ const TabBar = ({
 }: BottomTabBarProps) => {
   const rotaFocada = state.routes[state.index];
   const estilo = StyleSheet.flatten(
-    descriptors[rotaFocada.key].options.tabBarStyle,
-  ) as ViewStyle | undefined;
+    rotaFocada ? descriptors[rotaFocada.key]?.options.tabBarStyle : undefined,
+  );
 
-  if (estilo?.display === 'none') {
+  const hidden =
+    estilo != null &&
+    typeof estilo === 'object' &&
+    'display' in estilo &&
+    estilo.display === 'none';
+  const reportHeight = useContext(BottomTabBarHeightCallbackContext);
+  useLayoutEffect(() => {
+    if (hidden) reportHeight?.(0);
+  }, [hidden, reportHeight]);
+
+  if (hidden) {
     return null;
   }
 
   return (
     <View
+      testID="main-tab-bar"
+      onLayout={event => reportHeight?.(event.nativeEvent.layout.height)}
       style={[
         layoutStyles.bar,
         {
@@ -32,7 +45,8 @@ const TabBar = ({
       ]}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
-        const options = descriptors[route.key].options;
+        const options = descriptors[route.key]?.options;
+        if (!options) return null;
         const color = focused ? colors.blue : colors.muted;
         const isRegister = route.name === 'Eventos';
         return (
@@ -53,8 +67,12 @@ const TabBar = ({
                 canPreventDefault: true,
               });
               if (!event.defaultPrevented) {
+                const action = CommonActions.navigate(route.name, route.params);
                 navigation.dispatch({
-                  ...CommonActions.navigate(route.name, route.params),
+                  type: action.type,
+                  ...('payload' in action && action.payload !== undefined
+                    ? {payload: action.payload}
+                    : {}),
                   target: state.key,
                 });
               }
@@ -74,6 +92,10 @@ const TabBar = ({
                 )}
               </View>
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+                ellipsizeMode="tail"
                 style={[
                   layoutStyles.label,
                   {color},
@@ -95,11 +117,12 @@ const layoutStyles = StyleSheet.create({
   bar: {
     backgroundColor: 'white',
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     borderTopWidth: 1,
     borderTopColor: colors.line,
     paddingTop: 8,
   },
-  touch: {flex: 1, borderRadius: 16, minHeight: 66},
+  touch: {flex: 1, minWidth: 0, borderRadius: 16, minHeight: 66},
   item: {
     alignItems: 'center',
     gap: 4,
@@ -115,6 +138,11 @@ const layoutStyles = StyleSheet.create({
   },
   selected: {backgroundColor: colors.pale},
   register: {backgroundColor: colors.orange},
-  label: {fontSize: 12, lineHeight: 18, textAlign: 'center'},
+  label: {
+    alignSelf: 'stretch',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   activeLabel: {fontWeight: '700'},
 });

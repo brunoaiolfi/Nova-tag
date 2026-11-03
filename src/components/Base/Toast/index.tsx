@@ -6,7 +6,7 @@ import ToastMessage, {
   ToastConfig,
 } from 'react-native-toast-message';
 
-import {TipoToast} from '../../../infra/implementations/toast';
+import {TipoToast} from './kind';
 import {TemaApp, useAppTheme} from '../../../theme';
 
 type ToastTematicoProps = BaseToastProps & {

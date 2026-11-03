@@ -1,6 +1,6 @@
 import Constants, {ExecutionEnvironment} from 'expo-constants';
 import {Platform} from 'react-native';
-import type {Reading} from '../../appplication/traceability/workflow';
+import type {Reading} from '../../domain/traceability/reading';
 import {ExclusiveNfcSession} from '../../appplication/nfc/exclusive-session';
 import type {SessionScope} from '../../appplication/nfc/exclusive-session';
 import {NfcFailure} from '../../domain/nfc/failure';
@@ -31,7 +31,8 @@ async function native() {
     );
   }
   // Lazy require keeps Expo Go/web startup safe when the native module is absent.
-  return require('react-native-nfc-manager') as typeof import('react-native-nfc-manager');
+  const nativeModule: typeof import('react-native-nfc-manager') = require('react-native-nfc-manager');
+  return nativeModule;
 }
 
 export function decodeReference(
@@ -48,7 +49,7 @@ export function decodeReference(
           ? record.type
           : String.fromCharCode(...record.type);
       if (type === ndef.RTD_URI) {
-        if (!record.payload.length || record.payload[0] > 0x23) {
+        if (record.payload[0] === undefined || record.payload[0] > 0x23) {
           throw new NfcFailure(
             'NFC_INVALID_RESPONSE',
             'Prefixo URI NDEF inválido. Faça uma nova leitura.',
@@ -133,6 +134,48 @@ export function nativeFailure(
       'Esta etiqueta ou aparelho não suporta a operação solicitada.',
     );
   }
+  if (errors && error instanceof errors.SecurityViolation) {
+    return new NfcFailure(
+      'NFC_SECURITY_VIOLATION',
+      'O iPhone bloqueou o comando NFC por uma restrição de segurança (Core NFC 2). É necessário conferir a configuração nativa do app; aproximar a tag novamente não resolve essa restrição.',
+    );
+  }
+  if (errors && error instanceof errors.TagResponseError) {
+    return new NfcFailure(
+      'NFC_TAG_RESPONSE_ERROR',
+      'O iPhone não conseguiu concluir a troca de comando com a etiqueta (Core NFC 102). Isso não confirma senha incorreta. Preserve o plano e informe esse código para conferir o protocolo.',
+    );
+  }
+  if (
+    errors &&
+    (error instanceof errors.InvalidParameter ||
+      error instanceof errors.InvalidParameterLength ||
+      error instanceof errors.ParameterOutOfBound ||
+      error instanceof errors.PacketTooLong)
+  ) {
+    return new NfcFailure(
+      'NFC_INVALID_COMMAND',
+      'O leitor recusou o formato ou tamanho do comando NFC. Preserve o plano; é necessário conferir o comando antes de repetir a configuração.',
+    );
+  }
+  if (errors && error instanceof errors.SessionInvalidated) {
+    return new NfcFailure(
+      'NFC_SESSION_INVALIDATED',
+      'A sessão NFC do iPhone foi encerrada (Core NFC 103). Afaste a etiqueta e atualize o plano antes de recuperar a operação.',
+    );
+  }
+  if (errors && error instanceof errors.SystemBusy) {
+    return new NfcFailure(
+      'NFC_SYSTEM_BUSY',
+      'O leitor NFC do iPhone está ocupado (Core NFC 203). Aguarde a sessão anterior encerrar antes de iniciar outra leitura.',
+    );
+  }
+  if (errors && error instanceof errors.RetryExceeded) {
+    return new NfcFailure(
+      'NFC_RETRY_EXCEEDED',
+      'O iPhone encerrou a comunicação após falhas de transmissão (Core NFC 101). Preserve o plano e confira a posição da tag antes de recuperar.',
+    );
+  }
   return new NfcFailure(
     'NFC_FAILURE',
     'Não foi possível concluir a operação NFC. Aproxime a etiqueta e tente novamente. Se estava gravando, confira o conteúdo antes de ativar o vínculo.',
@@ -146,6 +189,7 @@ export function withNativeSession<T>(
     scope: SessionScope,
     connectedTechnology: string | null,
   ) => Promise<T>,
+  options?: {timeoutMilliseconds?: number; alertMessage?: string},
 ): Promise<T> {
   return session.run(async scope => {
     const module = await scope.step(native);
@@ -180,9 +224,10 @@ export function withNativeSession<T>(
               ],
           {
             alertMessage:
-              technology === 'writing'
+              options?.alertMessage ??
+              (technology === 'writing'
                 ? 'Mantenha a etiqueta próxima para gravar e conferir.'
-                : 'Aproxime a etiqueta da parte superior do iPhone.',
+                : 'Aproxime a etiqueta da parte superior do iPhone.'),
           },
         ),
       );
@@ -190,7 +235,7 @@ export function withNativeSession<T>(
     } catch (error) {
       throw nativeFailure(error, module);
     }
-  });
+  }, options?.timeoutMilliseconds);
 }
 
 // Sessions start only on an explicit tap and always close, including failures.

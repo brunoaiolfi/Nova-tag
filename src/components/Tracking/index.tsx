@@ -1,106 +1,112 @@
-import React from 'react';
-import {StyleSheet, View, StyleProp, ViewStyle} from 'react-native';
-import {
-  ActivityIndicator,
-  Button as PaperButton,
-  Icon,
-  Text,
-  TouchableRipple,
-} from 'react-native-paper';
-import {useAppTheme} from '../../theme';
-import type {OrderDetails} from '../../appplication/traceability/workflow';
-import {stateLabel} from '../../views/traceability-labels';
+import React, {useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {Icon, Text, TouchableRipple} from 'react-native-paper';
+import type {OrderDetails} from '../../appplication/traceability/contracts/order.types';
+import {stateLabel} from './labels';
 import {palette} from '../../theme/tokens';
 
 export const trackingColors = palette;
 
-export function ActionButton({
-  contentStyle,
-  labelStyle,
-  style,
-  children,
-  mode = 'text',
-  disabled,
-  loading,
+/** Secondary information stays available without competing with the next action. */
+export function Details({
+  title,
+  description,
   icon,
-  buttonColor,
-  textColor,
-  accessibilityLabel,
-  accessibilityHint,
-  onPress,
-  onLongPress,
-  testID,
-}: Omit<React.ComponentProps<typeof PaperButton>, 'style'> & {
-  style?: StyleProp<ViewStyle>;
+  variant = 'plain',
+  children,
+}: {
+  title: string;
+  description?: string;
+  icon?: string;
+  variant?: 'plain' | 'card';
+  children: React.ReactNode;
 }) {
-  const theme = useAppTheme();
-  const contained = mode === 'contained' || mode === 'contained-tonal';
-  const backgroundColor =
-    disabled && contained
-      ? '#E2E8F0'
-      : contained
-      ? buttonColor ?? theme.colors.primary
-      : 'transparent';
-  const color = disabled
-    ? '#68798A'
-    : textColor ?? (contained ? theme.colors.onPrimary : theme.colors.primary);
-  const borderColor = disabled ? trackingColors.line : theme.colors.outline;
+  const [expanded, setExpanded] = useState(false);
   return (
-    <TouchableRipple
-      onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{disabled: !!disabled, busy: !!loading}}
-      accessibilityLabel={
-        accessibilityLabel ??
-        (typeof children === 'string' ? children : undefined)
-      }
-      accessibilityHint={accessibilityHint}
-      testID={testID}
-      style={[
-        styles.button,
-        {backgroundColor, borderColor},
-        mode === 'outlined' && styles.outlinedButton,
-        style,
-      ]}>
-      <View style={[styles.buttonContent, contentStyle]}>
-        {loading ? (
-          <ActivityIndicator size={20} color={color} />
-        ) : icon ? (
-          <Icon source={icon} size={22} color={color} />
-        ) : null}
-        <Text style={[styles.buttonLabel, {color}, labelStyle]}>
-          {children}
-        </Text>
-      </View>
-    </TouchableRipple>
+    <View
+      style={[styles.disclosure, variant === 'card' && styles.disclosureCard]}>
+      <TouchableRipple
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        {...(description ? {accessibilityHint: description} : {})}
+        aria-expanded={expanded}
+        accessibilityState={{expanded}}
+        onPress={() => setExpanded(value => !value)}>
+        <View style={styles.disclosureHeading}>
+          {!!icon && (
+            <View style={styles.disclosureIcon}>
+              <Icon source={icon} size={22} color={trackingColors.blue} />
+            </View>
+          )}
+          <View style={styles.disclosureText}>
+            <Text
+              style={[
+                styles.disclosureTitle,
+                variant === 'card' && styles.disclosureCardTitle,
+              ]}>
+              {title}
+            </Text>
+            {!!description && (
+              <Text style={styles.disclosureDescription}>{description}</Text>
+            )}
+          </View>
+          <Icon
+            source={expanded ? 'chevron-up' : 'chevron-down'}
+            size={22}
+            color={trackingColors.muted}
+          />
+        </View>
+      </TouchableRipple>
+      {expanded && <View style={styles.disclosureBody}>{children}</View>}
+    </View>
   );
 }
+
+export {ActionButton} from '../ui/ActionButton';
 
 export function PageHero({
   title,
   description,
   icon = 'package-variant-closed',
-  eyebrow = 'NFC TRACE · RASTREAMENTO',
+  eyebrow,
   fullBleed = false,
+  compact = false,
 }: {
   title: string;
-  description: string;
-  icon?: string;
-  eyebrow?: string;
-  fullBleed?: boolean;
+  description?: string | undefined;
+  icon?: string | undefined;
+  eyebrow?: string | undefined;
+  fullBleed?: boolean | undefined;
+  /** Inner screens already have a navigation header; avoid a second large banner. */
+  compact?: boolean | undefined;
 }) {
   return (
-    <View style={[styles.hero, fullBleed && styles.fullBleed]}>
-      <View style={styles.heroBrand}>
-        <Icon source={icon} size={26} color={trackingColors.yellow} />
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
-      </View>
-      <Text variant="headlineMedium" style={styles.heroTitle}>
+    <View
+      style={[
+        styles.hero,
+        compact && styles.compactHero,
+        fullBleed && styles.fullBleed,
+      ]}>
+      {!compact && !!eyebrow && (
+        <View style={styles.heroBrand}>
+          <Icon source={icon} size={26} color={trackingColors.yellow} />
+          <Text style={styles.eyebrow}>{eyebrow}</Text>
+        </View>
+      )}
+      <Text
+        variant="headlineMedium"
+        style={[styles.heroTitle, compact && styles.compactHeroTitle]}>
         {title}
       </Text>
-      <Text style={styles.heroDescription}>{description}</Text>
+      {!!description && (
+        <Text
+          style={[
+            styles.heroDescription,
+            compact && styles.compactHeroDescription,
+          ]}>
+          {description}
+        </Text>
+      )}
     </View>
   );
 }
@@ -116,7 +122,7 @@ export function ActionTile({
   description: string;
   icon: string;
   onPress: () => void;
-  accent?: boolean;
+  accent?: boolean | undefined;
 }) {
   return (
     <TouchableRipple
@@ -149,7 +155,6 @@ export function RouteMotif() {
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <View style={styles.routeCurve} />
       <View style={styles.routeOrigin}>
         <Icon
           source="package-variant-closed"
@@ -157,8 +162,13 @@ export function RouteMotif() {
           color={trackingColors.blue}
         />
       </View>
+      <View style={styles.routeLine} />
+      <View style={styles.routeWaypoint}>
+        <Icon source="truck-outline" size={22} color="white" />
+      </View>
+      <View style={styles.routeLine} />
       <View style={styles.routeDestination}>
-        <Icon source="map-marker" size={58} color={trackingColors.orange} />
+        <Icon source="map-marker" size={28} color={trackingColors.navy} />
       </View>
     </View>
   );
@@ -205,7 +215,7 @@ export function FlowSteps({
 }: {
   labels: string[];
   current: number;
-  complete?: boolean;
+  complete?: boolean | undefined;
 }) {
   return (
     <View
@@ -272,7 +282,7 @@ export function OrderJourney({
   fullBleed = false,
 }: {
   order: OrderDetails;
-  fullBleed?: boolean;
+  fullBleed?: boolean | undefined;
 }) {
   const current = milestones.findIndex(item => item.state === order.estado);
   return (
@@ -361,7 +371,7 @@ export function StatusPanel({
   tone = 'info',
 }: {
   children: React.ReactNode;
-  tone?: 'info' | 'success' | 'warning' | 'error';
+  tone?: ('info' | 'success' | 'warning' | 'error') | undefined;
 }) {
   const color =
     tone === 'success'
@@ -387,31 +397,59 @@ export function StatusPanel({
 }
 
 const styles = StyleSheet.create({
-  button: {borderRadius: 18, overflow: 'hidden'},
-  outlinedButton: {borderWidth: 1},
-  buttonContent: {
-    minHeight: 60,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    flexDirection: 'row',
+  disclosure: {borderTopWidth: 1, borderTopColor: trackingColors.line},
+  disclosureCard: {
+    borderWidth: 1,
+    borderColor: trackingColors.line,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    backgroundColor: 'white',
+    overflow: 'hidden',
+  },
+  disclosureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: trackingColors.pale,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
   },
-  buttonLabel: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '700',
-    flexShrink: 1,
-    textAlign: 'center',
+  disclosureText: {flex: 1, gap: 2},
+  disclosureCardTitle: {
+    fontWeight: '600',
+    color: trackingColors.navy,
+    fontSize: 16,
+    lineHeight: 23,
   },
+  disclosureDescription: {
+    color: trackingColors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  disclosureHeading: {
+    minHeight: 48,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  disclosureTitle: {
+    flex: 1,
+    color: trackingColors.muted,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  disclosureBody: {gap: 12, paddingBottom: 12},
   hero: {
     backgroundColor: trackingColors.blue,
     borderRadius: 26,
-    padding: 24,
-    gap: 12,
+    padding: 20,
+    gap: 8,
   },
-  fullBleed: {borderRadius: 0, paddingBottom: 42},
+  fullBleed: {borderRadius: 0, paddingBottom: 32},
+  compactHero: {paddingHorizontal: 16, paddingTop: 12},
+  compactHeroTitle: {fontSize: 22, lineHeight: 28},
+  compactHeroDescription: {fontSize: 14, lineHeight: 21},
   heroBrand: {flexDirection: 'row', alignItems: 'center', gap: 10},
   eyebrow: {
     color: '#E2E7FF',
@@ -429,7 +467,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   accentTile: {backgroundColor: '#FFF0D0'},
-  tileContent: {padding: 18, minHeight: 170, gap: 10},
+  tileContent: {padding: 16, minHeight: 148, gap: 8},
   tileTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -442,38 +480,48 @@ const styles = StyleSheet.create({
     color: trackingColors.navy,
   },
   tileDescription: {fontSize: 14, lineHeight: 21, color: trackingColors.muted},
-  motif: {height: 108, width: 210, alignSelf: 'center', marginVertical: 6},
-  routeCurve: {
-    position: 'absolute',
-    left: 25,
-    top: 35,
-    width: 150,
-    height: 52,
-    borderWidth: 2,
-    borderColor: '#C4CEFF',
-    borderTopWidth: 0,
-    borderRadius: 40,
-    transform: [{rotate: '-12deg'}],
+  motif: {
+    height: 72,
+    width: 240,
+    maxWidth: '100%',
+    alignSelf: 'center',
+    marginVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+  routeLine: {flex: 1, height: 2, backgroundColor: '#C4CEFF'},
   routeOrigin: {
-    position: 'absolute',
-    left: 0,
-    top: 24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  routeDestination: {position: 'absolute', right: 0, top: 0},
+  routeWaypoint: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C4CEFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeDestination: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: trackingColors.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   action: {
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: trackingColors.line,
   },
   actionContent: {
-    minHeight: 100,
+    minHeight: 84,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -495,7 +543,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: trackingColors.muted,
   },
-  steps: {flexDirection: 'row', paddingVertical: 12},
+  steps: {flexDirection: 'row', paddingVertical: 8},
   step: {flex: 1, minWidth: 0, alignItems: 'center'},
   stepRail: {
     height: 36,
@@ -534,7 +582,7 @@ const styles = StyleSheet.create({
   activeLabel: {color: trackingColors.blue, fontWeight: '700'},
   journey: {
     backgroundColor: trackingColors.blue,
-    padding: 24,
+    padding: 20,
     borderRadius: 26,
     gap: 8,
   },
@@ -550,7 +598,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   statusCaption: {color: '#E2E7FF', fontSize: 14},
   statusText: {color: 'white', fontWeight: '700'},
@@ -575,5 +623,5 @@ const styles = StyleSheet.create({
   },
   reachedLabel: {color: 'white', fontWeight: '700'},
   expedition: {color: trackingColors.yellow, fontSize: 14, lineHeight: 21},
-  panel: {padding: 20, borderRadius: 20, borderLeftWidth: 3, gap: 12},
+  panel: {padding: 16, borderRadius: 16, borderLeftWidth: 3, gap: 10},
 });
