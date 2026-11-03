@@ -1,7 +1,7 @@
 import {showCommandFailure} from '../Base/Toast/service';
 import React from 'react';
-import {List, Text} from 'react-native-paper';
-import {ActionButton as Button, StatusPanel} from '../Tracking';
+import {Text} from 'react-native-paper';
+import {ActionButton as Button, Details, StatusPanel} from '../Tracking';
 import VStack from '../Base/VStack';
 import {useExperimentPanel} from './use-experiment-panel';
 
@@ -27,8 +27,10 @@ export function ExperimentPanel() {
   } = useExperimentPanel();
   if (!available) return null;
   return (
-    <List.Accordion
+    <Details
       title="Ensaio do TCC"
+      icon="flask-outline"
+      variant="card"
       description={
         selectionState.plan
           ? (selectionState.hold ? 'Envios pausados · ' : 'Roteiro · ') +
@@ -171,6 +173,6 @@ export function ExperimentPanel() {
         </Button>
         {!!message && <Text accessibilityRole="alert">{message}</Text>}
       </VStack>
-    </List.Accordion>
+    </Details>
   );
 }

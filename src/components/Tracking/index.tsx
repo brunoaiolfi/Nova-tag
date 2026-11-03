@@ -10,22 +10,46 @@ export const trackingColors = palette;
 /** Secondary information stays available without competing with the next action. */
 export function Details({
   title,
+  description,
+  icon,
+  variant = 'plain',
   children,
 }: {
   title: string;
+  description?: string;
+  icon?: string;
+  variant?: 'plain' | 'card';
   children: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <View style={styles.disclosure}>
+    <View
+      style={[styles.disclosure, variant === 'card' && styles.disclosureCard]}>
       <TouchableRipple
         accessibilityRole="button"
         accessibilityLabel={title}
+        {...(description ? {accessibilityHint: description} : {})}
         aria-expanded={expanded}
         accessibilityState={{expanded}}
         onPress={() => setExpanded(value => !value)}>
         <View style={styles.disclosureHeading}>
-          <Text style={styles.disclosureTitle}>{title}</Text>
+          {!!icon && (
+            <View style={styles.disclosureIcon}>
+              <Icon source={icon} size={22} color={trackingColors.blue} />
+            </View>
+          )}
+          <View style={styles.disclosureText}>
+            <Text
+              style={[
+                styles.disclosureTitle,
+                variant === 'card' && styles.disclosureCardTitle,
+              ]}>
+              {title}
+            </Text>
+            {!!description && (
+              <Text style={styles.disclosureDescription}>{description}</Text>
+            )}
+          </View>
           <Icon
             source={expanded ? 'chevron-up' : 'chevron-down'}
             size={22}
@@ -374,6 +398,34 @@ export function StatusPanel({
 
 const styles = StyleSheet.create({
   disclosure: {borderTopWidth: 1, borderTopColor: trackingColors.line},
+  disclosureCard: {
+    borderWidth: 1,
+    borderColor: trackingColors.line,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    backgroundColor: 'white',
+    overflow: 'hidden',
+  },
+  disclosureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: trackingColors.pale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disclosureText: {flex: 1, gap: 2},
+  disclosureCardTitle: {
+    fontWeight: '600',
+    color: trackingColors.navy,
+    fontSize: 16,
+    lineHeight: 23,
+  },
+  disclosureDescription: {
+    color: trackingColors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   disclosureHeading: {
     minHeight: 48,
     paddingVertical: 12,

@@ -2,8 +2,8 @@ import type {Reading} from '../../domain/traceability/reading';
 import {showCommandFailure} from '../../components/Base/Toast/service';
 import {captureStatus} from '../../components/Tracking/capture-status';
 import React, {useState} from 'react';
-import {FlatList} from 'react-native';
-import {ActivityIndicator, Divider, List, Text} from 'react-native-paper';
+import {FlatList, StyleSheet, View} from 'react-native';
+import {ActivityIndicator, Icon, List, Text} from 'react-native-paper';
 import Tela from '../../components/Base/Tela';
 import VStack from '../../components/Base/VStack';
 import {
@@ -19,6 +19,7 @@ import {reasonLabel, eventLabel} from '../../components/Tracking/labels';
 import {SdmEvidence} from '../../components/Tracking/SdmEvidence';
 import {DecisionDetails} from '../../components/Tracking/DecisionDetails';
 import {ExperimentPanel} from '../../components/Offline/ExperimentPanel';
+import {palette} from '../../theme/tokens';
 
 export default function Envios() {
   const queue = useOffline();
@@ -95,6 +96,7 @@ export default function Envios() {
       footer={
         <Button
           mode="contained"
+          icon="sync"
           loading={busy || queue.syncing}
           disabled={
             busy ||
@@ -110,74 +112,98 @@ export default function Envios() {
       }
       renderContent={({header, contentStyle}) => (
         <FlatList
+          testID="outbox-list"
+          style={styles.list}
           data={queue.items}
           keyExtractor={item => item.id}
-          contentContainerStyle={contentStyle}
+          contentContainerStyle={[contentStyle, styles.listContent]}
           ListHeaderComponent={
-            <VStack gap={16}>
+            <View>
               {header}
-              <StatusPanel
-                tone={state.status === 'offline' ? 'warning' : 'info'}>
-                <Text variant="titleMedium">
-                  {state.status === 'offline'
-                    ? 'Você está em modo offline'
-                    : 'Fila deste operador'}
-                </Text>
-                <Text>
-                  {pending.length}{' '}
-                  {pending.length === 1
-                    ? 'captura aguardando confirmação'
-                    : 'capturas aguardando confirmação'}{' '}
-                  do servidor.
-                </Text>
-                <Text>A etapa só avança após a autorização do servidor.</Text>
-                {!!logistics.length && (
-                  <Text>
-                    {logistics.length}{' '}
-                    {logistics.length === 1
-                      ? 'operação salva no servidor aguarda'
-                      : 'operações salvas no servidor aguardam'}{' '}
-                    uma etapa anterior.
+              <VStack gap={16} style={styles.sheet}>
+                <View style={styles.sectionHeading}>
+                  <Text accessibilityRole="header" style={styles.sectionTitle}>
+                    Suas capturas
                   </Text>
+                  {!!queue.items.length && (
+                    <Text style={styles.count}>
+                      {queue.items.length} salvas
+                    </Text>
+                  )}
+                </View>
+                {(!!queue.items.length || state.status === 'offline') && (
+                  <StatusPanel
+                    tone={state.status === 'offline' ? 'warning' : 'info'}>
+                    <Text variant="titleMedium">
+                      {state.status === 'offline'
+                        ? 'Você está em modo offline'
+                        : 'Acompanhamento do envio'}
+                    </Text>
+                    <Text>
+                      {pending.length}{' '}
+                      {pending.length === 1
+                        ? 'captura aguardando confirmação'
+                        : 'capturas aguardando confirmação'}{' '}
+                      do servidor.
+                    </Text>
+                    <Text>
+                      A etapa só avança após a autorização do servidor.
+                    </Text>
+                    {!!logistics.length && (
+                      <Text>
+                        {logistics.length}{' '}
+                        {logistics.length === 1
+                          ? 'operação salva no servidor aguarda'
+                          : 'operações salvas no servidor aguardam'}{' '}
+                        uma etapa anterior.
+                      </Text>
+                    )}
+                  </StatusPanel>
                 )}
-              </StatusPanel>
-              {!!queue.error && (
-                <Text accessibilityRole="alert">{queue.error}</Text>
-              )}
-              {!!message && <Text accessibilityRole="alert">{message}</Text>}
-              {queue.loading && (
-                <ActivityIndicator accessibilityLabel="Abrindo capturas salvas" />
-              )}
-              <Details title="Preparar uso offline">
-                <Text>
-                  Leia com conexão antes de sair. O vínculo fica disponível por
-                  até 24 horas.
-                </Text>
-                <Button
-                  disabled={
-                    busy ||
-                    !!queue.error ||
-                    state.status !== 'authenticated' ||
-                    state.session?.user.perfil === 'CONSULTA'
-                  }
-                  onPress={() => {
-                    setMessage('');
-                    setScanning(true);
-                  }}>
-                  Preparar etiqueta
-                </Button>
-              </Details>
-              {!queue.items.length && !queue.loading && (
-                <Text>
-                  Nenhuma captura salva para este operador nesta API. Capturas
-                  de outras contas permanecem guardadas para o operador
-                  original.
-                </Text>
-              )}
-            </VStack>
+                {!!queue.error && (
+                  <StatusPanel tone="error">
+                    <Text accessibilityRole="alert">{queue.error}</Text>
+                  </StatusPanel>
+                )}
+                {!!message && (
+                  <StatusPanel>
+                    <Text accessibilityRole="alert">{message}</Text>
+                  </StatusPanel>
+                )}
+                {queue.loading && (
+                  <VStack gap={12} align="center" style={styles.loading}>
+                    <ActivityIndicator accessibilityLabel="Abrindo capturas salvas" />
+                    <Text style={styles.description}>
+                      Carregando suas capturas…
+                    </Text>
+                  </VStack>
+                )}
+                {!queue.items.length && !queue.loading && !queue.error && (
+                  <View style={styles.emptyState}>
+                    <View style={styles.emptyIcon}>
+                      <Icon
+                        source="cloud-check-outline"
+                        size={32}
+                        color={palette.blue}
+                      />
+                    </View>
+                    <Text style={styles.emptyTitle}>
+                      Nenhuma captura por aqui
+                    </Text>
+                    <Text style={styles.emptyDescription}>
+                      Registre uma etapa para acompanhar o envio e a
+                      confirmação.
+                    </Text>
+                    <Text style={styles.accountNote}>
+                      Cada conta acompanha suas próprias capturas.
+                    </Text>
+                  </View>
+                )}
+              </VStack>
+            </View>
           }
           renderItem={({item}) => (
-            <VStack key={item.id} gap={8}>
+            <VStack gap={8} style={styles.captureCard}>
               <Text variant="titleMedium">
                 {eventLabel(item.payload.tipo)} ·{' '}
                 {item.payload.leituraBruta.uid}
@@ -197,7 +223,9 @@ export default function Envios() {
                 />
               )}
               {!!item.message && <Text>{item.message}</Text>}
-              <List.Accordion title="Comprovante e vínculo original">
+              <List.Accordion
+                title="Comprovante e vínculo original"
+                style={styles.receipt}>
                 <Text selectable>Identificador: {item.id}</Text>
                 <Text>Época: {item.metadata.provisioning.epoca}</Text>
                 <Text selectable>
@@ -218,11 +246,33 @@ export default function Envios() {
                 )}
                 {!!item.errorCode && <Text>Código: {item.errorCode}</Text>}
               </List.Accordion>
-              <Divider />
             </VStack>
           )}
           ListFooterComponent={
-            <VStack gap={16}>
+            <VStack gap={12} style={styles.tools}>
+              <Details
+                title="Preparar uso offline"
+                description="Deixe a etiqueta pronta antes de sair."
+                icon="cloud-outline"
+                variant="card">
+                <Text>
+                  Leia com conexão antes de sair. O vínculo fica disponível por
+                  até 24 horas.
+                </Text>
+                <Button
+                  disabled={
+                    busy ||
+                    !!queue.error ||
+                    state.status !== 'authenticated' ||
+                    state.session?.user.perfil === 'CONSULTA'
+                  }
+                  onPress={() => {
+                    setMessage('');
+                    setScanning(true);
+                  }}>
+                  Preparar etiqueta
+                </Button>
+              </Details>
               <ExperimentPanel />
             </VStack>
           }
@@ -231,3 +281,77 @@ export default function Envios() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  list: {backgroundColor: 'white'},
+  listContent: {paddingHorizontal: 0, paddingTop: 0},
+  sheet: {
+    padding: 16,
+    marginTop: -16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: 'white',
+  },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '700',
+    color: palette.navy,
+  },
+  count: {fontSize: 13, lineHeight: 20, color: palette.muted},
+  loading: {paddingVertical: 28},
+  description: {color: palette.muted},
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 24,
+    gap: 10,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.pale,
+    marginBottom: 6,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: palette.navy,
+  },
+  emptyDescription: {
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: 'center',
+    maxWidth: 290,
+    color: palette.muted,
+  },
+  accountNote: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    color: palette.muted,
+    marginTop: 4,
+  },
+  captureCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: 'white',
+  },
+  receipt: {backgroundColor: 'white'},
+  tools: {paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12},
+});

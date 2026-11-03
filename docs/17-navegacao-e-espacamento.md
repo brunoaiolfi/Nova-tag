@@ -69,3 +69,27 @@ Falhas abrem um modal com cabeçalho vermelho, ícone de erro, motivo e botão d
 `NFC_ETIQUETA_EM_USO` substitui a ação normal por **Resolver pendência**. O app consulta a configuração aberta pelo UID e apresenta sua época/UID. **Encerrar e continuar** exige clique explícito e só aparece sem alteração física emitida: encerra o plano anterior e prepara o atual, sem transmitir NFC ou ativar o vínculo. Planos com alteração emitida oferecem **Abrir configuração anterior**, preservando recuperação e as restrições de encerramento da API. Outra conta, etiqueta divergente ou consulta indisponível não autorizam encerramento.
 
 Verificação: **308 testes do mobile**, **21 testes de integração NFC da API com PostgreSQL real**, lint, tipos, build e contrato OpenAPI. A prévia isolada capturou 14 estados em dois tamanhos, verificando modal e ação principal dentro da tela, permanência do bloqueio, consulta indisponível e recuperação obrigatória. Evidências em `.tmp/blocking-failure/`. API local reiniciada com a rota de consulta; bundle iOS atualizado pelo Metro. Nenhuma configuração real foi encerrada automaticamente.
+
+## Revisão de Envios — 03/11/2026
+
+A lista de Envios herdava o fundo primário do contêiner com cabeçalho, sem receber
+a superfície clara aplicada às telas comuns. Isso deixava mensagens escuras
+sobre azul. A lista agora tem fundo branco, cabeçalho azul separado e uma seção
+de conteúdo com cantos arredondados. A virtualização e os insets foram mantidos.
+
+O estado vazio orienta a registrar uma etapa, sem mostrar um contador redundante
+de zero capturas. Carregamento e falha de armazenamento têm estados próprios.
+Capturas existentes mantêm status, comprovante, vínculo e decisões. As opções
+offline e de ensaio usam a mesma variante de cartão expansível de `Details`,
+com ícone, descrição e semântica de expansão; a variante simples permanece
+disponível para as telas anteriores.
+
+Verificação: `npm run verify` aprovado, **405 testes em 45 suítes** e **88 testes
+das proteções arquiteturais**, com lint e tipos. Cinco casos de apresentação
+cobrem fila vazia, carregamento/erro, sincronização, detalhes da captura e perfil
+de consulta. O aplicativo real foi conferido em emulador Android com largura de
+393 pontos, autenticação pelo fixture local e fila SQLite vazia. Foram inspecionados
+o estado vazio e a abertura da preparação offline. Captura local em
+`.tmp/envios-corrigido.png`; contexto do fixture em
+`postman/simulations/nova-tag-ui.context.yaml`. Isso não representa aceite nativo
+no iPhone, validação da API implantada ou operação física NFC.

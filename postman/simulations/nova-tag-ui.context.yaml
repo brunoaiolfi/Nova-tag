@@ -1,0 +1,29 @@
+purpose:
+  stands_in_for: API NFC Trace no recorte local de autenticação e pedidos.
+  unblocks: Inspeção da apresentação nativa sem credenciais ou alterações na API real.
+
+assumptions:
+  - id: login-envelope-contract
+    status: supported
+    claim: O snapshot OpenAPI usado pelo fixture define o login no envelope sucesso/mensagem/dados, com usuário, expiração e token em dados.
+    reason: O contrato versionado e o decoder do cliente concordam nesse formato. Isso não verifica a API atualmente implantada.
+    verification: Em 2026-11-03, no fingerprint outbox-ui-dirty-2026-11-03, o aplicativo Android real recebeu 201 do fixture e abriu a área autenticada. A recriação da Activity consultou a sessão e recebeu 200. Nenhuma credencial de produção foi usada.
+    source: postman/contracts/nfc-trace-ui.openapi.json; postman/mocks/nova-tag-ui/default.js; src/appplication/auth/session-decoder.ts; .tmp/outbox-simulation.ndjson (evidência local ignorada pelo Git).
+    updated_at: '2026-11-03'
+
+  - id: outbox-empty-is-local-state
+    status: supported
+    claim: Neste cenário, Envios apresenta a fila SQLite do proprietário atual; uma fila local vazia não comprova ausência de eventos no servidor.
+    reason: A origem dos itens é o snapshot do coordenador offline. O fixture possibilita a autenticação, mas não fornece capturas falsas para preencher a tela.
+    verification: Em 2026-11-03, no fingerprint outbox-ui-dirty-2026-11-03, uma instalação Android descartável abriu Envios com fila local vazia. Foram conferidos cabeçalho azul, superfície branca, estado vazio e abertura da opção offline em viewport de 393 pontos. A sincronização com itens e as permissões foram verificadas em OutboxScreen.test.tsx; não foram executadas gravações NFC nem envio real de capturas.
+    source: src/views/Envios/index.tsx; src/appplication/offline/coordinator.ts; __tests__/OutboxScreen.test.tsx; .tmp/envios-corrigido.png (captura local ignorada pelo Git).
+    updated_at: '2026-11-03'
+
+fingerprints:
+  - id: outbox-ui-dirty-2026-11-03
+    date: '2026-11-03'
+    commit: 7568c09386494abbf313173f45b8ecb0f5a70468
+    cli: 1.75.0
+# A execução acima usou esse commit base com alterações locais de apresentação
+# em Envios, Tracking/Details e ExperimentPanel, além de OutboxScreen.test.tsx.
+# O APK debug foi compilado anteriormente e carregou o JavaScript atual pelo Metro.
