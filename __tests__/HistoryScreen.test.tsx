@@ -6,6 +6,7 @@ import {
   act,
   screen,
   fireEvent,
+  userEvent,
 } from '@testing-library/react-native';
 import type {RenderResult} from '@testing-library/react-native';
 import {PaperProvider} from 'react-native-paper';
@@ -13,6 +14,7 @@ import {PaperProvider} from 'react-native-paper';
 import Historico from '../src/views/Historico';
 import type {HistoryEntry} from '../src/appplication/traceability/contracts/history.types';
 import type {Reading} from '../src/domain/traceability/reading';
+import {palette} from '../src/theme/tokens';
 
 let mockParams: {reading?: Reading} | undefined;
 const mockNavigation = {setParams: jest.fn(), navigate: jest.fn()};
@@ -112,8 +114,19 @@ test('order selection shows stored rejection, current state and separate server/
 
   await selectOrder();
   expect(traceability.history).toHaveBeenCalledWith(order.id, 1, undefined);
+  expect(screen.getByTestId('history-entry-capture')).toHaveStyle({
+    backgroundColor: 'white',
+    borderRadius: 18,
+    marginHorizontal: 16,
+  });
   expect(renderedText(tree)).toContain(order.descricao);
+  expect(
+    screen.getByRole('button', {name: 'Detalhes do registro'}),
+  ).toBeCollapsed();
   await fireEvent.press(screen.getByText('Detalhes do registro'));
+  expect(
+    screen.getByRole('button', {name: 'Detalhes do registro'}),
+  ).toBeExpanded();
   const text = renderedText(tree);
   expect(text).toContain(order.codigo);
   expect(text).toContain('Entregue');
@@ -121,6 +134,91 @@ test('order selection shows stored rejection, current state and separate server/
   expect(text).toContain('Recebido pelo servidor:');
   expect(text).toContain('Horário declarado pelo aparelho');
   expect(text).toContain('Leitura suspeita');
+});
+
+test('a registered tag without events uses a rounded light surface and keeps its activation warning', async () => {
+  mockParams = {reading: {uid: link.uid}};
+  jest
+    .mocked(traceability.resolveProvisioning)
+    .mockResolvedValue({...link, status: 'REGISTRADA'});
+  jest
+    .mocked(traceability.order)
+    .mockResolvedValue({...order, estado: 'CADASTRADO', expedido: false});
+  jest
+    .mocked(traceability.history)
+    .mockResolvedValue({itens: [], proximaPagina: null, totalDoPedido: 0});
+  const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+  await render();
+
+  expect(screen.getByTestId('history-list')).toHaveStyle({
+    backgroundColor: 'white',
+  });
+  expect(screen.getByTestId('history-content')).toHaveStyle({
+    backgroundColor: 'white',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  });
+  expect(
+    screen.getByText(
+      'Esta etiqueta aguarda ativação e ainda não pode registrar etapas.',
+    ),
+  ).toHaveStyle({color: palette.navy});
+  expect(screen.getByRole('header', {name: 'Caminho do pedido'})).toHaveStyle({
+    color: palette.navy,
+  });
+  expect(screen.getByText('Nenhuma etapa registrada')).toBeVisible();
+  expect(
+    screen.getByText('Nenhum registro encontrado neste vínculo.'),
+  ).toBeVisible();
+  expect(screen.getByRole('button', {name: 'Esta etiqueta'})).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({checked: true}),
+  );
+  expect(
+    screen.getByRole('button', {name: 'Sobre a etiqueta deste pedido'}),
+  ).toBeCollapsed();
+  await user.press(
+    screen.getByRole('button', {name: 'Sobre a etiqueta deste pedido'}),
+  );
+  expect(screen.getByText(/Vínculo.*Aguardando ativação/)).toBeVisible();
+  await user.press(screen.getByRole('button', {name: 'Pedido completo'}));
+  expect(screen.getByRole('button', {name: 'Pedido completo'})).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({checked: true}),
+  );
+  expect(
+    screen.getByText('Nenhum registro encontrado neste pedido.'),
+  ).toBeVisible();
+  expect(traceability.history).toHaveBeenLastCalledWith(order.id, 1, undefined);
+});
+
+test('loading and failed history requests have a light surface without showing an empty result', async () => {
+  mockParams = {reading: {uid: link.uid}};
+  let rejectHistory!: (error: Error) => void;
+  jest.mocked(traceability.history).mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectHistory = reject;
+      }),
+  );
+  const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+  await render();
+
+  expect(screen.getByTestId('history-list')).toHaveStyle({
+    backgroundColor: 'white',
+  });
+  expect(screen.getByLabelText('Carregando histórico')).toBeVisible();
+  expect(screen.queryByText('Nenhuma etapa registrada')).not.toBeOnTheScreen();
+  expect(screen.getByRole('button', {name: 'Pedido completo'})).toBeDisabled();
+  await act(async () => {
+    rejectHistory(new Error('Histórico indisponível'));
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('Histórico indisponível');
+  expect(screen.queryByText('Nenhuma etapa registrada')).not.toBeOnTheScreen();
+  expect(screen.queryByLabelText('Carregando histórico')).not.toBeOnTheScreen();
+  await user.press(screen.getByRole('button', {name: 'Tentar novamente'}));
+  expect(screen.getByRole('header', {name: 'Coleta'})).toBeVisible();
+  expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
 });
 
 test('late SDM history distinguishes authentication, policy and absence of authorized movement', async () => {

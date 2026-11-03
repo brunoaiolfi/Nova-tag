@@ -1,9 +1,9 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
-import {Icon, List, Text} from 'react-native-paper';
+import {Icon, Text} from 'react-native-paper';
 import type {HistoryEntry} from '../../appplication/traceability/contracts/history.types';
 import {eventLabel, reasonLabel, stateLabel} from './labels';
-import {trackingColors as colors} from './index';
+import {Details, trackingColors as colors} from './index';
 import {SdmEvidence} from './SdmEvidence';
 import {decisionStatus} from '../../domain/traceability/decision-status';
 import {DecisionDetails} from './DecisionDetails';
@@ -45,7 +45,7 @@ export function HistoryItem({
     ? colors.amber
     : colors.red;
   return (
-    <View style={styles.item}>
+    <View style={styles.item} testID={`history-entry-${entry.id}`}>
       <View style={styles.rail}>
         {!isLast && <View style={styles.line} />}
         <View
@@ -119,11 +119,7 @@ export function HistoryItem({
         {anotherLink && (
           <Text style={styles.date}>Outro vínculo deste pedido</Text>
         )}
-        <List.Accordion
-          title="Detalhes do registro"
-          titleNumberOfLines={2}
-          style={styles.accordion}
-          titleStyle={styles.accordionTitle}>
+        <Details title="Detalhes do registro">
           <View style={styles.details}>
             <Text>
               {entry.origem === 'SISTEMA'
@@ -164,19 +160,29 @@ export function HistoryItem({
             <Text selectable>Vínculo: {entry.provisionamentoId}</Text>
             <Text>Motivo: {decision.motivo}</Text>
           </View>
-        </List.Accordion>
+        </Details>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  item: {flexDirection: 'row', gap: 14},
+  item: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: 'white',
+  },
   rail: {width: 40, alignItems: 'center'},
   line: {
     position: 'absolute',
     top: 38,
-    bottom: -4,
+    bottom: 0,
     width: 2,
     backgroundColor: colors.line,
   },
@@ -187,7 +193,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {flex: 1, minWidth: 0, paddingBottom: 20, gap: 8},
+  content: {flex: 1, minWidth: 0, gap: 8},
   title: {fontWeight: '700', color: colors.navy},
   decision: {fontSize: 14, lineHeight: 21, fontWeight: '700'},
   description: {fontSize: 16, lineHeight: 24, color: colors.navy},
@@ -209,12 +215,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
   },
-  accordion: {
-    backgroundColor: 'transparent',
-    paddingVertical: 0,
-    minHeight: 48,
-  },
-  accordionTitle: {fontSize: 14, color: colors.muted},
   details: {
     gap: 12,
     paddingVertical: 14,

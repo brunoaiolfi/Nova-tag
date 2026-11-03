@@ -116,3 +116,33 @@ A revisão automática bloqueou a inicialização do ambiente de prévia nativa
 esta revisão não contém uma nova captura validada no Android ou iPhone. Os
 resultados de testes JS e compilação não são apresentados como inspeção visual
 nativa.
+
+## Histórico do pedido — 03/11/2026
+
+O histórico apresentava a mesma falha de superfície da lista de Envios: a
+renderização virtualizada própria não recebia o fundo claro do contêiner comum.
+A lista agora tem fundo branco e conteúdo com cantos superiores arredondados,
+enquanto o resumo do pedido permanece no cabeçalho azul. Os insets inferiores
+e a virtualização continuam sob responsabilidade dos componentes existentes.
+
+O aviso de ativação pendente aparece em um painel de atenção. Os filtros usam
+cores explícitas para texto e seleção, com altura mínima de 48 pontos. O vínculo
+usa o cartão expansível compartilhado, com ícone e descrição. Registros recebem
+cartões separados e arredondados; seus detalhes usam o mesmo controle de
+expansão acessível. Carregamento, erro e histórico vazio têm apresentações
+distintas, sem apresentar ausência de registros durante uma consulta ou falha.
+
+As regressões de apresentação cobrem a etiqueta registrada sem eventos,
+expansão dos detalhes, troca de escopo e falha seguida de nova tentativa.
+Os cenários existentes preservam paginação, descarte de respostas antigas,
+permissões de gerenciamento, decisões pendentes/rejeitadas e revisões da decisão.
+As regras de ativação, os dados de evidência e o acesso à API não foram alterados.
+
+`npm run verify` aprovado: **408 testes em 45 suítes**, incluindo 14 cenários de
+apresentação do histórico, mais **88 testes das proteções arquiteturais**, lint,
+tipos e a verificação do React Compiler no escopo existente.
+
+Esta alteração não tem uma nova inspeção visual em dispositivo. O ambiente de
+prévia nativa teve sua inicialização bloqueada pela revisão automática na
+revisão anterior, sem motivo específico; os testes de apresentação não
+substituem a conferência visual no Android e no iPhone.
