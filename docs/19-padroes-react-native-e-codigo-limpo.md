@@ -260,7 +260,7 @@ Esta seção descreve a implementação posterior à base `89ce3b8`. Os gates lo
 | RN11 | Snapshots de sessão e fila cacheados; projeções públicas imutáveis | `Object.is`, congelamento e isolamento do proprietário precisam permanecer em regressão |
 | RN12 | `useEffectEvent` no provider offline consulta a identidade atual na notificação sem refazer assinaturas | Não autoriza ignorar dependências nem usar Effect Event como handler de botão |
 | RN13 | Compiler limitado à UI genérica e `OrderSelect`; plugin 1.0.0; `compiler:check` compara o componente real com/sem transformação | Mede trabalho JS sintético e atualização de props/callback; não mede FPS nativo |
-| RN14–15 | Lista mantém virtualização; campos têm labels; botão expõe estado; teclado tem comportamento por plataforma; abas se distribuem em linhas com fonte ampliada e retorno compacto preserva nome acessível | Testes JS e smoke Android com fonte 200%/teclado; release, leitor de tela e bancada são verificações distintas |
+| RN14–15 | Lista mantém virtualização; campos têm labels; botão expõe estado; teclado tem comportamento por plataforma; abas compartilham uma única linha e retorno compacto preserva nome acessível | Testes JS de largura/fonte; smoke Android histórico com fonte 200%/teclado; release, leitor de tela e bancada são verificações distintas |
 | RN16 | Os 22 arquivos de apresentação migrados para RNTL 14.1; lint de operações assíncronas, `act`, queries e import legado | `test-renderer` 1.2.0 é compatível com React 19.2; `jest-expo` ainda traz renderer legado transitivamente |
 | RN17 e mapas | Nome de material do slot explícito; nomes de conceitos preservados; mapa de resultado usa `satisfies` | Lint de tamanho não comprova clareza semântica; revisão continua necessária |
 
@@ -361,7 +361,8 @@ cenários percorridos pela UI nesta execução.
 
 Com `font_scale=2.0`, a barra original dividia palavras entre linhas. A versão
 adaptável foi observada com as cinco abas legíveis em duas linhas, mantendo a
-fonte ampliada. No formulário, o teclado permaneceu aberto; rolagem alcançou a
+fonte ampliada. Esse comportamento histórico foi substituído pela correção de
+03/11/2026, descrita na seção 12. No formulário, o teclado permaneceu aberto; rolagem alcançou a
 descrição e a confirmação acima do teclado enviou o cadastro. O retorno compacto
 do cabeçalho tem regressão JS para fonte grande e área mínima de toque; não foi
 repetido o smoke nativo após essa última alteração de cabeçalho.
@@ -382,3 +383,26 @@ ao lint apenas sintático. As execuções locais ocorreram também sob pressão 
 memória, com emulador/Metro concorrentes, portanto seus tempos não formam um
 benchmark comparável. O gate de aprovação é funcional; orçamento de tempo/RSS
 deve ser medido em ambiente controlado antes de fixar um limite de CI.
+
+## 12. Correção da barra de navegação — 03/11/2026
+
+A foto de um iPhone mostrou quatro abas na primeira linha e “Vincular” isolada
+abaixo. A adaptação anterior calculava colunas com largura mínima de 76 pontos;
+em 375 pontos, descontadas as margens, o cálculo permitia apenas quatro colunas.
+Isso era uma regressão do layout introduzida na revisão anterior.
+
+A barra agora mantém uma única linha, divide igualmente a largura entre as abas
+e permite que cada item encolha dentro do espaço disponível. Os títulos visuais
+têm uma linha, ajuste de tamanho e reticências como limite; o nome acessível
+completo e o estado de seleção permanecem em cada aba. A escala de fonte do
+sistema continua habilitada; o componente não impõe uma altura fixa à barra.
+
+A regressão cobre 320/375/393/411 pontos e escalas 1/1,2/2, além de navegar pela
+última aba. Os testes verificam os contratos de layout e acessibilidade enviados
+ao renderer; não equivalem a medição de pixels ou execução nativa no iPhone.
+
+`npm run verify` passou com 44 suítes / 400 testes Jest e 88 verificações
+arquiteturais, além de lint, tipos e Compiler. A primeira execução teve um
+timeout no teste de administração e uma falha subsequente; os 16 testes dessa
+suíte passaram isoladamente e a reexecução completa passou. Nenhum limite de
+tempo ou check foi alterado para essa correção.

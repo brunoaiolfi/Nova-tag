@@ -1,5 +1,5 @@
 import React, {useContext, useLayoutEffect} from 'react';
-import {StyleSheet, View, useWindowDimensions} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {Icon, Text, TouchableRipple} from 'react-native-paper';
 import {CommonActions} from '@react-navigation/native';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
@@ -12,16 +12,6 @@ const TabBar = ({
   navigation,
   insets,
 }: BottomTabBarProps) => {
-  const {width, fontScale} = useWindowDimensions();
-  const availableWidth =
-    width - Math.max(insets.left, 8) - Math.max(insets.right, 8);
-  const columns = Math.max(
-    1,
-    Math.min(
-      state.routes.length,
-      Math.floor(availableWidth / Math.max(76, 60 * fontScale)),
-    ),
-  );
   const rotaFocada = state.routes[state.index];
   const estilo = StyleSheet.flatten(
     rotaFocada ? descriptors[rotaFocada.key]?.options.tabBarStyle : undefined,
@@ -43,6 +33,7 @@ const TabBar = ({
 
   return (
     <View
+      testID="main-tab-bar"
       onLayout={event => reportHeight?.(event.nativeEvent.layout.height)}
       style={[
         layoutStyles.bar,
@@ -86,7 +77,7 @@ const TabBar = ({
                 });
               }
             }}
-            style={[layoutStyles.touch, {flexBasis: `${100 / columns}%`}]}>
+            style={layoutStyles.touch}>
             <View style={layoutStyles.item}>
               <View
                 style={[
@@ -101,6 +92,10 @@ const TabBar = ({
                 )}
               </View>
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+                ellipsizeMode="tail"
                 style={[
                   layoutStyles.label,
                   {color},
@@ -122,12 +117,12 @@ const layoutStyles = StyleSheet.create({
   bar: {
     backgroundColor: 'white',
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     borderTopWidth: 1,
     borderTopColor: colors.line,
     paddingTop: 8,
   },
-  touch: {flexGrow: 1, borderRadius: 16, minHeight: 66},
+  touch: {flex: 1, minWidth: 0, borderRadius: 16, minHeight: 66},
   item: {
     alignItems: 'center',
     gap: 4,
@@ -143,6 +138,11 @@ const layoutStyles = StyleSheet.create({
   },
   selected: {backgroundColor: colors.pale},
   register: {backgroundColor: colors.orange},
-  label: {fontSize: 12, lineHeight: 18, textAlign: 'center'},
+  label: {
+    alignSelf: 'stretch',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   activeLabel: {fontWeight: '700'},
 });

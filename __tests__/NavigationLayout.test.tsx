@@ -29,25 +29,48 @@ const services = createTestServices({});
 
 afterEach(() => jest.restoreAllMocks());
 
-test('large system text keeps all five tabs named, reachable and gives their labels more width', async () => {
-  jest
-    .spyOn(Dimensions, 'get')
-    .mockReturnValue({width: 411, height: 900, scale: 2.625, fontScale: 2});
-  await renderProbe(
-    withServices(
-      <PaperProvider>
-        <Navigator />
-      </PaperProvider>,
-      services,
-    ),
-  );
-  const historyTab = screen.getByRole('tab', {name: 'Rastreio'});
-  expect(screen.getAllByRole('tab')).toHaveLength(5);
-  expect(historyTab).toHaveStyle({flexBasis: `${100 / 3}%`});
-  await fireEvent.press(screen.getByRole('tab', {name: 'Vincular'}));
-  expect(screen.getByRole('tab', {name: 'Vincular'})).toBeSelected();
-  expect(screen.getByText('Registrar')).toBeOnTheScreen();
-});
+test.each([
+  [320, 1],
+  [375, 1],
+  [393, 1.2],
+  [411, 2],
+])(
+  'all five tabs stay in one row at width %s and font scale %s',
+  async (width, fontScale) => {
+    jest
+      .spyOn(Dimensions, 'get')
+      .mockReturnValue({width, height: 900, scale: 2.625, fontScale});
+    await renderProbe(
+      withServices(
+        <PaperProvider>
+          <Navigator />
+        </PaperProvider>,
+        services,
+      ),
+    );
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(5);
+    expect(screen.getByTestId('main-tab-bar')).toHaveStyle({
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+    });
+    for (const tab of tabs) {
+      expect(tab).toHaveStyle({flex: 1, minWidth: 0});
+    }
+    for (const label of [
+      'Início',
+      'Rastreio',
+      'Envios',
+      'Registrar',
+      'Vincular',
+    ]) {
+      expect(screen.getByText(label)).toHaveProp('numberOfLines', 1);
+    }
+    await fireEvent.press(screen.getByRole('tab', {name: 'Vincular'}));
+    expect(screen.getByRole('tab', {name: 'Vincular'})).toBeSelected();
+    expect(screen.getByText('Registrar')).toBeOnTheScreen();
+  },
+);
 
 test('mounts the custom tab bar inside React and navigates between authenticated tabs', async () => {
   let tree: RenderResult;
