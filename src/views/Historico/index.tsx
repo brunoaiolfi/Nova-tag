@@ -74,7 +74,7 @@ export default function Historico() {
         purpose="history"
         disabled={false}
         onSelect={selectedOrder =>
-          selectedOrder && choose({kind: 'order', order: selectedOrder})
+          choose({kind: 'order', order: selectedOrder})
         }
         pickerHeader={
           <Button

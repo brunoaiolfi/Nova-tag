@@ -11,6 +11,7 @@ import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 import Tela from '../../../components/Base/Tela';
 import VStack from '../../../components/Base/VStack';
 import OrderSelect from '../../../components/Nfc/OrderSelect';
+import SelectedOrderSummary from '../../../components/Nfc/SelectedOrderSummary';
 import BlockingFailure, {
   describeFailure,
 } from '../../../components/Nfc/BlockingFailure';
@@ -367,17 +368,17 @@ export default function Administracao() {
               />
             ) : (
               <>
-                {setupStep === 0 && (
+                {setupStep === 0 && order && (
                   <>
                     <SetupHeading
                       title="Qual pedido?"
                       description="Selecione o volume que receberá a etiqueta."
                     />
-                    <OrderSelect
-                      selected={order}
+                    <SelectedOrderSummary
+                      order={order}
                       disabled={!!busy}
-                      onSelect={selectedOrder =>
-                        dispatch({type: 'order-selected', order: selectedOrder})
+                      onChange={() =>
+                        dispatch({type: 'order-selected', order: undefined})
                       }
                     />
                   </>

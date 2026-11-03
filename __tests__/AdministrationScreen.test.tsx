@@ -98,14 +98,12 @@ async function mount() {
 }
 beforeEach(() => {
   mockParams = {provisioningId: 'selected'};
-  jest
-    .mocked(services.traceability.listOrders)
-    .mockResolvedValue({
-      itens: [
-        {id: 'order', codigo: 'TCC-NEW', descricao: null, estado: 'CADASTRADO'},
-      ],
-      total: 1,
-    });
+  jest.mocked(services.traceability.listOrders).mockResolvedValue({
+    itens: [
+      {id: 'order', codigo: 'TCC-NEW', descricao: null, estado: 'CADASTRADO'},
+    ],
+    total: 1,
+  });
   mockRole = 'ADMINISTRADOR';
   mockStatus = 'authenticated';
   mockLogin = 'first-login';
@@ -117,6 +115,26 @@ beforeEach(() => {
   jest.mocked(administration.localJournal).mockResolvedValue([]);
   jest.mocked(administration.activationPending).mockResolvedValue(false);
   jest.mocked(administration.restore).mockImplementation(async op => op);
+});
+
+test('opening an existing link waits for its order without mounting a nested order picker', async () => {
+  let resolveProvisioning!: (value: typeof provisioning) => void;
+  jest.mocked(services.traceability.provisioning).mockImplementationOnce(
+    () =>
+      new Promise(resolve => {
+        resolveProvisioning = resolve;
+      }),
+  );
+  await mount();
+  expect(text()).toContain('Consultando o plano');
+  expect(screen.queryByTestId('order-search-results')).not.toBeOnTheScreen();
+  expect(services.traceability.listOrders).not.toHaveBeenCalled();
+  await act(async () => {
+    resolveProvisioning(provisioning);
+  });
+  expect(text()).toContain('TCC-001');
+  expect(screen.queryByTestId('order-search-results')).not.toBeOnTheScreen();
+  expect(services.traceability.listOrders).not.toHaveBeenCalled();
 });
 
 test('new configuration guides order, identification and explicit treatment before creating a plan', async () => {
@@ -477,6 +495,8 @@ test('a failed lookup for another route never leaves the previous administrative
   );
   expect(text()).not.toContain('TCC-001');
   expect(text()).toContain('Novo vínculo indisponível');
+  expect(screen.queryByTestId('order-search-results')).not.toBeOnTheScreen();
+  expect(services.traceability.listOrders).not.toHaveBeenCalled();
   expect(button('Configurar etiqueta')).toBeNull();
 });
 test.each([

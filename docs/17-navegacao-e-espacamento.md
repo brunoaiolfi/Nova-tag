@@ -174,3 +174,28 @@ contrato de layout em JS, sem medição de pixels ou nova inspeção visual nati
 
 `npm run verify` aprovado: **412 testes em 46 suítes**, mais **88 testes das
 proteções arquiteturais**, lint, tipos e verificação do React Compiler.
+
+## Abertura de vínculo e listas aninhadas — 03/11/2026
+
+Ao abrir uma administração existente, a tela já possuía um `ScrollView`, mas o
+pedido ainda não estava disponível durante a consulta. `OrderSelect` acumulava
+duas responsabilidades: resumo inline quando recebia `selected` e seletor com
+`FlatList` quando esse valor estava ausente. O estado transitório e uma falha de
+consulta ativavam o seletor dentro do `ScrollView` externo, provocando o aviso
+de `VirtualizedList` aninhada.
+
+O resumo agora é `SelectedOrderSummary`, com pedido obrigatório e sem rolagem
+ou consulta de pedidos. Os fluxos UID/NDEF e administrativo usam esse resumo
+somente com pedido disponível. `OrderSelect` fica responsável pela tela de
+busca e seleção; seu callback recebe sempre o pedido selecionado. A lista
+continua virtualizada e com busca, paginação e proteção contra respostas antigas.
+
+A regressão de abertura com consulta pendente e a de falha ao trocar de vínculo
+reproduziram a montagem indevida da lista antes da correção. Após a separação,
+ambas passam e verificam que o seletor não é montado nem consulta outros pedidos
+nesses estados. Não foram adicionados `nestedScrollEnabled`, listas sem
+virtualização ou supressões do aviso para ocultar o problema.
+
+`npm run verify` aprovado: **413 testes em 46 suítes**, mais **88 testes das
+proteções arquiteturais**, lint, tipos e verificação do React Compiler. Esta
+correção não contém uma nova inspeção visual no aparelho.

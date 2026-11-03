@@ -18,6 +18,7 @@ import Leitor from '../../../components/Nfc/Leitor';
 import type {RotasProvisionar} from '../../../navigation/ProvisionarNavigator';
 import {EnumEstrategiasNFC} from '../../../domain/enums/estrategiasNFC';
 import OrderSelect from '../../../components/Nfc/OrderSelect';
+import SelectedOrderSummary from '../../../components/Nfc/SelectedOrderSummary';
 import ModelSelect from '../../../components/Nfc/ModelSelect';
 import TagDetails from '../../../components/Nfc/TagDetails';
 import CreateOrderForm from '../../../components/Nfc/CreateOrderForm';
@@ -169,11 +170,10 @@ export default function EtapasProvisionamento() {
           current={!order ? 1 : !reading ? 2 : !provisioning ? 3 : 4}
           complete={active}
         />
-        <OrderSelect
-          selected={order}
-          onSelect={selectOrder}
+        <SelectedOrderSummary
+          order={order}
+          onChange={() => selectOrder(undefined)}
           disabled={!!provisioning || busy}
-          onCreate={() => setMode('create')}
         />
         {order && !reading && !provisioning && (
           <ModelSelect

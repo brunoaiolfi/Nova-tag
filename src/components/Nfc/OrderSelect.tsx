@@ -87,7 +87,6 @@ export function OrderOption({
 }
 
 export default function OrderSelect({
-  selected,
   disabled,
   onSelect,
   purpose = 'provisioning',
@@ -96,9 +95,8 @@ export default function OrderSelect({
   pickerFooter,
   insetTop = true,
 }: {
-  selected?: OrderSummary | undefined;
   disabled: boolean;
-  onSelect: (order?: OrderSummary) => void;
+  onSelect: (order: OrderSummary) => void;
   purpose?: ('provisioning' | 'history') | undefined;
   onCreate?: (() => void) | undefined;
   pickerHeader?: React.ReactNode | undefined;
@@ -106,24 +104,7 @@ export default function OrderSelect({
   insetTop?: boolean | undefined;
 }) {
   const {search, setSearch, orders, page, total, busy, error, retry, loadMore} =
-    useOrderSearch(!selected);
-  if (selected)
-    return (
-      <View>
-        <VStack gap={12}>
-          <Text variant="titleMedium">Pedido</Text>
-          <Text
-            variant="titleLarge"
-            style={[layoutStyles.orderCode, layoutStyles.selectedCode]}>
-            {selected.codigo}
-          </Text>
-          {!!selected.descricao && <Text>{selected.descricao}</Text>}
-          {!disabled && (
-            <Button onPress={() => onSelect(undefined)}>Trocar pedido</Button>
-          )}
-        </VStack>
-      </View>
-    );
+    useOrderSearch();
   return (
     <Tela
       keyboard
@@ -284,7 +265,6 @@ const layoutStyles = StyleSheet.create({
     fontWeight: '700',
     color: colors.navy,
   },
-  selectedCode: {fontSize: 18, lineHeight: 25},
   stateBadge: {
     flexShrink: 1,
     paddingHorizontal: 10,
